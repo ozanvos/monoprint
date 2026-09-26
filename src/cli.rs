@@ -41,7 +41,7 @@ pub struct Args {
     pub scale: u32,
     #[arg(long, default_value = "")]
     pub title: String,
-    /// Subtitle for themes that support it (currently Auth0).
+    /// Auth0 subtitle metadata; the pinned frame displays the language label.
     #[arg(long, default_value = "")]
     pub subtitle: String,
     /// Language ID or alias; otherwise infer from the filename.

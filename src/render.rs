@@ -5,18 +5,23 @@ use crate::{
 };
 use anyhow::{Context, Result, bail};
 use base64::{Engine, engine::general_purpose::STANDARD};
-use std::{borrow::Cow, fs, sync::Arc};
+use std::{borrow::Cow, fs, io::Read, sync::Arc};
 use takumi::prelude::*;
 
-fn validate_glyphs(bytes: &[u8], text: &str, label: &str) -> Result<()> {
+fn validate_glyphs(bytes: &[u8], text: &str, label: &str, can_override: bool) -> Result<()> {
     let face = ttf_parser::Face::parse(bytes, 0).context("font must be a valid TTF or OTF file")?;
     for c in text.chars() {
         if c == '\n' || c == '\t' || c == '\r' {
             continue;
         }
         if face.glyph_index(c).is_none() {
+            let hint = if can_override {
+                "use --font-file with a font containing this glyph"
+            } else {
+                "use text supported by this theme's label font (--font-file only changes the code font)"
+            };
             bail!(
-                "{label} font cannot display {c:?} (U+{:04X}); use --font-file with a font containing this glyph",
+                "{label} font cannot display {c:?} (U+{:04X}); {hint}",
                 c as u32
             );
         }
@@ -92,16 +97,21 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
         bail!("--subtitle is supported by the Auth0 theme");
     }
     let font: Cow<'_, [u8]> = if let Some(path) = &args.font_file {
-        Cow::Owned(fs::read(path).with_context(|| format!("reading font {}", path.display()))?)
+        const MAX_FONT_BYTES: u64 = 64 * 1024 * 1024;
+        let mut bytes = Vec::new();
+        fs::File::open(path)
+            .with_context(|| format!("opening font {}", path.display()))?
+            .take(MAX_FONT_BYTES + 1)
+            .read_to_end(&mut bytes)
+            .with_context(|| format!("reading font {}", path.display()))?;
+        if bytes.len() as u64 > MAX_FONT_BYTES {
+            bail!("font exceeds 64 MiB; use a smaller TTF or OTF file");
+        }
+        Cow::Owned(bytes)
     } else {
         Cow::Borrowed(assets::font(&theme.font))
     };
-    validate_glyphs(&font, source, "code")?;
-    validate_glyphs(
-        assets::font("inter"),
-        &format!("{}{}", args.title, args.subtitle),
-        "title",
-    )?;
+    validate_glyphs(&font, source, "code", true)?;
     let code = highlight::code(args, source, theme, mode)?;
     let numbers = code.language != "plain"
         && if theme.partner && !theme.line_numbers_toggleable {
@@ -132,7 +142,7 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
         ""
     };
     let editor = format!(
-        "<div class=\"Editor__editor{number_class}\" style=\"--editor-padding:16px;font-family:CodeMono;font-weight:{weight};{palette_css}\"><div class=\"Editor__formatted\"><pre><code>{}</code></pre></div></div>",
+        "<div class=\"Editor__editor{number_class}\" style=\"--editor-padding:16px;--code-weight:{weight};font-family:CodeMono;font-weight:{weight};{palette_css}\"><div class=\"Editor__formatted\"><pre><code>{}</code></pre></div></div>",
         code.html
     );
     let key = format!(
@@ -151,6 +161,17 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
         .get(&key)
         .context("missing embedded frame template")?
         .clone();
+    if template.contains("__TITLE__") {
+        let title_uses_code_font = matches!(theme.id.as_str(), "removed-frame" | "removed-frame");
+        let title_font = match theme.id.as_str() {
+            "removed-frame" | "removed-frame" => font.as_ref(),
+            "removed-frame" => assets::font("ibm-plex-mono"),
+            _ => assets::font("inter"),
+        };
+        validate_glyphs(title_font, &args.title, "title", title_uses_code_font)?;
+    }
+    // The pinned Auth0 frame keeps subtitle only in data-value metadata; its
+    // visible span is the language label. No subtitle glyphs are drawn.
     if matches!(theme.id.as_str(), "removed-frame" | "removed-frame" | "removed-frame")
         && let Some(start) = template.find("background-image:linear-gradient(")
         && let Some(end) = template[start..].find(')')
@@ -162,8 +183,11 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
         .map(|w| format!("width:{w}px"))
         .unwrap_or_else(|| "display:inline-block;min-width:520px".into());
     let base_css = &assets::styles()[&theme.id];
+    // html-to-image 1.11.13 reduces 15px code to 14.9px on export.
+    // Match that in every format, retaining 22.5px leading and the original
+    // pre-export fit-width measurement below.
     let mut css = format!(
-        "{base_css}\n#capture{{{width}}}.Editor__editor{{display:block}}.Editor__editor:after{{content:none}}.Editor__formatted{{font-family:CodeMono;font-variant-ligatures:none;font-feature-settings:'liga' 0,'calt' 0}}[data-export-input]{{display:block}}\n"
+        "{base_css}\n#capture{{{width}}}.Editor__editor{{display:block}}.Editor__editor:after{{content:none}}.Editor__formatted{{font-family:CodeMono;font-size:14.9px;font-variant-ligatures:none;font-feature-settings:'liga' 0,'calt' 0}}[data-export-input]{{display:block}}.DefaultFrame__header .DefaultFrame__fileName>[data-export-input]{{display:flex;align-items:center;justify-content:center}}\n"
     );
     // All image URLs are resolved from the embedded asset bundle; no network access.
     for (name, data) in assets::images() {
@@ -176,16 +200,19 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
             code_width(&font, source)?.ceil()
         );
     }
-    let frame = substitute(
-        &template,
-        &[
-            ("__CODE_IMAGES_EDITOR__", &editor),
-            ("__PADDING__", &args.padding.to_string()),
-            ("__TITLE__", &assets::escape(&args.title)),
-            ("__SUBTITLE__", &assets::escape(&args.subtitle)),
-            ("__LANGUAGE__", &assets::escape(language_name)),
-        ],
-    );
+    let fill_template = |template: &str| {
+        substitute(
+            template,
+            &[
+                ("__CODE_IMAGES_EDITOR__", &editor),
+                ("__PADDING__", &args.padding.to_string()),
+                ("__TITLE__", &assets::escape(&args.title)),
+                ("__SUBTITLE__", &assets::escape(&args.subtitle)),
+                ("__LANGUAGE__", &assets::escape(language_name)),
+            ],
+        )
+    };
+    let frame = fill_template(&template);
     let mut html = format!("<div id=\"capture\" data-theme=\"{mode}\">{frame}</div>");
     css += "#capture{--font-space-mono:CodeMono;--font-soehne-mono:CodeMono}.TriggerdevFrame__fileName,.TriggerdevFrame__language{font-family:CodeMono}.Editor__editor .line{min-height:22.5px}";
     let mut fonts = Fonts::default();
@@ -212,18 +239,20 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
     }
     let parse_css = |css: &str| -> Result<Arc<StyleSheet>> {
         Ok(Arc::new(
-            StyleSheet::parse(&effects::native_css(css)).map_err(|error| {
-                let message = error.to_string();
-                let tail: String = message
-                    .chars()
-                    .rev()
-                    .take(500)
-                    .collect::<Vec<_>>()
-                    .into_iter()
-                    .rev()
-                    .collect();
-                anyhow::anyhow!("parsing {} frame styles: {tail}", theme.id)
-            })?,
+            StyleSheet::parse(&effects::native_css(css, format == Format::Png)).map_err(
+                |error| {
+                    let message = error.to_string();
+                    let tail: String = message
+                        .chars()
+                        .rev()
+                        .take(500)
+                        .collect::<Vec<_>>()
+                        .into_iter()
+                        .rev()
+                        .collect();
+                    anyhow::anyhow!("parsing {} frame styles: {tail}", theme.id)
+                },
+            )?,
         ))
     };
     let mut stylesheet = parse_css(&css)?;
@@ -242,7 +271,10 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
         )?;
         let effect = effects::prepare(&theme.id, args, size.width / 2.0, size.height / 2.0);
         css += &effect.css;
-        let frame = effects::adapt_frame(&theme.id, frame, size.width / 2.0, size.height / 2.0);
+        // Adapt only trusted template markup, before inserting user text.
+        let template =
+            effects::adapt_template(&theme.id, template, size.width / 2.0, size.height / 2.0);
+        let frame = fill_template(&template);
         html = format!(
             "<div id=\"capture\" data-theme=\"{mode}\">{frame}{}</div>",
             effect.overlay
@@ -286,9 +318,14 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
     let height = (size.height / scale).ceil() * scale;
     if width * height > 64_000_000.0 || width > 32768.0 || height > 32768.0 {
         bail!(
-            "image is too large ({}x{} pixels); reduce --scale, --width, or snippet length",
+            "image is too large ({}x{} internal render pixels{}); reduce --scale, --width, or snippet length",
             width,
-            height
+            height,
+            if format == Format::Png && !args.scale.is_multiple_of(2) {
+                "; odd PNG scales render at 2x the requested scale before downsampling"
+            } else {
+                ""
+            }
         );
     }
     viewport =

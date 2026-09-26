@@ -25,7 +25,7 @@ pub fn language(args: &Args, registry: &Registry) -> Result<String> {
         }
     };
     let candidate = match candidate.as_str() {
-        "typescript" | "ts" => "tsx",
+        "typescript" | "ts" | "mts" | "cts" => "tsx",
         "js" => "javascript",
         "rs" => "rust",
         "py" => "python",

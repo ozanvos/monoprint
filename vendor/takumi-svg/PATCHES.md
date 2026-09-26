@@ -7,5 +7,6 @@ Changes in `src/render.rs`:
 - Paint outer box shadows in reverse CSS-list order for SVG's source-over compositing.
 - Clip the blurred outer shadow to the exterior of the rounded border box. Translucent windows must not reveal a solid shadow underneath their interior.
 - Give Gaussian blur filters sufficient bounds so broad shadows do not acquire rectangular clipping edges (`src/lib.rs`).
+- Skip box decorations on anonymous inline-layout containers, matching the raster backend. Their inherited background otherwise paints translucent line highlights twice over the code area.
 
 This fixes the dark/opaque windows observed in the SVG-versus-PNG comparison. The browser export matrix in `scripts/verify-exports.mjs` verifies the resulting images. Remove this patch once an upstream release supplies the same behavior and passes the matrix.

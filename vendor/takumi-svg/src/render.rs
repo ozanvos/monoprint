@@ -224,8 +224,6 @@ pub(crate) fn emit_box_chrome(
 
   let clip_group = emit_clip_path_group(node, layout.size, x, y, doc)?;
 
-  emit_box_shadows(node, layout, x, y, width, height, doc)?;
-
   // Border/radius geometry is reused from takumi-core (the same `BorderProperties`
   // the raster backend rasterizes) instead of being reimplemented here.
   let border = BorderProperties::from_context(&node.context, layout.size, layout.border);
@@ -233,9 +231,15 @@ pub(crate) fn emit_box_chrome(
 
   // `background-clip` picks the shape a background fills, never when it paints:
   // the border draws over the ring, as it does in Blink.
-  emit_background(node, &border, layout, x, y, doc)?;
-  emit_inset_box_shadows(node, &border, layout, x, y, doc)?;
-  emit_borders(&border, x, y, layout.size, doc)?;
+  // Anonymous inline-layout containers retain their parent's style for text,
+  // but do not own its box decorations. Mirror the raster shell guard so a
+  // translucent highlighted row is not painted again inside its content box.
+  if node.node.is_some() {
+    emit_box_shadows(node, layout, x, y, width, height, doc)?;
+    emit_background(node, &border, layout, x, y, doc)?;
+    emit_inset_box_shadows(node, &border, layout, x, y, doc)?;
+    emit_borders(&border, x, y, layout.size, doc)?;
+  }
 
   // Children, clipped to the (rounded) padding box when overflow is not visible.
   // With border-radius present the raster backend clips both axes to the rounded

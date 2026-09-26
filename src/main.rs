@@ -12,6 +12,17 @@ use std::{
     process::ExitCode,
 };
 
+const MAX_SOURCE_BYTES: u64 = 1_048_576;
+
+fn read_source(reader: impl Read) -> Result<String> {
+    let mut bytes = Vec::new();
+    reader.take(MAX_SOURCE_BYTES + 1).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > MAX_SOURCE_BYTES {
+        bail!("source exceeds 1 MiB; select a smaller snippet");
+    }
+    String::from_utf8(bytes).context("source is not valid UTF-8")
+}
+
 fn run() -> Result<()> {
     let args = cli::Args::parse();
     if args.list_themes {
@@ -46,24 +57,18 @@ fn run() -> Result<()> {
             output.display()
         );
     }
-    let mut source = String::new();
-    match &args.input {
-        Some(path) if path.as_os_str() != "-" => {
-            source = fs::read_to_string(path)
-                .with_context(|| format!("reading {} as UTF-8", path.display()))?
-        }
+    let source = match &args.input {
+        Some(path) if path.as_os_str() != "-" => read_source(
+            fs::File::open(path).with_context(|| format!("opening {}", path.display()))?,
+        )
+        .with_context(|| format!("reading {} as UTF-8", path.display()))?,
         _ => {
             if io::stdin().is_terminal() {
                 bail!("provide an input file or pipe UTF-8 source into stdin");
             }
-            io::stdin()
-                .read_to_string(&mut source)
-                .context("reading stdin as UTF-8")?;
+            read_source(io::stdin().lock()).context("reading stdin as UTF-8")?
         }
-    }
-    if source.len() > 1_048_576 {
-        bail!("source exceeds 1 MiB; select a smaller snippet");
-    }
+    };
     let source = source.replace("\r\n", "\n").replace('\r', "\n");
     let rendered = render::export(&args, &source, format)?;
     if output.as_os_str() == "-" {

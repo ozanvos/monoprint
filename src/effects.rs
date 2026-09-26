@@ -3,9 +3,10 @@
 use crate::{assets, cli::Args};
 use base64::{Engine, engine::general_purpose::STANDARD};
 
-pub fn adapt_frame(theme: &str, frame: String, width: f32, height: f32) -> String {
+// Call before user text is substituted, so matching source strings stay intact.
+pub fn adapt_template(theme: &str, template: String, width: f32, height: f32) -> String {
     if theme == "removed-frame" && height >= 240.0 {
-        return frame.replace("StripeFrame__isSmall", "");
+        return template.replace("StripeFrame__isSmall", "");
     }
     if theme == "removed-frame" {
         // Chromium ignores the upstream SVG's invalid two-number viewBox.
@@ -21,12 +22,12 @@ pub fn adapt_frame(theme: &str, frame: String, width: f32, height: f32) -> Strin
                 width + 64.0
             ),
         );
-        return frame.replace(
+        return template.replace(
             url,
             &format!("data:image/svg+xml;base64,{}", STANDARD.encode(svg)),
         );
     }
-    frame
+    template
 }
 
 pub fn needs_measurement(theme: &str) -> bool {
@@ -151,6 +152,25 @@ pub fn prepare(theme: &str, args: &Args, width: f32, height: f32) -> Effects {
         }
         "removed-frame" => {
             css += ".NuxtFrame__window [data-frameborder]{display:none}";
+            if !args.light && !args.transparent {
+                // Blur the full off-canvas source before clipping to the export.
+                // Native CSS filters otherwise lose the glow outside the viewport.
+                css += ".NuxtFrame__window:before,.NuxtFrame__window:after{display:none}";
+                paths += "<defs><radialGradient id=\"nuxt-glow\" r=\"70.710678%\"><stop stop-color=\"#00dc82\" stop-opacity=\"0.6\"/><stop offset=\"70%\" stop-color=\"#00dc82\" stop-opacity=\"0\"/></radialGradient></defs>";
+                for (i, (x, y)) in [
+                    (padding - 199.0, padding - 199.0),
+                    (width - padding - 51.0, height - padding + 19.0),
+                ]
+                .into_iter()
+                .enumerate()
+                {
+                    paths += &format!(
+                        "<defs><filter id=\"nuxt-blur{i}\" filterUnits=\"userSpaceOnUse\" x=\"{}\" y=\"{}\" width=\"610\" height=\"540\" color-interpolation-filters=\"sRGB\"><feGaussianBlur stdDeviation=\"60\"/></filter></defs><rect x=\"{x}\" y=\"{y}\" width=\"250\" height=\"180\" fill=\"url(#nuxt-glow)\" filter=\"url(#nuxt-blur{i})\"/>",
+                        x - 180.0,
+                        y - 180.0
+                    );
+                }
+            }
             for (i, (inset, radius, opacity, edge, fade)) in [
                 (0.0, 10.0, 1.0, 8, 20),
                 (7.0, 18.0, 0.5, 10, 26),
@@ -181,7 +201,8 @@ pub fn prepare(theme: &str, args: &Args, width: f32, height: f32) -> Effects {
         }
         "removed-frame" => {
             css += &format!(
-                ".FirecrawlFrame__asciiArt{{font-size:{}px;font-family:CodeMono}}.FirecrawlFrame__frameOverlay{{display:none}}",
+                ".FirecrawlFrame__asciiArt{{font-size:{}px;line-height:{}px;font-family:CodeMono}}.FirecrawlFrame__frameOverlay{{display:none}}",
+                ((w * 0.013).floor() - 0.1).max(0.1),
                 w * 0.013
             );
             let color = if args.light { "#ededed" } else { "#444" };
@@ -215,8 +236,60 @@ pub fn prepare(theme: &str, args: &Args, width: f32, height: f32) -> Effects {
     Effects { css, overlay }
 }
 
-pub fn native_css(css: &str) -> String {
-    css.replace("!important", "")
+// Takumi's raster backend paints shadow lists in forward order. CSS paints
+// the first listed shadow on top. Adapt only our embedded CSS, keeping the SVG
+// backend (which already corrects this order) and browser HTML unchanged.
+fn raster_shadow_order(css: &str) -> String {
+    css.split_inclusive(';')
+        .map(|declaration| {
+            let Some((before, value)) = declaration.split_once("box-shadow:") else {
+                return declaration.to_owned();
+            };
+            let value = value.strip_suffix(';').unwrap_or(value);
+            let mut depth = 0;
+            let mut start = 0;
+            let mut shadows = Vec::new();
+            for (i, ch) in value.char_indices() {
+                match ch {
+                    '(' => depth += 1,
+                    ')' => depth -= 1,
+                    ',' if depth == 0 => {
+                        shadows.push(value[start..i].trim());
+                        start = i + 1;
+                    }
+                    _ => {}
+                }
+            }
+            shadows.push(value[start..].trim());
+            shadows.reverse();
+            format!(
+                "{before}box-shadow:{}{}",
+                shadows.join(","),
+                if declaration.ends_with(';') { ";" } else { "" }
+            )
+        })
+        .collect()
+}
+
+pub fn native_css(css: &str, raster: bool) -> String {
+    // Block formatting gives each logical line its content-box wrap width.
+    // Collapse only the separator newlines; preserve whitespace inside lines.
+    let editor = ".Editor__formatted>pre>code{white-space:normal}\
+        .Editor__editor .line{display:block;white-space:pre-wrap;font-weight:var(--code-weight)}\
+        .Editor__formatted{font-weight:var(--code-weight)}\
+        .Editor__editor .line:before{left:0;transform:translateX(6px)}";
+    (if raster {
+        raster_shadow_order(css)
+    } else {
+        css.to_owned()
+    } + editor)
+        .replace("!important", "")
+        // Takumi ignores the font shorthand. Partner title spans rely on it
+        // to replace DefaultFrame's Inter/12px with their parent's typography.
+        .replace(
+            "font: inherit",
+            "font-family:inherit;font-size:inherit;font-weight:inherit;font-style:inherit;line-height:inherit",
+        )
         // Chromium quantizes these fractional CSS borders to a CSS pixel in
         // the pinned reference. Match their layout contribution at every DPR.
         .replace("border: 0.5px", "border: 1px")
