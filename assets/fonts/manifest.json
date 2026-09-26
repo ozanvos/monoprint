@@ -1,0 +1,92 @@
+{
+  "jetbrains-mono": {
+    "family": "JetBrains Mono",
+    "weight": 500,
+    "file": "jetbrains-mono.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/jetbrainsmono/JetBrainsMono%5Bwght%5D.ttf",
+    "blob": "aa310be8b717fe3774f9444dd89d5f4101cc6d10",
+    "sha256": "48715a42ec242c21e9f02692891e147d022299a52e48d5e413e1a942193ffeda",
+    "license": "OFL-1.1"
+  },
+  "geist-mono": {
+    "family": "Geist Mono",
+    "weight": 400,
+    "file": "geist-mono.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/geistmono/GeistMono%5Bwght%5D.ttf",
+    "blob": "173867dce0580ea751e4b9c558740d34f20ce549",
+    "sha256": "d00e590b8eb3a59acc329b2d044fd143ae935090b7da33199ebee27cc7de8196",
+    "license": "OFL-1.1"
+  },
+  "ibm-plex-mono": {
+    "family": "IBM Plex Mono",
+    "weight": 500,
+    "file": "ibm-plex-mono.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/ibmplexmono/IBMPlexMono-Medium.ttf",
+    "blob": "33c546f68b6007a45a3f10e845523abb2db25399",
+    "sha256": "a9b4c49bb299e05b5f6c481e7fb5e78943d2793249a0c8874ab574a2d1ea6755",
+    "license": "OFL-1.1"
+  },
+  "fira-code": {
+    "family": "Fira Code",
+    "weight": 400,
+    "file": "fira-code.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/firacode/FiraCode%5Bwght%5D.ttf",
+    "blob": "83f2b3875f734f135154f18bb4f13d4075186927",
+    "sha256": "9335b082b3c7850d98a64b584f3417f65355f3471278bb5eeb8c6c0e8657aeeb",
+    "license": "OFL-1.1"
+  },
+  "roboto-mono": {
+    "family": "Roboto Mono",
+    "weight": 400,
+    "file": "roboto-mono.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/robotomono/RobotoMono%5Bwght%5D.ttf",
+    "blob": "f21d1d716bce3cc756bc618d32be71ce6f733f81",
+    "sha256": "66a80e79d17e4c7cabd162e2916578a4cc08fd19eef6e2a643305eae9c567b2b",
+    "license": "OFL-1.1"
+  },
+  "space-mono": {
+    "family": "Space Mono",
+    "weight": 400,
+    "file": "space-mono.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/spacemono/SpaceMono-Regular.ttf",
+    "blob": "1cfa3653dc8ddb7aa9f4ef1c9c581e9516137e6e",
+    "sha256": "95837e182baeeada83368f7748db28357f0a1b75c6b84ff7065b5edf933c8e18",
+    "license": "OFL-1.1"
+  },
+  "source-code-pro": {
+    "family": "Source Code Pro",
+    "weight": 400,
+    "file": "source-code-pro.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/sourcecodepro/SourceCodePro%5Bwght%5D.ttf",
+    "blob": "4d668281b3b2c6d699b5569e49bd60121152125f",
+    "sha256": "b400fc584e10aff25d0e775ce181b4fc1c5ea1b5dc37b81aeb2084375b945790",
+    "license": "OFL-1.1"
+  },
+  "google-sans-code": {
+    "family": "Google Sans Code",
+    "weight": 400,
+    "file": "google-sans-code.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/googlesanscode/GoogleSansCode%5Bwght%5D.ttf",
+    "blob": "4b63b009b1f32a2ad99b38790d1e8e87ae7d89df",
+    "sha256": "c9649573afcd966f61096b1e9c3c3115e7b54315ca2adf9839c6f8b17d5f8e1f",
+    "license": "OFL-1.1"
+  },
+  "inter": {
+    "family": "Inter",
+    "weight": 500,
+    "file": "inter.ttf",
+    "source": "https://raw.githubusercontent.com/google/fonts/main/ofl/inter/Inter%5Bopsz%2Cwght%5D.ttf",
+    "blob": "047c92f6e2212473dc436020afed689527076d44",
+    "sha256": "29160a80ff49ddcab2c97711247e08b1fab27a484a329ce8b813d820dc559031",
+    "license": "OFL-1.1"
+  },
+  "commit-mono": {
+    "family": "CommitMono",
+    "weight": 400,
+    "file": "commit-mono.otf",
+    "source": "https://raw.githubusercontent.com/eigilnikolajsen/commit-mono/main/src/fonts/fontlab/CommitMonoV143-400Regular.otf",
+    "blob": "4551f1fd8f852bf2b76d8fb53dcf75a4cfb97938",
+    "sha256": "04fdcd6c5db353f8f420bcbaf0bc1e2058f639f6c65a933b7c51e53987ae902e",
+    "license": "OFL-1.1"
+  }
+}

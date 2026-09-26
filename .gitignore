@@ -1,0 +1,6 @@
+/target/
+/node_modules/
+/artifacts/
+/reference-output/
+.DS_Store
+output/

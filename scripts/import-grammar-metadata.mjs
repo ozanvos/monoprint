@@ -1,0 +1,11 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+const root = path.resolve(process.argv[2] ?? '/tmp/code-images-grammars');
+const {grammars} = await import(pathToFileURL(path.join(root, 'packages/tm-grammars/index.js')));
+await fs.mkdir('assets', {recursive:true});
+await fs.mkdir('licenses', {recursive:true});
+await fs.writeFile('assets/grammar-metadata.json', JSON.stringify(grammars,null,2));
+for (const name of ['LICENSE','NOTICE']) await fs.copyFile(path.join(root,'packages/tm-grammars',name),`licenses/grammars-${name}.txt`);
+await fs.writeFile('assets/grammar-provenance.json',JSON.stringify({repository:'https://github.com/shikijs/textmate-grammars-themes',commit:'4cb1625ad87a07fb4674fe97b921a8f756f4694b',giallo:'0.5.2'},null,2));
+console.log(`Imported ${grammars.length} grammar metadata entries.`);

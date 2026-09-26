@@ -1,0 +1,18 @@
+name: Checks
+on: [push, pull_request]
+jobs:
+  native:
+    strategy:
+      matrix:
+        os: [macos-15, ubuntu-24.04]
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --all -- --check
+      - run: cargo clippy --locked --all-targets -- -D warnings
+      - run: cargo test --locked --release
+      - run: cargo build --locked --release
+      - run: ./target/release/code-images fixtures/example.ts -o example.png

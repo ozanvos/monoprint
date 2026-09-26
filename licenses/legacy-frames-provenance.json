@@ -1,0 +1,12 @@
+{
+  "commit": "f3b64488542b902c98c0bb0a2dd88f91d2da5b1b",
+  "license": "MIT",
+  "modifications": [
+    "SSR export templates with state placeholders",
+    "CSS module names expanded; nested CSS flattened",
+    "input controls converted to static text",
+    "Soehne Mono replaced with Commit Mono",
+    "CSS syntax colors resolved for Giallo"
+  ],
+  "licenseFile": "licenses/legacy-frames-MIT.txt"
+}

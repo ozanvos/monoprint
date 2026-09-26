@@ -1,0 +1,64 @@
+[
+  {
+    "packages": [
+      "bitcode_derive"
+    ],
+    "file": "licenses/upstream/bitcode_derive-LICENSE-MIT.txt",
+    "source": "https://raw.githubusercontent.com/SoftbearStudios/bitcode/f41da053c08178189aaee8c62f4c6e738add6eda/LICENSE-MIT",
+    "sha256": "d3419a82898ce3b9b1360f8d3e646e32fc7609619cbe3d8428197d7d059f7aa5"
+  },
+  {
+    "packages": [
+      "taffy"
+    ],
+    "file": "licenses/upstream/taffy-LICENSE.md.txt",
+    "source": "https://raw.githubusercontent.com/DioxusLabs/taffy/2ddc66405b14cd6696d0a8391d91c0cdba611133/LICENSE.md",
+    "sha256": "a7083ef3dd41a65eeb2162c2c091b0082e2724fb4c6ed029b363c7840d244ecd"
+  },
+  {
+    "packages": [
+      "takumi"
+    ],
+    "file": "licenses/upstream/takumi-LICENSE-MIT.txt",
+    "source": "https://raw.githubusercontent.com/kane50613/takumi/596f5c0dc28451295e25e3e4423c3b82d47e5a00/LICENSE-MIT",
+    "sha256": "212bce1e0046e21dba64730640c928c278ca39606b07e03f3b10b68ecfb0ff75"
+  },
+  {
+    "packages": [
+      "takumi"
+    ],
+    "file": "licenses/upstream/takumi-LICENSE-APACHE.txt",
+    "source": "https://raw.githubusercontent.com/kane50613/takumi/596f5c0dc28451295e25e3e4423c3b82d47e5a00/LICENSE-APACHE",
+    "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+  },
+  {
+    "packages": [
+      "takumi-core",
+      "takumi-html",
+      "takumi-raster",
+      "takumi-svg"
+    ],
+    "file": "licenses/upstream/takumi-core-LICENSE-MIT.txt",
+    "source": "https://raw.githubusercontent.com/kane50613/takumi/4180970140a2f1a811e5dbb3b33343c74787bebc/LICENSE-MIT",
+    "sha256": "212bce1e0046e21dba64730640c928c278ca39606b07e03f3b10b68ecfb0ff75"
+  },
+  {
+    "packages": [
+      "takumi-core",
+      "takumi-html",
+      "takumi-raster",
+      "takumi-svg"
+    ],
+    "file": "licenses/upstream/takumi-core-LICENSE-APACHE.txt",
+    "source": "https://raw.githubusercontent.com/kane50613/takumi/4180970140a2f1a811e5dbb3b33343c74787bebc/LICENSE-APACHE",
+    "sha256": "58d1e17ffe5109a7ae296caafcadfdbe6a7d176f0bc4ab01e12a689b0499d8bd"
+  },
+  {
+    "packages": [
+      "wuff"
+    ],
+    "file": "licenses/upstream/wuff-LICENSE.txt",
+    "source": "https://raw.githubusercontent.com/nicoburns/wuff/78e67f52713c0a2c36bd083fea18ba029565c9ec/LICENSE",
+    "sha256": "4b373ba4395e35d44ba1f41202c179b57ca3c5ba5e4a1aaafa1547aede7e1eb7"
+  }
+]

@@ -1,0 +1,22 @@
+{
+  "private": true,
+  "type": "module",
+  "description": "Development-only upstream asset import and Chromium reference tooling; never used by the CLI",
+  "scripts": {
+    "import:legacy-frames": "node scripts/import-legacy-frames.mjs",
+    "references": "node scripts/references.mjs"
+  },
+  "devDependencies": {
+    "classnames": "2.5.1",
+    "culori": "4.0.2",
+    "esbuild": "0.25.12",
+    "html-to-image": "1.11.13",
+    "postcss": "8.5.26",
+    "postcss-modules": "6.0.1",
+    "postcss-nested": "7.0.2",
+    "playwright": "1.61.1",
+    "react": "19.2.3",
+    "react-dom": "19.2.3",
+    "shiki": "1.3.0"
+  }
+}
