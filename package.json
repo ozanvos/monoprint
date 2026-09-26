@@ -1,4 +1,5 @@
 {
+  "name": "monoprint",
   "private": true,
   "type": "module",
   "description": "Development-only upstream asset import and Chromium reference tooling; never used by the CLI",

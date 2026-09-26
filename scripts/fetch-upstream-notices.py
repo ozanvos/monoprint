@@ -26,7 +26,7 @@ def collect(item):
     for name in ['LICENSE','LICENSE.md','LICENSE.txt','LICENSE-MIT','LICENSE-APACHE','COPYING']:
         url=f'https://raw.githubusercontent.com/{repo.removeprefix("https://github.com/")}/{sha}/{name}'
         try:
-            with urlopen(Request(url,headers={'User-Agent':'code-images-notice-import'}),timeout=30) as response: data=response.read()
+            with urlopen(Request(url,headers={'User-Agent':'monoprint-notice-import'}),timeout=30) as response: data=response.read()
         except HTTPError as e:
             if e.code==404:continue
             raise

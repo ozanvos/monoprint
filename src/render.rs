@@ -1,29 +1,32 @@
 use crate::{
-    assets,
-    cli::{Args, Format},
+    Error, LineNumberPolicy, LineNumbers, Renderer, Scale, Snippet, Style, TextRole, assets,
     effects, highlight,
 };
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::STANDARD};
-use std::{borrow::Cow, fs, io::Read, sync::Arc};
+use std::{borrow::Cow, sync::Arc};
 use takumi::prelude::*;
 
-fn validate_glyphs(bytes: &[u8], text: &str, label: &str, can_override: bool) -> Result<()> {
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Format {
+    Png,
+    Svg,
+    Html,
+}
+
+fn validate_glyphs(bytes: &[u8], text: &str, role: TextRole, code_font: bool) -> Result<()> {
     let face = ttf_parser::Face::parse(bytes, 0).context("font must be a valid TTF or OTF file")?;
-    for c in text.chars() {
-        if c == '\n' || c == '\t' || c == '\r' {
+    for character in text.chars() {
+        if matches!(character, '\n' | '\t' | '\r') {
             continue;
         }
-        if face.glyph_index(c).is_none() {
-            let hint = if can_override {
-                "use --font-file with a font containing this glyph"
-            } else {
-                "use text supported by this theme's label font (--font-file only changes the code font)"
-            };
-            bail!(
-                "{label} font cannot display {c:?} (U+{:04X}); {hint}",
-                c as u32
-            );
+        if face.glyph_index(character).is_none() {
+            return Err(Error::UnsupportedGlyph {
+                text: role,
+                character,
+                code_font,
+            }
+            .into());
         }
     }
     Ok(())
@@ -75,53 +78,34 @@ fn code_width(font: &[u8], source: &str) -> Result<f32> {
     Ok(longest.max(1.0))
 }
 
-pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
-    let theme = assets::themes()
-        .get(&args.theme.to_ascii_lowercase())
-        .with_context(|| format!("unknown theme {:?}; see --list-themes", args.theme))?;
-    let mode = if args.light { "light" } else { "dark" };
-    let palette = theme
-        .syntax
-        .get(mode)
-        .with_context(|| format!("{} has no {mode} variant", theme.name))?;
-    if args
-        .width
-        .is_some_and(|width| width <= args.padding * 2 + 48)
-    {
-        bail!(
-            "width must leave room for the code after padding (at least {}px)",
-            args.padding * 2 + 49
-        );
-    }
-    if !args.subtitle.is_empty() && theme.id != "removed-frame" {
-        bail!("--subtitle is supported by the Auth0 theme");
-    }
-    let font: Cow<'_, [u8]> = if let Some(path) = &args.font_file {
-        const MAX_FONT_BYTES: u64 = 64 * 1024 * 1024;
-        let mut bytes = Vec::new();
-        fs::File::open(path)
-            .with_context(|| format!("opening font {}", path.display()))?
-            .take(MAX_FONT_BYTES + 1)
-            .read_to_end(&mut bytes)
-            .with_context(|| format!("reading font {}", path.display()))?;
-        if bytes.len() as u64 > MAX_FONT_BYTES {
-            bail!("font exceeds 64 MiB; use a smaller TTF or OTF file");
-        }
-        Cow::Owned(bytes)
-    } else {
-        Cow::Borrowed(assets::font(&theme.font))
-    };
-    validate_glyphs(&font, source, "code", true)?;
-    let code = highlight::code(args, source, theme, mode)?;
+pub(crate) fn export(
+    renderer: &Renderer,
+    snippet: &Snippet,
+    style: &Style,
+    source: &str,
+    format: Format,
+    png_scale: Scale,
+) -> Result<Vec<u8>> {
+    let theme = style.theme.data();
+    let mode = style.appearance.as_str();
+    let palette = &theme.syntax[mode];
+    let font = style
+        .font
+        .as_ref()
+        .map(|font| font.bytes())
+        .unwrap_or_else(|| assets::font(&theme.font));
+    validate_glyphs(font, source, TextRole::Code, true)?;
+    let code = highlight::code(renderer.registry()?, snippet, source, theme, mode)?;
     let numbers = code.language != "plain"
-        && if theme.partner && !theme.line_numbers_toggleable {
-            theme.line_numbers
-        } else if args.no_line_numbers {
-            false
-        } else {
-            args.line_numbers || theme.line_numbers
+        && match style.theme.line_numbers() {
+            LineNumberPolicy::Fixed(value) => value,
+            LineNumberPolicy::Toggleable { default } => match style.line_numbers {
+                LineNumbers::Auto => default,
+                LineNumbers::Show => true,
+                LineNumbers::Hide => false,
+            },
         };
-    let weight = if args.font_file.is_none()
+    let weight = if style.font.is_none()
         && matches!(theme.font.as_str(), "jetbrains-mono" | "ibm-plex-mono")
     {
         500
@@ -148,9 +132,9 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
     let key = format!(
         "{}/{mode}/{}/{}/{}",
         theme.id,
-        u8::from(!args.transparent),
-        u8::from(!args.title.is_empty()),
-        u8::from(!args.subtitle.is_empty())
+        u8::from(!style.transparent),
+        u8::from(!snippet.title.is_empty()),
+        u8::from(!snippet.subtitle.is_empty())
     );
     let language_name = assets::grammars()
         .iter()
@@ -164,11 +148,16 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
     if template.contains("__TITLE__") {
         let title_uses_code_font = matches!(theme.id.as_str(), "removed-frame" | "removed-frame");
         let title_font = match theme.id.as_str() {
-            "removed-frame" | "removed-frame" => font.as_ref(),
+            "removed-frame" | "removed-frame" => font,
             "removed-frame" => assets::font("ibm-plex-mono"),
             _ => assets::font("inter"),
         };
-        validate_glyphs(title_font, &args.title, "title", title_uses_code_font)?;
+        validate_glyphs(
+            title_font,
+            &snippet.title,
+            TextRole::Title,
+            title_uses_code_font,
+        )?;
     }
     // The pinned Auth0 frame keeps subtitle only in data-value metadata; its
     // visible span is the language label. No subtitle glyphs are drawn.
@@ -178,7 +167,7 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
     {
         template.replace_range(start..start + end + 1, "");
     }
-    let width = args
+    let width = style
         .width
         .map(|w| format!("width:{w}px"))
         .unwrap_or_else(|| "display:inline-block;min-width:520px".into());
@@ -194,10 +183,10 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
         template = template.replace(&format!("asset:{name}"), data);
         css = css.replace(&format!("asset:{name}"), data);
     }
-    if args.width.is_none() {
+    if style.width.is_none() {
         css += &format!(
             ".Editor__formatted>pre{{width:{}px}}",
-            code_width(&font, source)?.ceil()
+            code_width(font, source)?.ceil()
         );
     }
     let fill_template = |template: &str| {
@@ -205,9 +194,9 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
             template,
             &[
                 ("__CODE_IMAGES_EDITOR__", &editor),
-                ("__PADDING__", &args.padding.to_string()),
-                ("__TITLE__", &assets::escape(&args.title)),
-                ("__SUBTITLE__", &assets::escape(&args.subtitle)),
+                ("__PADDING__", &style.padding.to_string()),
+                ("__TITLE__", &assets::escape(&snippet.title)),
+                ("__SUBTITLE__", &assets::escape(&snippet.subtitle)),
                 ("__LANGUAGE__", &assets::escape(language_name)),
             ],
         )
@@ -215,28 +204,7 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
     let frame = fill_template(&template);
     let mut html = format!("<div id=\"capture\" data-theme=\"{mode}\">{frame}</div>");
     css += "#capture{--font-space-mono:CodeMono;--font-soehne-mono:CodeMono}.TriggerdevFrame__fileName,.TriggerdevFrame__language{font-family:CodeMono}.Editor__editor .line{min-height:22.5px}";
-    let mut fonts = Fonts::default();
-    fonts.register(
-        FontResource::new(font.as_ref()).override_info(FontOverride {
-            family_name: Some(Arc::from("CodeMono")),
-            ..Default::default()
-        }),
-    )?;
-    fonts.register(
-        FontResource::new(assets::font("inter")).override_info(FontOverride {
-            family_name: Some(Arc::from("Inter")),
-            ..Default::default()
-        }),
-    )?;
     let secondary_font = matches!(theme.id.as_str(), "removed-frame" | "removed-frame");
-    if secondary_font {
-        fonts.register(
-            FontResource::new(assets::font("ibm-plex-mono")).override_info(FontOverride {
-                family_name: Some(Arc::from("IBM Plex Mono")),
-                ..Default::default()
-            }),
-        )?;
-    }
     let parse_css = |css: &str| -> Result<Arc<StyleSheet>> {
         Ok(Arc::new(
             StyleSheet::parse(&effects::native_css(css, format == Format::Png)).map_err(
@@ -259,17 +227,18 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
     let mut node =
         takumi::from_html(&html, FromHtmlOptions::default()).context("parsing frame markup")?;
     if effects::needs_measurement(&theme.id) {
+        let fonts = renderer.fonts(style, secondary_font)?;
         let viewport =
-            Viewport::new((args.width.map(|w| w * 2), None)).with_device_pixel_ratio(2.0);
+            Viewport::new((style.width.map(|w| w * 2), None)).with_device_pixel_ratio(2.0);
         let size = takumi::measure(
             RenderOptions::builder()
                 .viewport(viewport)
                 .node(node.clone())
-                .fonts(&fonts)
+                .fonts(fonts)
                 .stylesheet(stylesheet.clone())
                 .build(),
         )?;
-        let effect = effects::prepare(&theme.id, args, size.width / 2.0, size.height / 2.0);
+        let effect = effects::prepare(&theme.id, style, size.width / 2.0, size.height / 2.0);
         css += &effect.css;
         // Adapt only trusted template markup, before inserting user text.
         let template =
@@ -283,50 +252,47 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
         stylesheet = parse_css(&css)?;
     }
     if format == Format::Html {
-        let mut fonts = font_face("CodeMono", &font) + &font_face("Inter", assets::font("inter"));
+        let mut fonts = font_face("CodeMono", font) + &font_face("Inter", assets::font("inter"));
         if secondary_font {
             fonts += &font_face("IBM Plex Mono", assets::font("ibm-plex-mono"));
         }
         let result = format!(
             "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>{}</title><style>{fonts}{css}</style></head><body>{html}</body></html>",
-            assets::escape(&args.title)
+            assets::escape(&snippet.title)
         );
         return Ok(result.into_bytes());
     }
+    let fonts = renderer.fonts(style, secondary_font)?;
     // At 2x, the upstream 22.5px line height is integral. Keep the SVG's
     // viewBox at this precision and expose its normal CSS dimensions.
     let scale = if format == Format::Png {
-        if args.scale.is_multiple_of(2) {
-            args.scale
+        if u32::from(png_scale).is_multiple_of(2) {
+            u32::from(png_scale)
         } else {
-            args.scale * 2
+            u32::from(png_scale) * 2
         }
     } else {
         2
     } as f32;
-    let mut viewport = Viewport::new((args.width.map(|w| (w as f32 * scale) as u32), None))
+    let mut viewport = Viewport::new((style.width.map(|w| (w as f32 * scale) as u32), None))
         .with_device_pixel_ratio(scale);
     let size = takumi::measure(
         RenderOptions::builder()
             .viewport(viewport)
             .node(node.clone())
-            .fonts(&fonts)
+            .fonts(fonts)
             .stylesheet(stylesheet.clone())
             .build(),
     )?;
     let width = (size.width / scale).ceil() * scale;
     let height = (size.height / scale).ceil() * scale;
     if width * height > 64_000_000.0 || width > 32768.0 || height > 32768.0 {
-        bail!(
-            "image is too large ({}x{} internal render pixels{}); reduce --scale, --width, or snippet length",
-            width,
-            height,
-            if format == Format::Png && !args.scale.is_multiple_of(2) {
-                "; odd PNG scales render at 2x the requested scale before downsampling"
-            } else {
-                ""
-            }
-        );
+        return Err(Error::ImageTooLarge {
+            width: width as u32,
+            height: height as u32,
+            supersampled: format == Format::Png && !u32::from(png_scale).is_multiple_of(2),
+        }
+        .into());
     }
     viewport =
         Viewport::new((Some(width as u32), Some(height as u32))).with_device_pixel_ratio(scale);
@@ -336,7 +302,7 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
                 RenderOptions::builder()
                     .viewport(viewport)
                     .node(node)
-                    .fonts(&fonts)
+                    .fonts(fonts)
                     .stylesheet(stylesheet)
                     .build(),
             )
@@ -344,7 +310,7 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
             let mut image =
                 image::RgbaImage::from_raw(bitmap.width(), bitmap.height(), bitmap.into_raw())
                     .context("invalid rendered bitmap")?;
-            if !args.scale.is_multiple_of(2) {
+            if !u32::from(png_scale).is_multiple_of(2) {
                 image = image::imageops::resize(
                     &image,
                     image.width() / 2,
@@ -384,11 +350,11 @@ pub fn export(args: &Args, source: &str, format: Format) -> Result<Vec<u8>> {
             Ok(data)
         }
         Format::Svg => {
-            let svg = takumi::render_svg(
-                SvgOptions::builder()
+            let svg = takumi_svg::render(
+                takumi_svg::SvgOptions::builder()
                     .viewport(viewport)
                     .node(node)
-                    .fonts(&fonts)
+                    .fonts(fonts)
                     .stylesheet(stylesheet)
                     .build(),
             )

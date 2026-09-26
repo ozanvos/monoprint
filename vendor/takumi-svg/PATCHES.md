@@ -10,3 +10,12 @@ Changes in `src/render.rs`:
 - Skip box decorations on anonymous inline-layout containers, matching the raster backend. Their inherited background otherwise paints translucent line highlights twice over the code area.
 
 This fixes the dark/opaque windows observed in the SVG-versus-PNG comparison. The browser export matrix in `scripts/verify-exports.mjs` verifies the resulting images. Remove this patch once an upstream release supplies the same behavior and passes the matrix.
+
+Library packaging: `Cargo.toml` pins `takumi-core` to exactly 0.25.0, the core
+version validated with these changes. Monoprint depends on this directory
+and calls its renderer directly, so downstream path/git users retain the fixes
+without adding a root-level `[patch]`.
+
+The core dependency requests only SVG support rather than enabling all core
+defaults. Other upstream dependencies still enable several decoders through
+Cargo feature unification; Monoprint accepts only single-face TTF/OTF fonts.

@@ -10,7 +10,7 @@ OUT = ROOT / "assets/fonts"
 OUT.mkdir(parents=True, exist_ok=True)
 
 def get(url):
-    with urlopen(Request(url, headers={"User-Agent": "code-images-asset-import"}), timeout=60) as response:
+    with urlopen(Request(url, headers={"User-Agent": "monoprint-asset-import"}), timeout=60) as response:
         return response.read()
 
 FONTS = {

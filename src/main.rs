@@ -1,23 +1,23 @@
-mod assets;
 mod cli;
-mod effects;
-mod highlight;
-mod render;
 
 use anyhow::{Context, Result, bail};
 use clap::Parser;
+use monoprint::{
+    Appearance, Font, Language, LineNumbers, MAX_FONT_BYTES, MAX_SOURCE_BYTES, Renderer, Scale,
+    Snippet, Style, Theme,
+};
 use std::{
     fs,
     io::{self, IsTerminal, Read, Write},
     process::ExitCode,
 };
 
-const MAX_SOURCE_BYTES: u64 = 1_048_576;
-
 fn read_source(reader: impl Read) -> Result<String> {
     let mut bytes = Vec::new();
-    reader.take(MAX_SOURCE_BYTES + 1).read_to_end(&mut bytes)?;
-    if bytes.len() as u64 > MAX_SOURCE_BYTES {
+    reader
+        .take(MAX_SOURCE_BYTES as u64 + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() > MAX_SOURCE_BYTES {
         bail!("source exceeds 1 MiB; select a smaller snippet");
     }
     String::from_utf8(bytes).context("source is not valid UTF-8")
@@ -26,21 +26,25 @@ fn read_source(reader: impl Read) -> Result<String> {
 fn run() -> Result<()> {
     let args = cli::Args::parse();
     if args.list_themes {
-        for theme in assets::themes().values() {
+        for theme in Theme::all() {
             println!(
                 "{:<14} {:<14} {}",
-                theme.id,
-                theme.syntax.keys().cloned().collect::<Vec<_>>().join(","),
-                theme.name
+                theme.id(),
+                [Appearance::Dark, Appearance::Light]
+                    .into_iter()
+                    .filter(|&a| theme.supports(a))
+                    .map(|a| a.to_string())
+                    .collect::<Vec<_>>()
+                    .join(","),
+                theme.name()
             );
         }
         return Ok(());
     }
     if args.list_languages {
-        for grammar in assets::grammars() {
-            println!("{:<24} {}", grammar.name, grammar.display_name);
+        for grammar in Language::all() {
+            println!("{:<24} {}", grammar.id(), grammar.name());
         }
-        println!("{:<24} Plain Text", "plain");
         return Ok(());
     }
     let output = args
@@ -69,8 +73,54 @@ fn run() -> Result<()> {
             read_source(io::stdin().lock()).context("reading stdin as UTF-8")?
         }
     };
-    let source = source.replace("\r\n", "\n").replace('\r', "\n");
-    let rendered = render::export(&args, &source, format)?;
+    let language = match &args.language {
+        Some(id) => id.parse()?,
+        None => args
+            .input
+            .as_deref()
+            .and_then(Language::for_file_name)
+            .unwrap_or_default(),
+    };
+    let mut snippet = Snippet::new(source)
+        .language(language)
+        .title(&args.title)
+        .subtitle(&args.subtitle);
+    for range in args.highlighted_ranges()? {
+        snippet = snippet.highlight(range);
+    }
+    let mut style = Style::new(args.theme.parse()?)
+        .appearance(if args.light {
+            Appearance::Light
+        } else {
+            Appearance::Dark
+        })
+        .transparent(args.transparent)
+        .padding(args.padding)
+        .line_numbers(if args.no_line_numbers {
+            LineNumbers::Hide
+        } else if args.line_numbers {
+            LineNumbers::Show
+        } else {
+            LineNumbers::Auto
+        });
+    if let Some(width) = args.width {
+        style = style.width(width);
+    }
+    if let Some(path) = &args.font_file {
+        let mut bytes = Vec::new();
+        fs::File::open(path)
+            .with_context(|| format!("opening font {}", path.display()))?
+            .take(MAX_FONT_BYTES as u64 + 1)
+            .read_to_end(&mut bytes)
+            .with_context(|| format!("reading font {}", path.display()))?;
+        style = style.font(Font::from_bytes(bytes)?);
+    }
+    let renderer = Renderer::new();
+    let rendered = match format {
+        cli::Format::Png => renderer.png(&snippet, &style, Scale::try_from(args.scale)?)?,
+        cli::Format::Svg => renderer.svg(&snippet, &style)?.into_bytes(),
+        cli::Format::Html => renderer.html(&snippet, &style)?.into_bytes(),
+    };
     if output.as_os_str() == "-" {
         io::stdout().lock().write_all(&rendered)?;
     } else {
@@ -93,7 +143,7 @@ fn main() -> ExitCode {
     match run() {
         Ok(()) => ExitCode::SUCCESS,
         Err(error) => {
-            eprintln!("code-images: {error:#}");
+            eprintln!("monoprint: {error:#}");
             ExitCode::FAILURE
         }
     }

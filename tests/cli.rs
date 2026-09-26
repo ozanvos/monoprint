@@ -11,7 +11,7 @@ impl Workspace {
     fn new() -> Self {
         static ID: AtomicUsize = AtomicUsize::new(0);
         let dir = std::env::temp_dir().join(format!(
-            "code-images-test-{}-{}",
+            "monoprint-test-{}-{}",
             std::process::id(),
             ID.fetch_add(1, Ordering::Relaxed)
         ));
@@ -19,7 +19,7 @@ impl Workspace {
         Self(dir)
     }
     fn run(&self, args: &[&str], input: &str) -> Output {
-        let mut process = Command::new(env!("CARGO_BIN_EXE_code-images"))
+        let mut process = Command::new(env!("CARGO_BIN_EXE_monoprint"))
             .args(args)
             .current_dir(&self.0)
             .stdin(Stdio::piped())
@@ -100,7 +100,7 @@ fn errors_are_clear_and_leave_no_output() {
 #[test]
 fn source_limit_is_enforced_before_end_of_stream() {
     let w = Workspace::new();
-    let mut child = Command::new(env!("CARGO_BIN_EXE_code-images"))
+    let mut child = Command::new(env!("CARGO_BIN_EXE_monoprint"))
         .args(["-o", "out.html"])
         .current_dir(&w.0)
         .stdin(Stdio::piped())

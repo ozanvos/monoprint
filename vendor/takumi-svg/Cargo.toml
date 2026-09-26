@@ -36,7 +36,9 @@ path = "src/lib.rs"
 version = "0.41"
 
 [dependencies.takumi-core]
-version = "0.25.0"
+version = "=0.25.0"
+default-features = false
+features = ["svg"]
 
 [dependencies.tiny-skia]
 version = "0.12"

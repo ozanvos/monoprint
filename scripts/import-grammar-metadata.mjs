@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
-const root = path.resolve(process.argv[2] ?? '/tmp/code-images-grammars');
+const root = path.resolve(process.argv[2] ?? '/tmp/monoprint-grammars');
 const {grammars} = await import(pathToFileURL(path.join(root, 'packages/tm-grammars/index.js')));
 await fs.mkdir('assets', {recursive:true});
 await fs.mkdir('licenses', {recursive:true});

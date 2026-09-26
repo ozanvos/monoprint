@@ -1,6 +1,6 @@
 //! Geometry equivalents for the few upstream decorations that use browser JS
 //! or CSS operations absent from Takumi. All dimensions are CSS pixels.
-use crate::{assets, cli::Args};
+use crate::{Appearance, Style, assets};
 use base64::{Engine, engine::general_purpose::STANDARD};
 
 // Call before user text is substituted, so matching source strings stay intact.
@@ -53,8 +53,8 @@ pub struct Effects {
     pub overlay: String,
 }
 
-pub fn prepare(theme: &str, args: &Args, width: f32, height: f32) -> Effects {
-    let padding = args.padding as f32;
+pub fn prepare(theme: &str, style: &Style, width: f32, height: f32) -> Effects {
+    let padding = style.padding as f32;
     let w = width - 2.0 * padding;
     let h = height - 2.0 * padding;
     let mut css = format!(
@@ -62,7 +62,7 @@ pub fn prepare(theme: &str, args: &Args, width: f32, height: f32) -> Effects {
         w.hypot(h)
     );
     let mut paths = String::new();
-    if args.transparent && theme != "removed-frame" {
+    if style.transparent && theme != "removed-frame" {
         return Effects {
             css,
             overlay: paths,
@@ -78,7 +78,7 @@ pub fn prepare(theme: &str, args: &Args, width: f32, height: f32) -> Effects {
             css += &format!(
                 ".{prefix}__gridlinesHorizontal,.{prefix}__gridlinesVertical{{display:none}}"
             );
-            let color = if args.light {
+            let color = if style.appearance == Appearance::Light {
                 if theme == "removed-frame" {
                     "#2a2c36"
                 } else {
@@ -124,12 +124,24 @@ pub fn prepare(theme: &str, args: &Args, width: f32, height: f32) -> Effects {
                 css += ".AwsFrame__awsGridlinesHorizontal,.AwsFrame__awsGridlinesVertical{display:none}";
             }
             let color = if theme == "removed-frame" {
-                if args.light { "#d9d7d7" } else { "#272a2e" }
+                if style.appearance == Appearance::Light {
+                    "#d9d7d7"
+                } else {
+                    "#272a2e"
+                }
             } else if theme == "removed-frame" {
-                if args.light { "#d2d2d2" } else { "#233242" }
+                if style.appearance == Appearance::Light {
+                    "#d2d2d2"
+                } else {
+                    "#233242"
+                }
             } else if theme == "removed-frame" {
-                if args.light { "#e5e5e5" } else { "#262626" }
-            } else if args.light {
+                if style.appearance == Appearance::Light {
+                    "#e5e5e5"
+                } else {
+                    "#262626"
+                }
+            } else if style.appearance == Appearance::Light {
                 "#ebebeb"
             } else {
                 "#1a1a1a"
@@ -140,7 +152,11 @@ pub fn prepare(theme: &str, args: &Args, width: f32, height: f32) -> Effects {
                 "<path d=\"M0 {padding}H{width}M0 {bottom}H{width}M{padding} 0V{height}M{right} 0V{height}\" fill=\"none\" stroke=\"{color}\"/>"
             );
             if matches!(theme, "removed-frame" | "removed-frame") {
-                let color = if args.light { "#a8a8a8" } else { "#515356" };
+                let color = if style.appearance == Appearance::Light {
+                    "#a8a8a8"
+                } else {
+                    "#515356"
+                };
                 for (x, y) in [(padding, padding), (right, bottom)] {
                     paths += &format!(
                         "<path d=\"M{} {y}h25M{x} {}v25\" stroke=\"{color}\" fill=\"none\"/>",
@@ -152,7 +168,7 @@ pub fn prepare(theme: &str, args: &Args, width: f32, height: f32) -> Effects {
         }
         "removed-frame" => {
             css += ".NuxtFrame__window [data-frameborder]{display:none}";
-            if !args.light && !args.transparent {
+            if style.appearance != Appearance::Light && !style.transparent {
                 // Blur the full off-canvas source before clipping to the export.
                 // Native CSS filters otherwise lose the glow outside the viewport.
                 css += ".NuxtFrame__window:before,.NuxtFrame__window:after{display:none}";
@@ -205,7 +221,11 @@ pub fn prepare(theme: &str, args: &Args, width: f32, height: f32) -> Effects {
                 ((w * 0.013).floor() - 0.1).max(0.1),
                 w * 0.013
             );
-            let color = if args.light { "#ededed" } else { "#444" };
+            let color = if style.appearance == Appearance::Light {
+                "#ededed"
+            } else {
+                "#444"
+            };
             let right = width - padding;
             let bottom = height - padding;
             paths += &format!(

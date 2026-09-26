@@ -1,6 +1,7 @@
 use anyhow::{Result, bail};
 use clap::{Parser, ValueEnum};
-use std::{collections::BTreeSet, path::PathBuf};
+use monoprint::LineRange;
+use std::path::PathBuf;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, ValueEnum)]
 pub enum Format {
@@ -98,8 +99,8 @@ impl Args {
             .ok_or_else(|| anyhow::anyhow!("use a .png/.svg/.html extension or specify --format"))
     }
 
-    pub fn highlighted_lines(&self, line_count: usize) -> Result<BTreeSet<usize>> {
-        let mut result = BTreeSet::new();
+    pub fn highlighted_ranges(&self) -> Result<Vec<LineRange>> {
+        let mut result = Vec::new();
         if self.highlight.is_empty() {
             return Ok(result);
         }
@@ -112,10 +113,7 @@ impl Args {
             let end: usize = end
                 .parse()
                 .map_err(|_| anyhow::anyhow!("invalid highlighted line: {item}"))?;
-            if start == 0 || end < start || end > line_count {
-                bail!("highlight range {item} is outside the {line_count} source lines");
-            }
-            result.extend(start..=end);
+            result.push((start..=end).into());
         }
         Ok(result)
     }
