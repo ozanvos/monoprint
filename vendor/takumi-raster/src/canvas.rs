@@ -282,7 +282,7 @@ impl Canvas {
   pub(crate) fn push_mask(&mut self, mask: TinyMask) {
     self.constraint_mask_stack.push(
       self
-        .build_constraint_mask(&mask)
+        .build_constraint_mask(mask)
         .map(|mask| MaskStackEntry {
           mask: Arc::new(mask),
           origin: self.origin,
@@ -460,11 +460,9 @@ impl Canvas {
     f(&mut target)
   }
 
-  fn build_constraint_mask(&self, mask: &TinyMask) -> Option<TinyMask> {
-    let mut combined = TinyMask::new(mask.width(), mask.height())?;
+  fn build_constraint_mask(&self, mut mask: TinyMask) -> Option<TinyMask> {
     let Some(previous) = self.constraint_mask_stack.last().and_then(Option::as_ref) else {
-      combined.data_mut().copy_from_slice(mask.data());
-      return Some(combined);
+      return Some(mask);
     };
 
     let previous = MaskView {
@@ -472,20 +470,21 @@ impl Canvas {
       origin: previous.origin,
       canvas_origin: self.origin,
     };
-    let mask_data = mask.data();
     let mask_width = mask.width();
-    let combined_data = combined.data_mut();
-    for y in 0..mask.height() {
+    let mask_height = mask.height();
+    let mask_data = mask.data_mut();
+    for y in 0..mask_height {
       let row = previous.row(y as i32, 0);
       let row_start = y as usize * mask_width as usize;
-      let dst = &mut combined_data[row_start..row_start + mask_width as usize];
-      let new_row = &mask_data[row_start..row_start + mask_width as usize];
-      for (x, (out, &right)) in dst.iter_mut().zip(new_row).enumerate() {
+      let dst = &mut mask_data[row_start..row_start + mask_width as usize];
+      for (x, out) in dst.iter_mut().enumerate() {
+        let right = *out;
         if right == 0 {
           continue;
         }
         let left = row.alpha_at_offset(x);
         if left == 0 {
+          *out = 0;
           continue;
         }
         *out = if left == u8::MAX {
@@ -497,7 +496,7 @@ impl Canvas {
         };
       }
     }
-    Some(combined)
+    Some(mask)
   }
 
   fn localize_transform(&self, transform: Affine) -> Affine {
@@ -537,6 +536,34 @@ impl Canvas {
 #[cfg(test)]
 mod tests {
   use super::*;
+
+  #[test]
+  fn owned_constraint_intersection_matches_scalar_and_preserves_parent() {
+    let mut canvas = Canvas::new(Size { width: 256, height: 256 });
+    let mut parent = TinyMask::new(256, 256).unwrap();
+    let mut child = parent.clone();
+    for (i, (left, right)) in parent.data_mut().iter_mut().zip(child.data_mut()).enumerate() {
+      *left = (i / 256) as u8;
+      *right = i as u8;
+    }
+    let original = parent.data().to_vec();
+    canvas.push_mask(parent);
+    let parent = canvas.constraint_mask_stack.last().unwrap().as_ref().unwrap().mask.clone();
+    let combined = canvas.build_constraint_mask(child.clone()).unwrap();
+    for (i, &actual) in combined.data().iter().enumerate() {
+      let left = i / 256;
+      let right = i % 256;
+      let expected = if left == 255 { right } else if right == 255 { left }
+        else { (left * right + 128) >> 8 };
+      assert_eq!(usize::from(actual), expected);
+    }
+    assert_eq!(parent.data(), original);
+    // Moving into a subcanvas must zero pixels outside the parent's coverage.
+    canvas.origin = Point { x: 255, y: 255 };
+    let combined = canvas.build_constraint_mask(child).unwrap();
+    assert!(combined.data().iter().all(|&a| a == 0));
+    assert_eq!(parent.data(), original);
+  }
 
   #[test]
   fn checked_area_accepts_sane_dimensions() {

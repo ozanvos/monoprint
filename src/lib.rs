@@ -59,6 +59,7 @@ mod error;
 mod font;
 mod highlight;
 mod options;
+mod pixels;
 mod render;
 mod resample;
 

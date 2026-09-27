@@ -150,6 +150,28 @@ struct MeasureExit {
 
 /// Measures the layout of a node.
 pub fn measure<'g>(options: RenderOptions<'g>) -> Result<MeasuredNode> {
+  let viewport = options.viewport;
+  let (mut root, layout_results) = measurement_layout(options);
+  collect_measure_result(
+    &mut root,
+    &layout_results,
+    NodeId::ROOT,
+    Affine::IDENTITY,
+    Size {
+      width: viewport.size.width.map(|value| value as f32),
+      height: viewport.size.height.map(|value| value as f32),
+    },
+  )
+}
+
+/// Measures the root's untransformed border-box size without collecting child
+/// measurements or text runs. Uses the same layout and viewport as [`measure`].
+pub fn measure_size(options: RenderOptions<'_>) -> Result<Size<f32>> {
+  let (_root, layout_results) = measurement_layout(options);
+  Ok(layout_results.layout(NodeId::ROOT)?.size)
+}
+
+fn measurement_layout(options: RenderOptions<'_>) -> (RenderNode, LayoutResults) {
   let RenderOptions {
     viewport,
     fonts,
@@ -177,23 +199,14 @@ pub fn measure<'g>(options: RenderOptions<'g>) -> Result<MeasuredNode> {
     }))
     .build();
 
-  let mut root = RenderNode::from_node(&render_context, node);
+  let root = RenderNode::from_node(&render_context, node);
   let mut tree = LayoutTree::from_render_node(&root);
 
   tree.compute_layout(render_context.sizing.viewport.into());
 
   let layout_results = tree.into_results();
 
-  collect_measure_result(
-    &mut root,
-    &layout_results,
-    NodeId::ROOT,
-    Affine::IDENTITY,
-    Size {
-      width: viewport.size.width.map(|value| value as f32),
-      height: viewport.size.height.map(|value| value as f32),
-    },
-  )
+  (root, layout_results)
 }
 
 fn collect_measure_result(
@@ -704,6 +717,38 @@ mod tests {
     },
     viewport::Viewport,
   };
+
+  #[test]
+  fn size_only_matches_full_measurement_across_viewports() {
+    let fonts = Fonts::default();
+    for display in [Display::Block, Display::Flex, Display::None] {
+      for dpr in [1.0, 2.0, 3.0] {
+        for viewport in [(None, None), (Some(320), None), (Some(320), Some(240))] {
+          let node = Node::container([
+            Node::text("measurement with inline text"),
+            Node::container([]).with_style(
+              Style::default()
+                .with(StyleDeclaration::width(Length::Percentage(50.0)))
+                .with(StyleDeclaration::height(Px(22.5))),
+            ),
+          ]).with_style(
+            Style::default()
+              .with(StyleDeclaration::display(display))
+              .with(StyleDeclaration::padding_left(Px(7.25)))
+              .with(StyleDeclaration::padding_top(Px(3.5))),
+          );
+          let options = RenderOptions::builder()
+            .fonts(&fonts)
+            .viewport(Viewport::new(viewport).with_device_pixel_ratio(dpr))
+            .node(node)
+            .build();
+          let size = super::measure_size(options.clone()).unwrap();
+          let full = measure(options).unwrap();
+          assert_eq!((size.width, size.height), (full.width, full.height));
+        }
+      }
+    }
+  }
 
   fn make_scene<'g>(fonts: &'g Fonts, duration_ms: u32) -> SequentialScene<'g> {
     let options = RenderOptions::builder()

@@ -12,6 +12,8 @@ use crate::{
   style::{Affine, BlendMode},
 };
 
+mod constant_span;
+
 #[derive(Clone, Copy)]
 struct DestRegion {
   bounds: OverlayBounds,
@@ -143,15 +145,7 @@ fn constant_normal(pixels: &mut [[u8; 4]], mask: &[u8], color: [u8; 4], region: 
       if mask.len() == 64 && mask == [0; 64] {
         continue;
       }
-      for (dst_px, &alpha) in dst.iter_mut().zip(mask) {
-        if alpha == 0 {
-          continue;
-        }
-        let src = scale_premultiplied_pixel(color, alpha);
-        if src[3] != 0 {
-          composite_premultiplied_over(dst_px, src);
-        }
-      }
+      constant_span::blend(dst, mask, color);
     }
   }
 }

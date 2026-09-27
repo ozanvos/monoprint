@@ -231,7 +231,7 @@ pub(crate) fn export(
         let fonts = renderer.fonts(style, secondary_font)?;
         let viewport =
             Viewport::new((style.width.map(|w| w * 2), None)).with_device_pixel_ratio(2.0);
-        let size = takumi_raster::measure(
+        let size = takumi_raster::measure_size(
             RenderOptions::builder()
                 .viewport(viewport)
                 .node(node.clone())
@@ -277,7 +277,7 @@ pub(crate) fn export(
     } as f32;
     let mut viewport = Viewport::new((style.width.map(|w| (w as f32 * scale) as u32), None))
         .with_device_pixel_ratio(scale);
-    let size = takumi_raster::measure(
+    let size = takumi_raster::measure_size(
         RenderOptions::builder()
             .viewport(viewport)
             .node(node.clone())
@@ -329,23 +329,9 @@ pub(crate) fn export(
             // Fast lossless PNG compression avoids spending most of a fresh
             // invocation in the renderer's default level-7/no-filter encoder.
             let mut encoder = png::Encoder::new(&mut data, image.width(), image.height());
-            let opaque = image
-                .as_raw()
-                .as_chunks::<4>()
-                .0
-                .iter()
-                .all(|pixel| pixel[3] == 255);
+            let opaque = crate::pixels::is_opaque(image.as_raw());
             let pixels = if opaque {
-                let mut rgb = vec![0; image.as_raw().len() / 4 * 3];
-                for (target, pixel) in rgb
-                    .as_chunks_mut::<3>()
-                    .0
-                    .iter_mut()
-                    .zip(image.as_raw().as_chunks::<4>().0)
-                {
-                    target.copy_from_slice(&pixel[..3]);
-                }
-                Cow::Owned(rgb)
+                Cow::Owned(crate::pixels::to_rgb(image.as_raw()))
             } else {
                 Cow::Borrowed(image.as_raw().as_slice())
             };

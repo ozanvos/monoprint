@@ -37,3 +37,18 @@ while preserving all 65,536 input-alpha pairs. In `src/canvas/composite.rs`,
 64-byte all-zero alpha runs skip per-pixel compositing; mixed runs and tails
 keep the original arithmetic. Tests compare clipped and blended results to a
 scalar reference, including chunk boundaries and negative mask placement.
+
+Additional exact-output optimizations:
+
+- `measure_size` computes the same root layout as `measure`, without building
+  the unused descendant measurement tree or shaping text again for its runs.
+  The render still computes layout for its final, rounded viewport.
+- Constraint masks are intersected in their owned incoming buffer, preserving
+  the parent mask and the existing integer formula. This follows the approach
+  of upstream [fd2cf7f1](https://github.com/kane50613/takumi/commit/fd2cf7f1f5ce88e0aa1cbe5344d08c03b10ffdb1).
+- `canvas/composite/constant_span.rs` blends sixteen pixels at once with NEON
+  for normal-mode constant fills without a clipping mask. Both mask scaling
+  and source-over keep the original `fast_div_255` rounding, saturation and
+  transparent-pixel rules. Scalar tails and non-AArch64 fallback are retained.
+  Tests cover all source-alpha/mask-alpha pairs, zero destination alpha,
+  saturation, chunk tails and alignment against the scalar reference.
