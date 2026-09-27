@@ -16,6 +16,11 @@ try {
   assert.notEqual(refused.status, 0);
   assert.match(refused.stderr, /complete release package set/);
   for (const tarball of manifest.tarballs) {
+    for (const backend of ['takumi-raster', 'takumi-svg']) {
+      for (const file of ['PATCHES.md', 'LICENSE-MIT', 'LICENSE-APACHE']) {
+        assert.ok(tarball.files.includes(`vendor/${backend}/${file}`), `${tarball.name} missing ${backend}/${file}`);
+      }
+    }
     for (const required of ['LICENSE', 'THIRD_PARTY_NOTICES.md', 'licenses/grammars-NOTICE.txt', 'licenses/node/napi-LICENSE.txt', 'licenses/sources/giallo-0.5.2.crate', 'licenses/grammar-sources/hcl.json', 'licenses/sources/selectors-0.40.0.crate', 'licenses/sources/cssparser-0.37.0.crate']) {
       assert.ok(tarball.files.includes(required), `${tarball.name} missing ${required}`);
     }

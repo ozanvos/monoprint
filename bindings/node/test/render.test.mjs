@@ -104,6 +104,11 @@ test('native failures expose stable codes and structured context, then renderer 
   await assert.rejects(renderer.html(source, { highlight: [0] }), error => code('INVALID_OPTION')(error) && error.details.lineCount === 3);
   await assert.rejects(renderer.png(source, { scale: 0 }), code('INVALID_OPTION'));
   await assert.rejects(renderer.png(source, { width: 8192, padding: 0, scale: 6 }), code('IMAGE_TOO_LARGE'));
+  const wrapped = Array.from({ length: 30 }, (_, i) =>
+    `let value_${String(i).padStart(3, '0')} = "hello ${i}"; // benchmark code image `.padEnd(80, '.')
+  ).join('\n');
+  await assert.rejects(renderer.png(wrapped, { language: 'rust', theme: 'removed-frame', width: 896, scale: 4, lineNumbers: false }),
+    error => code('IMAGE_TOO_LARGE')(error) && error.details.width === 3584 && error.details.height === 6184);
   await assert.rejects(renderer.html('é'.repeat(524289)), error => code('INVALID_OPTION')(error) && error.details.option === 'source');
   assert.match(await renderer.html(source), /^<!doctype html>/);
 });

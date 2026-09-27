@@ -6,6 +6,7 @@ use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use std::{borrow::Cow, sync::Arc};
 use takumi::prelude::*;
+use takumi_raster::RenderOptions;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Format {
@@ -230,7 +231,7 @@ pub(crate) fn export(
         let fonts = renderer.fonts(style, secondary_font)?;
         let viewport =
             Viewport::new((style.width.map(|w| w * 2), None)).with_device_pixel_ratio(2.0);
-        let size = takumi::measure(
+        let size = takumi_raster::measure(
             RenderOptions::builder()
                 .viewport(viewport)
                 .node(node.clone())
@@ -276,7 +277,7 @@ pub(crate) fn export(
     } as f32;
     let mut viewport = Viewport::new((style.width.map(|w| (w as f32 * scale) as u32), None))
         .with_device_pixel_ratio(scale);
-    let size = takumi::measure(
+    let size = takumi_raster::measure(
         RenderOptions::builder()
             .viewport(viewport)
             .node(node.clone())
@@ -286,7 +287,18 @@ pub(crate) fn export(
     )?;
     let width = (size.width / scale).ceil() * scale;
     let height = (size.height / scale).ceil() * scale;
-    if width * height > 64_000_000.0 || width > 32768.0 || height > 32768.0 {
+    // Takumi 2.14's raster canvas and SVG-source rasterizer each cap pixmaps
+    // at 16 Mi pixels. Check here so callers get our actionable typed error
+    // rather than an opaque backend failure. Vector output keeps its budget.
+    let pixel_budget = if format == Format::Png {
+        16 << 20
+    } else {
+        64_000_000
+    };
+    if u64::from(width as u32) * u64::from(height as u32) > pixel_budget
+        || width > 32768.0
+        || height > 32768.0
+    {
         return Err(Error::ImageTooLarge {
             width: width as u32,
             height: height as u32,
@@ -298,7 +310,7 @@ pub(crate) fn export(
         Viewport::new((Some(width as u32), Some(height as u32))).with_device_pixel_ratio(scale);
     match format {
         Format::Png => {
-            let bitmap = takumi::render(
+            let bitmap = takumi_raster::render(
                 RenderOptions::builder()
                     .viewport(viewport)
                     .node(node)
@@ -311,12 +323,7 @@ pub(crate) fn export(
                 image::RgbaImage::from_raw(bitmap.width(), bitmap.height(), bitmap.into_raw())
                     .context("invalid rendered bitmap")?;
             if !u32::from(png_scale).is_multiple_of(2) {
-                image = image::imageops::resize(
-                    &image,
-                    image.width() / 2,
-                    image.height() / 2,
-                    image::imageops::FilterType::Lanczos3,
-                );
+                image = crate::resample::half(&image);
             }
             let mut data = Vec::new();
             // Fast lossless PNG compression avoids spending most of a fresh
@@ -329,9 +336,14 @@ pub(crate) fn export(
                 .iter()
                 .all(|pixel| pixel[3] == 255);
             let pixels = if opaque {
-                let mut rgb = Vec::with_capacity(image.as_raw().len() / 4 * 3);
-                for pixel in image.as_raw().as_chunks::<4>().0 {
-                    rgb.extend_from_slice(&pixel[..3]);
+                let mut rgb = vec![0; image.as_raw().len() / 4 * 3];
+                for (target, pixel) in rgb
+                    .as_chunks_mut::<3>()
+                    .0
+                    .iter_mut()
+                    .zip(image.as_raw().as_chunks::<4>().0)
+                {
+                    target.copy_from_slice(&pixel[..3]);
                 }
                 Cow::Owned(rgb)
             } else {

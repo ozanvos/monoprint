@@ -22,7 +22,8 @@ pub enum Error {
         /// Whether a custom code font can supply this glyph.
         code_font: bool,
     },
-    /// The measured image exceeds 64 million internal pixels or 32,768 per edge.
+    /// The measured image exceeds its internal pixel budget (16,777,216 for
+    /// PNG, 64 million for SVG), or 32,768 pixels per edge.
     ImageTooLarge {
         /// Internal width, before downsampling.
         width: u32,

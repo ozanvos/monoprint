@@ -14,7 +14,7 @@ The embedded bundle contains 231 named grammars and 18 helper/injection grammars
 
 BIRD2, HCL and Terraform grammar source files remain under MPL-2.0. Their original and normalized source forms are supplied in `licenses/grammar-sources/`; recipients may use and modify them under MPL-2.0. Include that directory and these notices with binary/library distributions. These source obligations apply to the covered grammar files.
 
-The embedded Giallo registry is generated data built from the pinned grammar and theme inputs by `examples/compile_registry.rs`. All original source links and rebuild instructions are included. Giallo is unmodified. The vendored `takumi-svg` 0.3.22 has documented outer-shadow and anonymous-container background corrections; see `vendor/takumi-svg/PATCHES.md` and its preserved MIT/Apache licenses. Other Cargo dependencies are unmodified. OpenAI's proprietary Söhne Mono is not included.
+The embedded Giallo registry is generated data built from the pinned grammar and theme inputs by `examples/compile_registry.rs`. All original source links and rebuild instructions are included. Giallo is unmodified. The vendored `takumi-svg` 0.3.22 has documented outer-shadow and anonymous-container background corrections. The vendored `takumi-raster` 0.5.1 has upstream SIMD backports and exact shadow-mask compaction/caching. See each backend's `PATCHES.md` and preserved MIT/Apache licenses under `vendor/`. Other Cargo dependencies are unmodified. OpenAI's proprietary Söhne Mono is not included.
 
 Keep these notices, the font licenses, and access to the exact corresponding dependency/grammar sources with release artifacts. No public binary release has been made from this workspace.
 

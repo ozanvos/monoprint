@@ -29,10 +29,11 @@ export async function filesUnder(directory) {
 /** Bind a prebuilt artifact to its native inputs, including vendored fixes and embedded assets. */
 export async function inputHash() {
   const paths = ['Cargo.toml', 'Cargo.lock', 'bindings/node/Cargo.toml', 'bindings/node/build.rs'];
-  for (const dir of ['src', 'assets', 'bindings/node/src', 'vendor/takumi-svg/src']) {
+  for (const dir of ['src', 'assets', 'bindings/node/src', 'vendor/takumi-svg/src', 'vendor/takumi-raster/src']) {
     paths.push(...(await filesUnder(path.join(root, dir))).map(file => path.relative(root, file).replaceAll('\\', '/')));
   }
   paths.push('vendor/takumi-svg/Cargo.toml');
+  paths.push('vendor/takumi-raster/Cargo.toml');
   const hash = createHash('sha256');
   for (const file of paths.sort()) {
     let bytes = await fs.readFile(path.join(root, file));

@@ -31,7 +31,8 @@
     "licenses",
     "assets",
     "docs",
-    "vendor/takumi-svg"
+    "vendor/takumi-svg",
+    "vendor/takumi-raster"
   ],
   "publishConfig": {
     "access": "public"

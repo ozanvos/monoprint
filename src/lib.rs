@@ -42,8 +42,9 @@
 //!
 //! Theme/language parsing and [`Font::from_bytes`] validate immediately. Style
 //! and snippet setters validate at render time. Input is capped at 1 MiB before
-//! newline normalization, fonts at 64 MiB, and PNG/SVG at 64 million internal
-//! pixels / 32,768 pixels per edge. Missing glyphs produce an explicit error.
+//! newline normalization and fonts at 64 MiB. PNG allows 16,777,216 internal
+//! pixels, SVG 64 million; both allow 32,768 pixels per edge. Missing glyphs
+//! produce an explicit error.
 //!
 //! # Cargo features
 //!
@@ -59,6 +60,7 @@ mod font;
 mod highlight;
 mod options;
 mod render;
+mod resample;
 
 pub use catalog::{Language, LineNumberPolicy, Theme};
 pub use error::{Error, InvalidOption, RenderError, TextRole};
@@ -86,8 +88,9 @@ pub const MAX_FONT_BYTES: usize = 64 * 1024 * 1024;
 /// Render methods accept `&self` and may run concurrently, including with
 /// different fonts. Drop all clones to release the per-renderer caches.
 ///
-/// Custom-font preparation belongs to the [`Font`] handle. Takumi also keeps a
-/// bounded process-wide glyph cache and per-thread layout scratch buffers.
+/// Custom-font preparation belongs to the [`Font`] handle. Takumi also keeps
+/// bounded process-wide glyph/shadow-mask caches and per-thread layout scratch
+/// buffers. PNG downsampling shares a pool of at most four worker threads.
 /// Dropping a renderer does not flush those; scratch buffers live until their
 /// rendering thread exits. Applications should bound concurrent work.
 #[derive(Clone, Default)]

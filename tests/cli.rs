@@ -457,8 +457,8 @@ fn rasterize_svg(svg: &[u8], width: u32, height: u32) -> image::RgbaImage {
     );
     let node = takumi::from_html(&html, FromHtmlOptions::default()).unwrap();
     let fonts = Fonts::default();
-    let actual = takumi::render(
-        RenderOptions::builder()
+    let actual = takumi_raster::render(
+        takumi_raster::RenderOptions::builder()
             .viewport(Viewport::new((width, height)))
             .node(node)
             .fonts(&fonts)

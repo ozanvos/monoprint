@@ -276,6 +276,46 @@ fn concurrent_first_use_matches_sequential_outputs() {
 }
 
 #[test]
+fn fixed_width_tailwind_reports_png_budget_and_recovers() {
+    let source = (0..30)
+        .map(|i| {
+            format!(
+                "{:.<80}",
+                format!("let value_{i:03} = \"hello {i}\"; // benchmark code image ")
+            )
+        })
+        .collect::<Vec<_>>()
+        .join("\n");
+    let renderer = Renderer::new();
+    let snippet = Snippet::new(source).language("rust".parse().unwrap());
+    let style = Style::new("removed-frame".parse().unwrap())
+        .width(896)
+        .line_numbers(LineNumbers::Hide);
+    // The frame's borders make these lines wrap into a 22 MP canvas at 4x.
+    // Reject before entering Takumi, whose root and SVG-source caps are 16 MP.
+    for style in [
+        style.clone(),
+        style.font(
+            Font::from_bytes(&include_bytes!("../assets/fonts/jetbrains-mono.ttf")[..]).unwrap(),
+        ),
+    ] {
+        assert!(matches!(
+            renderer.png(&snippet, &style, Scale::X4),
+            Err(Error::ImageTooLarge {
+                width: 3584,
+                height: 6184,
+                supersampled: false
+            })
+        ));
+        let png = renderer.png(&snippet, &style, Scale::X2).unwrap();
+        assert_eq!(u32::from_be_bytes(png[16..20].try_into().unwrap()), 1792);
+        assert_eq!(u32::from_be_bytes(png[20..24].try_into().unwrap()), 3092);
+        let svg = renderer.svg(&snippet, &style).unwrap();
+        assert!(svg.contains("width=\"896\" height=\"1546\""));
+    }
+}
+
+#[test]
 fn image_budget_is_a_typed_error_and_renderer_recovers() {
     let r = Renderer::new();
     let error = r
