@@ -1,6 +1,14 @@
 {
   "repository": "https://github.com/shikijs/textmate-grammars-themes",
   "commit": "4cb1625ad87a07fb4674fe97b921a8f756f4694b",
+  "indexSha256": "13819aca07e8cc88af4492724808d1b7deef51d2996b2fe14c9cc6004b8fbb39",
   "giallo": "0.5.2",
-  "checksums": {}
+  "includedGrammars": 249,
+  "checksums": {
+    "licenses/grammar-policy.json": "2c8ab452dd8598b476d250b0ad34e186c34c6fc7e383ed0db144d9e2fbffb726",
+    "licenses/grammar-license-evidence.json": "13ba2fb2282acddad79c7461d3702602bcca9367bb1fb75f7cf2fb9c5ce03ccc",
+    "assets/grammar-metadata.json": "f13b554e9cf1ca674b7fc103552ca00df49d6cad4d96f53c2528fce8288f9311",
+    "licenses/grammars-NOTICE.txt": "540639c3c2e06eeddf48ba8bff3dad95bf75b7eb8d886b653b365a1c44026279",
+    "licenses/grammars-LICENSE.txt": "7a9d8d01038aeacf9e5bcdabbddf2a7815200dce9fc1118468cc553e00ae3eee"
+  }
 }

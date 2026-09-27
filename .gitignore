@@ -4,3 +4,8 @@
 /reference-output/
 .DS_Store
 output/
+/bindings/node/node_modules/
+/bindings/node/dist/
+/bindings/node/native/
+/bindings/node/.packages/
+/bindings/node/js/catalog-types.ts

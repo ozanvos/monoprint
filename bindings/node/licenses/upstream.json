@@ -1,0 +1,45 @@
+[
+  {
+    "name": "napi",
+    "version": "3.13.0",
+    "source": "https://raw.githubusercontent.com/napi-rs/napi-rs/2763e12efc855748485129952a6ccb97ac991c06/LICENSE",
+    "file": "napi-LICENSE.txt",
+    "sha256": "3f1ce66533302df3a32edbfdfc0b78f0dd34659e4c1f5817162e5ea3c2297215"
+  },
+  {
+    "name": "napi-derive",
+    "version": "3.6.9",
+    "source": "https://raw.githubusercontent.com/napi-rs/napi-rs/2763e12efc855748485129952a6ccb97ac991c06/LICENSE",
+    "file": "napi-LICENSE.txt",
+    "sha256": "3f1ce66533302df3a32edbfdfc0b78f0dd34659e4c1f5817162e5ea3c2297215"
+  },
+  {
+    "name": "napi-build",
+    "version": "2.5.0",
+    "source": "https://raw.githubusercontent.com/napi-rs/napi-rs/2763e12efc855748485129952a6ccb97ac991c06/LICENSE",
+    "file": "napi-LICENSE.txt",
+    "sha256": "3f1ce66533302df3a32edbfdfc0b78f0dd34659e4c1f5817162e5ea3c2297215"
+  },
+  {
+    "name": "napi-derive-backend",
+    "version": "6.1.4",
+    "source": "https://raw.githubusercontent.com/napi-rs/napi-rs/38162bb0eb324ae24b402982bad3d4ef3f24c90a/LICENSE",
+    "file": "napi-LICENSE.txt",
+    "sha256": "3f1ce66533302df3a32edbfdfc0b78f0dd34659e4c1f5817162e5ea3c2297215"
+  },
+  {
+    "name": "napi-sys",
+    "version": "3.3.2",
+    "source": "https://raw.githubusercontent.com/napi-rs/napi-rs/38162bb0eb324ae24b402982bad3d4ef3f24c90a/LICENSE",
+    "file": "napi-LICENSE.txt",
+    "sha256": "3f1ce66533302df3a32edbfdfc0b78f0dd34659e4c1f5817162e5ea3c2297215"
+  },
+  {
+    "name": "selectors",
+    "version": "0.40.0",
+    "source": "https://github.com/servo/stylo/blob/67faaab3ff7aa66780ec1d0f51ca47e177b812d3/selectors/lib.rs",
+    "licenseTextSource": "https://crates.io/api/v1/crates/cssparser/0.37.0/download (LICENSE)",
+    "file": "MPL-2.0.txt",
+    "sha256": "fab3dd6bdab226f1c08630b1dd917e11fcb4ec5e1e020e2c16f83a0a13863e85"
+  }
+]

@@ -1,0 +1,19 @@
+[package]
+name = "monoprint-node"
+version = "0.1.0"
+edition = "2024"
+license = "Apache-2.0"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+monoprint = { path = "../..", default-features = false }
+napi = { version = "=3.13.0", default-features = false, features = ["napi8"] }
+napi-derive = "=3.6.9"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+[build-dependencies]
+napi-build = "=2.5.0"

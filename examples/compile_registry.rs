@@ -1,22 +1,40 @@
 //! Maintenance tool; no compilation or filesystem registry loading at runtime.
-use anyhow::{Context, Result};
+use anyhow::{Context, Result, ensure};
 use giallo::Registry;
-use std::{env, fs, path::Path};
+use std::{env, fs, path::Path, process::Command};
 
 fn main() -> Result<()> {
     let root = env::args()
         .nth(1)
         .context("usage: cargo run --example compile_registry -- GRAMMARS_ROOT")?;
     let root = Path::new(&root);
+    ensure!(
+        Command::new("node")
+            .args(["scripts/import-grammar-metadata.mjs", "--check-inputs"])
+            .arg(root)
+            .status()
+            .context("Node.js is required for the maintenance-only grammar license check")?
+            .success(),
+        "grammar license/input validation failed"
+    );
+    let policy: serde_json::Value =
+        serde_json::from_str(&fs::read_to_string("licenses/grammar-policy.json")?)?;
     let mut registry = Registry::default();
-    let mut paths: Vec<_> = fs::read_dir(root.join("packages/tm-grammars/grammars"))?
-        .map(|p| p.map(|e| e.path()))
-        .collect::<std::io::Result<_>>()?;
+    // Never sweep the collection directory: it also contains excluded grammars.
+    let mut paths: Vec<_> = policy["entries"]
+        .as_array()
+        .context("grammar policy entries")?
+        .iter()
+        .filter(|entry| entry["status"] == "included")
+        .map(|entry| {
+            Ok(root.join("packages/tm-grammars/grammars").join(format!(
+                "{}.json",
+                entry["name"].as_str().context("grammar name")?
+            )))
+        })
+        .collect::<Result<_>>()?;
     paths.sort();
-    for path in paths
-        .into_iter()
-        .filter(|p| p.extension().is_some_and(|e| e == "json"))
-    {
+    for path in paths {
         registry
             .add_grammar_from_path(&path)
             .with_context(|| format!("grammar {}", path.display()))?;
@@ -42,6 +60,13 @@ fn main() -> Result<()> {
             .with_context(|| format!("theme {}", path.display()))?;
     }
     fs::write("assets/registry.zst", registry.dump()?)?;
+    ensure!(
+        Command::new("node")
+            .args(["scripts/import-grammar-metadata.mjs", "--record-registry"])
+            .status()?
+            .success(),
+        "failed to record registry provenance"
+    );
     println!("Wrote embedded registry");
     Ok(())
 }

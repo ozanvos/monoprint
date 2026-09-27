@@ -30,7 +30,7 @@ fn catalog_parsing_discovery_and_filename_inference() {
         "missing".parse::<Language>(),
         Err(Error::UnknownLanguage(_))
     ));
-    assert_eq!(Language::all().count(), 241);
+    assert_eq!(Language::all().count(), 230);
     for language in Language::all() {
         assert!(!language.name().is_empty());
         assert_eq!(language.id().parse::<Language>().unwrap(), language);

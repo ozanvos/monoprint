@@ -12,6 +12,11 @@ publish = false
 default = ["cli"]
 cli = ["dep:clap"]
 
+[workspace]
+members = ["bindings/node"]
+default-members = ["."]
+resolver = "3"
+
 [dependencies]
 anyhow = "1"
 base64 = "0.22"

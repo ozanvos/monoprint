@@ -242,4 +242,20 @@ mod tests {
             }
         }
     }
+
+    #[test]
+    fn embedded_registry_obeys_the_grammar_license_policy() {
+        let renderer = Renderer::new();
+        let registry = renderer.registry().unwrap();
+        let policy: serde_json::Value =
+            serde_json::from_str(include_str!("../licenses/grammar-policy.json")).unwrap();
+        for entry in policy["entries"].as_array().unwrap() {
+            let name = entry["name"].as_str().unwrap();
+            let included = entry["status"] == "included";
+            assert_eq!(registry.contains_grammar(name), included, "{name}");
+            if !included {
+                assert!(name.parse::<Language>().is_err(), "{name}");
+            }
+        }
+    }
 }

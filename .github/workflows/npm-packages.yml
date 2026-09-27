@@ -1,0 +1,80 @@
+name: npm packages
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  targets:
+    runs-on: ubuntu-22.04
+    outputs:
+      matrix: ${{ steps.targets.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: targets
+        run: echo "matrix=$(jq -c '{include:.}' bindings/node/targets.json)" >> "$GITHUB_OUTPUT"
+  native:
+    needs: targets
+    strategy:
+      fail-fast: false
+      matrix: ${{ fromJSON(needs.targets.outputs.matrix) }}
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+      MACOSX_DEPLOYMENT_TARGET: '11.0'
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: bindings/node/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+          targets: ${{ matrix.triple }}
+      - run: npm ci --prefix bindings/node
+      - run: cargo fetch --locked
+      - run: cargo fmt --package monoprint-node -- --check
+      - run: cargo clippy --locked -p monoprint-node -- -D warnings
+      - run: npm run build --prefix bindings/node -- --target ${{ matrix.triple }}
+      - run: cargo build --locked --release -p monoprint
+      - run: npm test --prefix bindings/node
+        env:
+          MONOPRINT_CLI: ${{ github.workspace }}/target/release/monoprint${{ matrix.os == 'win32' && '.exe' || '' }}
+      - run: npm run test:types --prefix bindings/node
+      - run: npm run test:package --prefix bindings/node
+      - uses: actions/upload-artifact@v4
+        with:
+          name: native-${{ matrix.id }}
+          path: bindings/node/native/*
+          if-no-files-found: error
+  pack:
+    needs: native
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@stable
+      - run: npm ci --prefix bindings/node
+      - run: cargo fetch --locked
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: native-*
+          path: output/npm-native
+          merge-multiple: true
+      - run: npm run package --prefix bindings/node -- --artifacts "$GITHUB_WORKSPACE/output/npm-native" --out "$GITHUB_WORKSPACE/output/npm-release"
+      - run: npm run publish:packages --prefix bindings/node -- --from "$GITHUB_WORKSPACE/output/npm-release" --dry-run
+      - uses: actions/upload-artifact@v4
+        with:
+          name: npm-release
+          path: |
+            output/npm-release/manifest.json
+            output/npm-release/tarballs/*
+          if-no-files-found: error
