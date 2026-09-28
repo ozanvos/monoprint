@@ -4,6 +4,10 @@ mod appearance;
 #[allow(dead_code, unused_imports)] // Shared source also contains standard-harness tests.
 #[path = "../src/document.rs"]
 mod document;
+#[cfg(target_os = "macos")]
+#[allow(dead_code)] // The production raw-window adapter is unavailable on the test platform.
+#[path = "../src/material.rs"]
+mod material;
 #[allow(unused_imports)]
 #[path = "../src/preview.rs"]
 mod preview;
@@ -65,6 +69,47 @@ mod macos {
     }
 
     pub fn run() {
+        // Headless pixels cannot capture the WindowServer backdrop. Exercise the
+        // actual AppKit view's material, blending, ownership and resizing instead.
+        {
+            use objc2::{MainThreadMarker, MainThreadOnly};
+            use objc2_app_kit::{
+                NSView, NSVisualEffectBlendingMode, NSVisualEffectMaterial, NSVisualEffectState,
+            };
+            let main_thread = MainThreadMarker::new().unwrap();
+            let host = NSView::initWithFrame(NSView::alloc(main_thread), Default::default());
+            let gpui_view = NSView::initWithFrame(NSView::alloc(main_thread), Default::default());
+            host.addSubview(&gpui_view);
+            let material = material::attach(&host, main_thread);
+            assert_eq!(
+                material.material(),
+                NSVisualEffectMaterial::UnderWindowBackground
+            );
+            assert_eq!(
+                material.blendingMode(),
+                NSVisualEffectBlendingMode::BehindWindow
+            );
+            assert_eq!(
+                material.state(),
+                NSVisualEffectState::FollowsWindowActiveState
+            );
+            let mut size = host.bounds().size;
+            size.width = 640.;
+            size.height = 480.;
+            host.setFrameSize(size);
+            assert_eq!(material.frame().size, host.bounds().size);
+            assert!(
+                std::ptr::eq::<NSView>(&*host.subviews().objectAtIndex(1), &*gpui_view),
+                "GPUI must remain above the material"
+            );
+            drop(material);
+            assert_eq!(
+                host.subviews().len(),
+                2,
+                "native parent must retain the backdrop"
+            );
+            println!("AppKit frosted material, behind-window blending and autoresizing passed");
+        }
         for (width, height) in [(1440., 900.), (1100., 700.)] {
             let mut cx = HeadlessAppContext::with_platform(
                 gpui_kit::platform::current_platform(true).text_system(),
@@ -89,7 +134,7 @@ mod macos {
                         )
                     });
                     studio = Some(entity.clone());
-                    cx.new(|cx| Root::new(entity, window, cx))
+                    cx.new(|cx| Root::new(entity, window, cx).bg(transparent_black()))
                 })
                 .unwrap();
             let studio = studio.unwrap();

@@ -22,7 +22,7 @@ impl Render for Studio {
             .size_full()
             .flex()
             .flex_col()
-            .bg(rgb(SURFACE))
+            .bg(chrome_background())
             .text_color(rgb(TEXT))
             .text_size(px(13.))
             .on_action(cx.listener(Self::open))
@@ -139,6 +139,7 @@ impl Studio {
     }
     fn source_panel(&self, cx: &mut Context<Self>) -> impl IntoElement {
         div()
+            .bg(rgb(SURFACE))
             .flex()
             .flex_col()
             .w(px(320.))
@@ -300,7 +301,7 @@ impl Studio {
             .min_w_0()
             .flex()
             .flex_col()
-            .bg(rgb(CANVAS))
+            .bg(canvas_background())
             .child(
                 div()
                     .flex()

@@ -1,5 +1,7 @@
 mod appearance;
 mod document;
+#[cfg(target_os = "macos")]
+mod material;
 mod preview;
 mod studio;
 mod view;
@@ -89,6 +91,12 @@ fn main() {
                 WindowOptions {
                     window_bounds: Some(WindowBounds::Windowed(bounds)),
                     window_min_size: Some(size(px(1100.), px(700.))),
+                    window_background: if cfg!(target_os = "macos") {
+                        // The unmodified AppKit material is installed below.
+                        WindowBackgroundAppearance::Transparent
+                    } else {
+                        WindowBackgroundAppearance::Opaque
+                    },
                     titlebar: Some(TitlebarOptions {
                         title: Some("Monoprint".into()),
                         appears_transparent: true,
@@ -97,6 +105,11 @@ fn main() {
                     ..Default::default()
                 },
                 |window, cx| {
+                    #[cfg(target_os = "macos")]
+                    if let Err(error) = material::install(window) {
+                        window.set_background_appearance(WindowBackgroundAppearance::Opaque);
+                        eprintln!("Could not install the window material: {error:#}");
+                    }
                     let studio =
                         cx.new(|cx| Studio::new(document, error, source_name, session, window, cx));
                     let focus = studio.read(cx).focus.clone();
@@ -105,7 +118,8 @@ fn main() {
                         cx.quit();
                         true
                     });
-                    cx.new(|cx| Root::new(studio, window, cx))
+                    // Root otherwise paints an opaque theme background over the material.
+                    cx.new(|cx| Root::new(studio, window, cx).bg(transparent_black()))
                 },
             )
             .expect("open Monoprint window");

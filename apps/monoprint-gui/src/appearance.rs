@@ -9,7 +9,20 @@ pub const BORDER: u32 = 0x30343C;
 pub const TEXT: u32 = 0xE5E8ED;
 pub const MUTED: u32 = 0x969DA8;
 pub const ACCENT: u32 = 0xA6CEFF;
+
+// AppKit supplies the frosting and contrast; only add a light slate tint here.
+// Keep other platforms opaque until their native materials are validated.
+pub fn chrome_background() -> Rgba {
+    rgb(SURFACE).opacity(if cfg!(target_os = "macos") { 0.18 } else { 1.0 })
+}
+
+pub fn canvas_background() -> Rgba {
+    // This veil sits above the chrome tint, keeping the image's surround quiet.
+    rgb(CANVAS).opacity(if cfg!(target_os = "macos") { 0.32 } else { 1.0 })
+}
+
 pub fn init(cx: &mut App) {
+    cx.set_window_appearance(Some(WindowAppearance::Dark));
     cx.text_system()
         .add_fonts(vec![
             Cow::Borrowed(include_bytes!("../../../assets/fonts/inter.ttf")),
