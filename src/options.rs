@@ -382,7 +382,7 @@ impl Style {
         self
     }
     /// Enable coding ligatures (`liga`, `clig`, `calt`) supported by the font.
-    /// Disabled by default to match legacy frames. Enabling also removes letter spacing.
+    /// Disabled by default. Preserves the theme's letter spacing.
     #[must_use]
     pub fn ligatures(mut self, enabled: bool) -> Self {
         self.ligatures = enabled;

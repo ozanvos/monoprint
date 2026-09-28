@@ -72,7 +72,6 @@ fn code_width(
     comment_font: Option<&[u8]>,
     comments: &[std::ops::Range<usize>],
     source: &str,
-    ligatures: bool,
 ) -> Result<f32> {
     let face = ttf_parser::Face::parse(font, 0)?;
     let comment_face = comment_font
@@ -105,9 +104,8 @@ fn code_width(
             let glyph = face
                 .glyph_index(if character == '\t' { ' ' } else { character })
                 .context("missing glyph")?;
-            width += count as f32
-                * (f32::from(face.glyph_hor_advance(glyph).unwrap_or(0)) * unit
-                    + if ligatures { 0.0 } else { 0.1 });
+            width +=
+                count as f32 * (f32::from(face.glyph_hor_advance(glyph).unwrap_or(0)) * unit + 0.1);
             column += count;
         }
         longest = longest.max(width);
@@ -258,7 +256,9 @@ pub(crate) fn export(
     );
     css += &background::css(theme, style.appearance, style.background);
     if style.ligatures {
-        css += ".Editor__formatted{font-variant-ligatures:common-ligatures contextual;font-feature-settings:'liga' 1,'clig' 1,'calt' 1;letter-spacing:0}";
+        // Toggle shaping features without changing the theme's tracking. Plain
+        // text must retain its glyph positions, wrapping and automatic width.
+        css += ".Editor__formatted{font-variant-ligatures:common-ligatures contextual;font-feature-settings:'liga' 1,'clig' 1,'calt' 1}";
     }
     if !snippet.text_highlights.is_empty() {
         css += ".Editor__editor .highlighted-text{background-color:var(--ink-highlight,rgba(128,128,128,0.28))}";
@@ -276,7 +276,6 @@ pub(crate) fn export(
                 style.comment_font.as_ref().map(|font| font.bytes()),
                 &code.comments,
                 source,
-                style.ligatures
             )?
             .ceil()
         );

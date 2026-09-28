@@ -138,7 +138,9 @@ fn coding_ligatures_change_glyphs_and_can_be_disabled() {
     let on = off.clone().ligatures(true);
     let a = r.svg(&snippet, &off).unwrap();
     let b = r.svg(&snippet, &on).unwrap();
-    assert_ne!(a, b);
+    // Fira Code combines === and != into fewer drawn glyphs. Comparing glyph
+    // references, rather than output bytes, cannot pass on a spacing change alone.
+    assert!(b.matches("<use href=\"#g").count() < a.matches("<use href=\"#g").count());
     let html = r.html(&snippet, &on).unwrap();
     assert!(html.contains("font-feature-settings:'liga' 1,'clig' 1,'calt' 1"));
     assert_ne!(
@@ -146,6 +148,47 @@ fn coding_ligatures_change_glyphs_and_can_be_disabled() {
         r.png(&snippet, &on, Scale::X1).unwrap()
     );
     assert_eq!(a, r.svg(&snippet, &on.ligatures(false)).unwrap());
+}
+
+#[test]
+fn coding_ligatures_preserve_text_without_substitutions() {
+    let renderer = Renderer::new();
+    let snippet = Snippet::new("A".repeat(100));
+    for bundled in BundledFont::all() {
+        let base = Style::default().font(bundled.font());
+        // Cover both automatic sizing and a fixed width that wraps this line.
+        for off in [base.clone(), base.width(720)] {
+            let on = off.clone().ligatures(true);
+            assert_eq!(
+                renderer.svg(&snippet, &off).unwrap(),
+                renderer.svg(&snippet, &on).unwrap(),
+                "{}: ligatures must not move ordinary glyphs or change wrapping",
+                bundled.id(),
+            );
+            assert_eq!(
+                renderer.png(&snippet, &off, Scale::X1).unwrap(),
+                renderer.png(&snippet, &on, Scale::X1).unwrap(),
+                "{}: plain text pixels must stay identical",
+                bundled.id(),
+            );
+        }
+    }
+
+    let snippet = Snippet::new(format!("{}\n# {}", "A".repeat(100), "A".repeat(100)))
+        .language("python".parse().unwrap());
+    let off = Style::default()
+        .font(font("fira-code"))
+        .comment_font(font("space-mono"));
+    let on = off.clone().ligatures(true);
+    assert_eq!(
+        renderer.svg(&snippet, &off).unwrap(),
+        renderer.svg(&snippet, &on).unwrap()
+    );
+    assert_eq!(
+        renderer.png(&snippet, &off, Scale::X1).unwrap(),
+        renderer.png(&snippet, &on, Scale::X1).unwrap(),
+        "separate comment typefaces must retain their spacing too",
+    );
 }
 
 #[test]
