@@ -1,0 +1,11 @@
+{
+  "name": "monoprint-comments",
+  "type": "dark",
+  "colors": { "editor.foreground": "#000000", "editor.background": "#000000" },
+  "tokenColors": [
+    {
+      "scope": ["comment", "string.quoted.docstring.multi"],
+      "settings": { "foreground": "#ffffff" }
+    }
+  ]
+}

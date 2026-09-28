@@ -570,6 +570,92 @@ impl Studio {
             .on_click(cx.listener(move |this, _, window, cx| this.select_theme(theme, window, cx)))
     }
 
+    fn advanced_settings(&self, cx: &Context<Self>) -> impl IntoElement {
+        div().flex().flex_col().gap_4()
+            .child(section("Typography"))
+            .child(self.font_control(false, cx))
+            .child(self.font_control(true, cx))
+            .child(row("Coding ligatures", Switch::new("coding-ligatures").small()
+                .checked(self.document.ligatures)
+                .on_change(cx.listener(|this, value, _, cx| {
+                    this.document.ligatures = *value;
+                    this.changed(cx);
+                }))))
+            .child(div().text_size(px(11.)).text_color(rgb(MUTED))
+                .child("Ligatures depend on the typeface. Comments inherit the code font unless overridden."))
+            .child(rule())
+            .child(section("Highlights"))
+            .child(field("Lines", Input::new(&self.highlights).small().aria_label("Highlighted lines")))
+            .child(field("Text ranges", Input::new(&self.text_highlights).small().aria_label("Highlighted text ranges")))
+            .child(div().text_size(px(11.)).text_color(rgb(MUTED))
+                .child("Use line:column–line:column; the end is exclusive. Or select text in the source editor."))
+            .child(Button::new("highlight-selection").outline().small().w_full()
+                .label("Highlight selection")
+                .on_click(cx.listener(|this, _, window, cx| this.highlight_selection(false, window, cx))))
+            .child(Button::new("highlight-selected-lines").outline().small().w_full()
+                .label("Highlight selected lines")
+                .on_click(cx.listener(|this, _, window, cx| this.highlight_selection(true, window, cx))))
+            .child(Button::new("clear-highlights").ghost().small().w_full().label("Clear highlights")
+                .on_click(cx.listener(|this, _, window, cx| {
+                    this.highlights.update(cx, |input, cx| input.replace_all("", window, cx));
+                    this.text_highlights.update(cx, |input, cx| input.replace_all("", window, cx));
+                })))
+    }
+
+    fn font_control(&self, comments: bool, cx: &Context<Self>) -> impl IntoElement {
+        let (state, label) = if comments {
+            (&self.comment_typeface, "Comment typeface")
+        } else {
+            (&self.code_typeface, "Code typeface")
+        };
+        field(
+            label,
+            div()
+                .flex()
+                .gap_2()
+                .child(
+                    Select::new(state)
+                        .id(if comments {
+                            "comment-typeface"
+                        } else {
+                            "code-typeface"
+                        })
+                        .small()
+                        .flex_1()
+                        .min_w_0()
+                        .accessibility_label(label)
+                        .search_placeholder("Find a typeface…"),
+                )
+                .when(
+                    !self.document.typeface_selection(comments).is_empty(),
+                    |view| {
+                        view.child(
+                            Button::new(if comments {
+                                "reset-comment-font"
+                            } else {
+                                "theme-font"
+                            })
+                            .ghost()
+                            .small()
+                            .label("Reset")
+                            .tooltip(if comments {
+                                "Use code typeface"
+                            } else {
+                                "Use theme typeface"
+                            })
+                            .on_click(cx.listener(
+                                move |this, _, window, cx| {
+                                    this.document.select_typeface(comments, "");
+                                    this.sync_typeface(comments, window, cx);
+                                    this.changed(cx);
+                                },
+                            )),
+                        )
+                    },
+                ),
+        )
+    }
+
     fn inspector(&self, cx: &Context<Self>) -> impl IntoElement {
         let theme = self
             .document
@@ -596,6 +682,7 @@ impl Studio {
             .child(
                 div()
                     .id("style-inspector")
+                    .track_scroll(&self.settings_scroll)
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
@@ -710,48 +797,24 @@ impl Studio {
                         "Window title",
                         Input::new(&self.title).small().aria_label("Window title"),
                     ))
-                    .child(field(
-                        "Highlight lines",
-                        Input::new(&self.highlights)
-                            .small()
-                            .aria_label("Highlight lines"),
-                    ))
+                    .child(rule())
                     .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .child(
-                                Button::new("custom-font")
-                                    .ghost()
-                                    .small()
-                                    .flex_1()
-                                    .label(
-                                        self.document
-                                            .font_path
-                                            .as_ref()
-                                            .and_then(|p| p.file_name())
-                                            .map(|n| n.to_string_lossy().into_owned())
-                                            .unwrap_or_else(|| "Choose a custom font…".into()),
-                                    )
-                                    .on_click(cx.listener(|this, _, window, cx| {
-                                        this.choose_font(window, cx)
-                                    })),
-                            )
-                            .when(self.document.font_path.is_some(), |view| {
-                                view.child(
-                                    Button::new("theme-font")
-                                        .ghost()
-                                        .xsmall()
-                                        .label("Reset")
-                                        .tooltip("Restore the theme’s font")
-                                        .on_click(cx.listener(|this, _, _, cx| {
-                                            this.document.font_path = None;
-                                            this.changed(cx);
-                                        })),
-                                )
-                            }),
-                    ),
+                        Button::new("advanced-settings")
+                            .ghost()
+                            .small()
+                            .w_full()
+                            .label("Advanced")
+                            .icon(if self.advanced {
+                                IconName::ChevronDown
+                            } else {
+                                IconName::ChevronRight
+                            })
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.advanced = !this.advanced;
+                                cx.notify();
+                            })),
+                    )
+                    .when(self.advanced, |view| view.child(self.advanced_settings(cx))),
             )
             .child(
                 div()

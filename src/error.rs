@@ -1,4 +1,4 @@
-use crate::{Appearance, Theme};
+use crate::{Appearance, TextRange, Theme};
 use std::fmt;
 
 /// An error callers can inspect without depending on a rendering backend.
@@ -9,6 +9,8 @@ pub enum Error {
     UnknownTheme(String),
     /// No bundled language or alias matches this ID.
     UnknownLanguage(String),
+    /// No bundled typeface matches this ID.
+    UnknownFont(String),
     /// A request violates a documented option or resource limit.
     InvalidOption(InvalidOption),
     /// The supplied bytes are not a supported TTF or OTF face.
@@ -79,6 +81,10 @@ pub enum InvalidOption {
         /// Logical source lines after normalization.
         line_count: usize,
     },
+    /// An exact selection is empty, reversed, or outside the normalized source.
+    HighlightedText(TextRange),
+    /// Text selections must use `line:column-line:column` syntax.
+    TextRangeSyntax(String),
     /// Subtitle metadata is supported only by Auth0.
     Subtitle {
         /// Theme that cannot accept subtitle metadata.
@@ -91,6 +97,8 @@ pub enum InvalidOption {
 pub enum TextRole {
     /// Source code.
     Code,
+    /// A grammar-recognized comment with a separate typeface.
+    Comment,
     /// The frame's title.
     Title,
 }
@@ -112,6 +120,7 @@ impl fmt::Display for Error {
         match self {
             Self::UnknownTheme(id) => write!(f, "unknown theme {id:?}"),
             Self::UnknownLanguage(id) => write!(f, "unknown language {id:?}"),
+            Self::UnknownFont(id) => write!(f, "unknown bundled font {id:?}"),
             Self::InvalidOption(option) => option.fmt(f),
             Self::InvalidFont => f.write_str("font must be a valid TTF or OTF file"),
             Self::UnsupportedGlyph {
@@ -121,13 +130,16 @@ impl fmt::Display for Error {
             } => {
                 let label = match text {
                     TextRole::Code => "code",
+                    TextRole::Comment => "comment",
                     TextRole::Title => "title",
                 };
                 write!(
                     f,
                     "{label} font cannot display {character:?} (U+{:04X}); {}",
                     *character as u32,
-                    if *code_font {
+                    if *text == TextRole::Comment {
+                        "supply a comment font containing this glyph"
+                    } else if *code_font {
                         "supply a code font containing this glyph"
                     } else {
                         "use text supported by this theme's label font (a custom font only changes the code font)"
@@ -178,6 +190,14 @@ impl fmt::Display for InvalidOption {
                 "highlight range {start}-{end} is empty or outside the {line_count} source lines"
             ),
             Self::Subtitle { .. } => f.write_str("subtitle is supported by the Auth0 theme"),
+            Self::HighlightedText(range) => write!(
+                f,
+                "text highlight {range} is empty or outside the source; use one-based lines and character columns with an exclusive end"
+            ),
+            Self::TextRangeSyntax(value) => write!(
+                f,
+                "invalid text highlight {value:?}; use line:column-line:column, e.g. 2:1-2:8"
+            ),
         }
     }
 }

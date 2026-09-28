@@ -1,5 +1,77 @@
 use crate::{Error, Font, InvalidOption, Language, Theme};
-use std::{fmt, ops::RangeInclusive};
+use std::{
+    fmt,
+    ops::{Range, RangeInclusive},
+    str::FromStr,
+    sync::Arc,
+};
+
+/// A source-text selection using one-based lines and Unicode-character columns.
+/// The end is exclusive; a tab counts as one character. CRLF/CR are normalized
+/// to LF before positions are resolved. For example, `2:1-2:4` selects three
+/// characters on line two. Empty and out-of-bounds selections fail on render.
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub struct TextRange {
+    /// Inclusive start: (line, column).
+    pub start: (usize, usize),
+    /// Exclusive end: (line, column).
+    pub end: (usize, usize),
+}
+impl TextRange {
+    /// Select text between two one-based (line, column) positions.
+    pub fn new(start: (usize, usize), end: (usize, usize)) -> Self {
+        Self { start, end }
+    }
+
+    pub(crate) fn resolve(self, source: &str) -> Result<Range<usize>, Error> {
+        fn offset(source: &str, position: (usize, usize)) -> Option<usize> {
+            let (row, column) = position;
+            if row == 0 || column == 0 {
+                return None;
+            }
+            let mut start = 0;
+            for (index, line) in source.split('\n').enumerate() {
+                if index + 1 == row {
+                    return line
+                        .char_indices()
+                        .map(|(offset, _)| offset)
+                        .chain([line.len()])
+                        .nth(column - 1)
+                        .map(|offset| start + offset);
+                }
+                start += line.len() + 1;
+            }
+            None
+        }
+        match (offset(source, self.start), offset(source, self.end)) {
+            (Some(start), Some(end)) if start < end => Ok(start..end),
+            _ => Err(InvalidOption::HighlightedText(self).into()),
+        }
+    }
+}
+impl fmt::Display for TextRange {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{}:{}-{}:{}",
+            self.start.0, self.start.1, self.end.0, self.end.1
+        )
+    }
+}
+impl FromStr for TextRange {
+    type Err = Error;
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        let parse = || {
+            let (start, end) = value.trim().split_once('-')?;
+            let point = |text: &str| {
+                let (line, column) = text.trim().split_once(':')?;
+                Some((line.trim().parse().ok()?, column.trim().parse().ok()?))
+            };
+            Some(Self::new(point(start)?, point(end)?))
+        };
+        parse().ok_or_else(|| InvalidOption::TextRangeSyntax(value.to_owned()).into())
+    }
+}
 
 /// The theme's color variant. Dark is the default.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
@@ -107,6 +179,7 @@ pub struct Snippet {
     pub(crate) title: String,
     pub(crate) subtitle: String,
     pub(crate) highlights: Vec<LineRange>,
+    pub(crate) text_highlights: Vec<TextRange>,
 }
 impl Snippet {
     /// Source text, using plain text highlighting until a language is selected.
@@ -147,10 +220,17 @@ impl Snippet {
         self.highlights.push(lines.into());
         self
     }
-    /// Remove highlighted-line selections, retaining the source and other content.
+    /// Remove line and text highlights, retaining the source and other content.
     #[must_use]
     pub fn clear_highlights(mut self) -> Self {
         self.highlights.clear();
+        self.text_highlights.clear();
+        self
+    }
+    /// Highlight an exact text selection, independently of whole-line highlights.
+    #[must_use]
+    pub fn highlight_text(mut self, range: TextRange) -> Self {
+        self.text_highlights.push(range);
         self
     }
 }
@@ -160,7 +240,7 @@ impl Snippet {
 /// Defaults: Candy, dark, opaque background, 64px padding, automatic width with
 /// a 520px minimum, theme-default line numbers, and the theme's bundled font.
 /// Setters are infallible; rendering validates the complete configuration.
-#[derive(Clone, Debug)]
+#[derive(Clone)]
 pub struct Style {
     pub(crate) theme: Theme,
     pub(crate) appearance: Appearance,
@@ -169,6 +249,24 @@ pub struct Style {
     pub(crate) width: Option<u32>,
     pub(crate) line_numbers: LineNumbers,
     pub(crate) font: Option<Font>,
+    pub(crate) comment_font: Option<Font>,
+    pub(crate) ligatures: bool,
+    pub(crate) mixed_fonts: Option<Arc<crate::font::PreparedFonts>>,
+}
+impl fmt::Debug for Style {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("Style")
+            .field("theme", &self.theme)
+            .field("appearance", &self.appearance)
+            .field("transparent", &self.transparent)
+            .field("padding", &self.padding)
+            .field("width", &self.width)
+            .field("line_numbers", &self.line_numbers)
+            .field("font", &self.font)
+            .field("comment_font", &self.comment_font)
+            .field("ligatures", &self.ligatures)
+            .finish()
+    }
 }
 impl Default for Style {
     fn default() -> Self {
@@ -180,6 +278,9 @@ impl Default for Style {
             width: None,
             line_numbers: LineNumbers::Auto,
             font: None,
+            comment_font: None,
+            ligatures: false,
+            mixed_fonts: None,
         }
     }
 }
@@ -195,6 +296,7 @@ impl Style {
     #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.theme = theme;
+        self.reset_mixed_fonts();
         self
     }
     /// Select a light or dark variant. Unsupported variants fail when rendered.
@@ -239,12 +341,39 @@ impl Style {
     #[must_use]
     pub fn font(mut self, font: Font) -> Self {
         self.font = Some(font);
+        self.reset_mixed_fonts();
         self
     }
     /// Restore the selected theme's bundled code font.
     #[must_use]
     pub fn theme_font(mut self) -> Self {
         self.font = None;
+        self.reset_mixed_fonts();
         self
+    }
+    /// Use a separate typeface for grammar-recognized comments and docstrings.
+    /// Other strings, code, line numbers and frame labels keep their own fonts.
+    #[must_use]
+    pub fn comment_font(mut self, font: Font) -> Self {
+        self.comment_font = Some(font);
+        self.reset_mixed_fonts();
+        self
+    }
+    /// Make comments inherit the code font again.
+    #[must_use]
+    pub fn comments_use_code_font(mut self) -> Self {
+        self.comment_font = None;
+        self.reset_mixed_fonts();
+        self
+    }
+    /// Enable coding ligatures (`liga`, `clig`, `calt`) supported by the font.
+    /// Disabled by default to match legacy frames. Enabling also removes letter spacing.
+    #[must_use]
+    pub fn ligatures(mut self, enabled: bool) -> Self {
+        self.ligatures = enabled;
+        self
+    }
+    fn reset_mixed_fonts(&mut self) {
+        self.mixed_fonts = self.comment_font.as_ref().map(|_| Arc::default());
     }
 }

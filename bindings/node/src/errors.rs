@@ -9,6 +9,7 @@ pub fn encode(error: Error) -> String {
     let (code, details) = match &error {
         Error::UnknownTheme(id) => ("UNKNOWN_THEME", json!({ "id": id })),
         Error::UnknownLanguage(id) => ("UNKNOWN_LANGUAGE", json!({ "id": id })),
+        Error::UnknownFont(id) => ("UNKNOWN_FONT", json!({ "id": id })),
         Error::InvalidFont => ("INVALID_FONT", json!({})),
         Error::UnsupportedGlyph {
             text,
@@ -17,7 +18,7 @@ pub fn encode(error: Error) -> String {
         } => (
             "UNSUPPORTED_GLYPH",
             json!({
-                "text": match text { TextRole::Code => "code", TextRole::Title => "title" },
+                "text": match text { TextRole::Code => "code", TextRole::Comment => "comment", TextRole::Title => "title" },
                 "character": character.to_string(), "codeFont": code_font,
             }),
         ),

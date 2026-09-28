@@ -9,7 +9,7 @@ use gpui_kit::{
     },
     *,
 };
-use monoprint::{Language, Renderer, Theme};
+use monoprint::{BundledFont, Language, Renderer, Theme};
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
 gpui_kit::actions!(
@@ -50,9 +50,14 @@ pub struct Studio {
     pub editor: Entity<EditorState>,
     pub title: Entity<InputState>,
     pub highlights: Entity<InputState>,
+    pub text_highlights: Entity<InputState>,
+    pub advanced: bool,
+    pub settings_scroll: ScrollHandle,
     pub width: Entity<InputState>,
     pub padding: Entity<InputState>,
     pub language: Entity<Choices>,
+    pub code_typeface: Entity<Choices>,
+    pub comment_typeface: Entity<Choices>,
     pub theme_search: Entity<InputState>,
     pub theme_scroll: UniformListScrollHandle,
     pub filtered_themes: Vec<usize>,
@@ -98,6 +103,7 @@ impl Studio {
         });
         let title = input(&document.title, "Optional filename", window, cx);
         let highlights = input(&document.highlights, "e.g. 2, 4-6", window, cx);
+        let text_highlights = input(&document.text_highlights, "e.g. 2:1-2:8", window, cx);
         let width = input(&document.width, "Auto", window, cx);
         let padding = input(&document.padding, "64", window, cx);
         let mut languages = Language::all()
@@ -108,6 +114,18 @@ impl Studio {
             .collect::<Vec<_>>();
         languages.sort_by_key(|a| a.name.to_lowercase());
         let language = choices(languages, &document.language, window, cx);
+        let code_typeface = choices(
+            typeface_items(&document, false),
+            document.typeface_selection(false),
+            window,
+            cx,
+        );
+        let comment_typeface = choices(
+            typeface_items(&document, true),
+            document.typeface_selection(true),
+            window,
+            cx,
+        );
         let theme_search = input("", "Find a theme…", window, cx);
         let thumbnails = crate::appearance::thumbnails();
         let theme_scroll = UniformListScrollHandle::new();
@@ -158,7 +176,13 @@ impl Studio {
                 }
             }),
         );
-        for (field, kind) in [(&title, 0), (&highlights, 1), (&width, 2), (&padding, 3)] {
+        for (field, kind) in [
+            (&title, 0),
+            (&highlights, 1),
+            (&width, 2),
+            (&padding, 3),
+            (&text_highlights, 4),
+        ] {
             subscriptions.push(cx.subscribe_in(
                 field,
                 window,
@@ -171,7 +195,8 @@ impl Studio {
                         0 => this.document.title = value,
                         1 => this.document.highlights = value,
                         2 => this.document.width = value,
-                        _ => this.document.padding = value,
+                        3 => this.document.padding = value,
+                        _ => this.document.text_highlights = value,
                     }
                     this.changed(cx);
                 },
@@ -186,6 +211,26 @@ impl Studio {
                 .update(cx, |state, cx| state.set_highlighter(id, cx));
             this.changed(cx);
         }));
+        for (field, comments) in [(&code_typeface, false), (&comment_typeface, true)] {
+            subscriptions.push(cx.subscribe_in(
+                field,
+                window,
+                move |this, _, event, window, cx| {
+                    let SelectEvent::Confirm(Some(id)) = event else {
+                        return;
+                    };
+                    if id == "custom" {
+                        // Keep the current choice visible until a file is accepted.
+                        this.sync_typeface(comments, window, cx);
+                        this.choose_font(comments, window, cx);
+                    } else {
+                        this.document.select_typeface(comments, id);
+                        this.sync_typeface(comments, window, cx);
+                        this.changed(cx);
+                    }
+                },
+            ));
+        }
         subscriptions.push(
             cx.subscribe_in(&theme_search, window, |this, entity, event, _, cx| {
                 if matches!(event, InputEvent::Change) {
@@ -224,9 +269,14 @@ impl Studio {
             editor,
             title,
             highlights,
+            text_highlights,
+            advanced: false,
+            settings_scroll: ScrollHandle::new(),
             width,
             padding,
             language,
+            code_typeface,
+            comment_typeface,
             theme_search,
             theme_scroll,
             filtered_themes: (0..thumbnails.len()).collect(),
@@ -282,6 +332,10 @@ impl Studio {
             state.replace_all(text, window, cx);
             state.focus(window, cx);
         });
+        self.highlights
+            .update(cx, |state, cx| state.replace_all("", window, cx));
+        self.text_highlights
+            .update(cx, |state, cx| state.replace_all("", window, cx));
     }
     pub fn open(&mut self, _: &OpenSource, window: &mut Window, cx: &mut Context<Self>) {
         let dialog = cx.prompt_for_paths(PathPromptOptions {
@@ -335,6 +389,7 @@ impl Studio {
         let language = Language::for_file_name(&path).unwrap_or_default();
         self.document.language = language.id().into();
         self.document.highlights.clear();
+        self.document.text_highlights.clear();
         self.document.title = self.source_name.clone();
         self.language.update(cx, |state, cx| {
             state.set_selected_value(&language.id().to_owned(), window, cx)
@@ -344,18 +399,47 @@ impl Studio {
         });
         self.highlights
             .update(cx, |state, cx| state.set_value("", window, cx));
+        self.text_highlights
+            .update(cx, |state, cx| state.set_value("", window, cx));
         self.editor.update(cx, |state, cx| {
             state.set_highlighter(language.id(), cx);
             state.set_value(source, window, cx);
         });
         self.changed(cx);
     }
-    pub fn choose_font(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn sync_typeface(&self, comments: bool, window: &mut Window, cx: &mut Context<Self>) {
+        let field = if comments {
+            &self.comment_typeface
+        } else {
+            &self.code_typeface
+        };
+        field.update(cx, |state, cx| {
+            state.set_items(
+                SearchableVec::new(typeface_items(&self.document, comments)),
+                window,
+                cx,
+            );
+            state.set_selected_value(
+                &self.document.typeface_selection(comments).to_owned(),
+                window,
+                cx,
+            );
+        });
+    }
+
+    pub fn choose_font(&mut self, comments: bool, window: &mut Window, cx: &mut Context<Self>) {
         let dialog = cx.prompt_for_paths(PathPromptOptions {
             files: true,
             directories: false,
             multiple: false,
-            prompt: Some("Choose a TTF or OTF font".into()),
+            prompt: Some(
+                if comments {
+                    "Choose a comment typeface (TTF or OTF)"
+                } else {
+                    "Choose a code typeface (TTF or OTF)"
+                }
+                .into(),
+            ),
         });
         cx.spawn_in(window, async move |this, cx| {
             let result = async {
@@ -374,9 +458,16 @@ impl Studio {
                 Ok::<_, anyhow::Error>(Some(path))
             }
             .await;
-            let _ = this.update(cx, |this, cx| match result {
+            let _ = this.update_in(cx, |this, window, cx| match result {
                 Ok(Some(path)) => {
-                    this.document.font_path = Some(path);
+                    if comments {
+                        this.document.comment_font_id = None;
+                        this.document.comment_font_path = Some(path);
+                    } else {
+                        this.document.font_id = None;
+                        this.document.font_path = Some(path);
+                    }
+                    this.sync_typeface(comments, window, cx);
                     this.changed(cx);
                 }
                 Ok(None) => {}
@@ -387,6 +478,51 @@ impl Studio {
             });
         })
         .detach();
+    }
+    pub fn highlight_selection(
+        &mut self,
+        whole_lines: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let range = self.editor.read(cx).selected_range();
+        if range.is_empty() {
+            self.notice = Some("Select text in the source editor first.".into());
+            cx.notify();
+            return;
+        }
+        let source = self.editor.read(cx).value().to_string();
+        let position = |offset: usize| {
+            let prefix = source[..offset].replace("\r\n", "\n").replace('\r', "\n");
+            (
+                prefix.bytes().filter(|byte| *byte == b'\n').count() + 1,
+                prefix.rsplit('\n').next().unwrap_or("").chars().count() + 1,
+            )
+        };
+        let start = position(range.start);
+        let end = position(range.end);
+        let (field, value) = if whole_lines {
+            let last_line = if end.1 == 1 && end.0 > start.0 {
+                end.0 - 1
+            } else {
+                end.0
+            };
+            (self.highlights.clone(), format!("{}-{last_line}", start.0))
+        } else {
+            (
+                self.text_highlights.clone(),
+                monoprint::TextRange::new(start, end).to_string(),
+            )
+        };
+        field.update(cx, |input, cx| {
+            let previous = input.value();
+            let value = if previous.trim().is_empty() {
+                value
+            } else {
+                format!("{previous}, {value}")
+            };
+            input.replace_all(value, window, cx);
+        });
     }
     pub fn export_file(&mut self, _: &ExportImage, window: &mut Window, cx: &mut Context<Self>) {
         if self.exporting || self.copy_state == CopyState::Copying {
@@ -500,6 +636,37 @@ fn choices(
         .position(|i| i.id == selected)
         .map(|row| gpui_kit::component::IndexPath::default().row(row));
     cx.new(|cx| SelectState::new(SearchableVec::new(items), index, window, cx).searchable(true))
+}
+
+fn typeface_items(document: &Document, comments: bool) -> Vec<Choice> {
+    let mut items = vec![Choice {
+        id: String::new(),
+        name: if comments {
+            "Same as code"
+        } else {
+            "Theme typeface"
+        }
+        .into(),
+    }];
+    items.extend(BundledFont::all().map(|font| Choice {
+        id: font.id().into(),
+        name: font.name().into(),
+    }));
+    let path = if comments {
+        &document.comment_font_path
+    } else {
+        &document.font_path
+    };
+    let label = path
+        .as_ref()
+        .and_then(|path| path.file_name())
+        .map(|name| format!("Custom · {}", name.to_string_lossy()))
+        .unwrap_or_else(|| "Choose font file…".into());
+    items.push(Choice {
+        id: "custom".into(),
+        name: label.into(),
+    });
+    items
 }
 impl Focusable for Studio {
     fn focus_handle(&self, _: &App) -> FocusHandle {

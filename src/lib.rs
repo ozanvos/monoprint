@@ -65,8 +65,8 @@ mod resample;
 
 pub use catalog::{Language, LineNumberPolicy, Theme};
 pub use error::{Error, InvalidOption, RenderError, TextRole};
-pub use font::Font;
-pub use options::{Appearance, LineNumbers, LineRange, Scale, Snippet, Style};
+pub use font::{BundledFont, Font};
+pub use options::{Appearance, LineNumbers, LineRange, Scale, Snippet, Style, TextRange};
 
 use giallo::Registry;
 use std::{
@@ -157,6 +157,16 @@ impl Renderer {
             .map_err(|e| Error::Render(RenderError(e.clone())))
     }
     fn fonts<'a>(&'a self, style: &'a Style, secondary: bool) -> Result<&'a Fonts, Error> {
+        if let (Some(comment_font), Some(cache)) = (&style.comment_font, &style.mixed_fonts) {
+            return font::cached_fonts(cache, || {
+                let mut fonts = self.code_fonts(style, secondary)?.clone();
+                comment_font.register_as(&mut fonts, "CommentFont")?;
+                Ok(fonts)
+            });
+        }
+        self.code_fonts(style, secondary)
+    }
+    fn code_fonts<'a>(&'a self, style: &'a Style, secondary: bool) -> Result<&'a Fonts, Error> {
         if let Some(font) = &style.font {
             return font.prepared(secondary);
         }
@@ -218,6 +228,9 @@ fn validate<'a>(snippet: &'a Snippet, style: &Style) -> Result<Cow<'a, str>, Err
             }
             .into());
         }
+    }
+    for range in &snippet.text_highlights {
+        range.resolve(&source)?;
     }
     Ok(source)
 }

@@ -72,6 +72,26 @@ mod macos {
         }
     }
 
+    fn inspector_click(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+        id: &'static str,
+    ) {
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let target = window.find(id).bounds();
+            let scroll = &studio.read(cx).settings_scroll;
+            scroll.set_offset(
+                scroll.offset() + point(px(0.), scroll.bounds().center().y - target.center().y),
+            );
+            window.render_frame(cx);
+            window.click(id, cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+    }
+
     pub fn run() {
         // Headless pixels cannot capture the WindowServer backdrop. Exercise the
         // actual AppKit view's material, blending, ownership and resizing instead.
@@ -389,8 +409,118 @@ mod macos {
             .unwrap();
             settle(&mut cx, handle, &studio);
             cx.read_entity(&studio, |s, _| assert!(s.error.is_none(), "{:?}", s.error));
+
+            // Advanced controls use the same renderer for preview and export.
+            // Selection coordinates must remain Unicode-aware after editor blur.
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.install_source(
+                        std::path::PathBuf::from("example.rs"),
+                        "// Another typeface\nlet café = 10;\nlet ok = café != 0;\n".into(),
+                        window,
+                        cx,
+                    );
+                    s.select_theme("removed-frame".parse().unwrap(), window, cx);
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            inspector_click(&mut cx, handle, &studio, "advanced-settings");
+            assert!(cx.read_entity(&studio, |s, _| s.advanced));
+            for (id, query) in [
+                ("code-typeface", "Fira Code"),
+                ("comment-typeface", "Space Mono"),
+            ] {
+                inspector_click(&mut cx, handle, &studio, id);
+                // Dropdown entry uses the renderer's wall clock, not the test executor clock.
+                std::thread::sleep(Duration::from_millis(180));
+                settle(&mut cx, handle, &studio);
+                capture(&mut cx, handle, &format!("{id}-menu-{}", width as u32));
+                cx.update_window(handle.into(), |_, window, cx| window.input(query, cx))
+                    .unwrap();
+                settle(&mut cx, handle, &studio);
+                cx.update_window(handle.into(), |_, window, cx| window.press("enter", cx))
+                    .unwrap();
+                settle(&mut cx, handle, &studio);
+            }
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.font_id.as_deref(), Some("fira-code"));
+                assert_eq!(s.document.comment_font_id.as_deref(), Some("space-mono"));
+                assert!(s.document.font_path.is_none());
+                assert!(s.document.comment_font_path.is_none());
+            });
+            inspector_click(&mut cx, handle, &studio, "coding-ligatures");
+            cx.read_entity(&studio, |s, _| {
+                assert!(s.document.ligatures);
+                assert!(s.error.is_none(), "{:?}", s.error);
+            });
+            capture(&mut cx, handle, &format!("advanced-fonts-{}", width as u32));
+            cx.update_window(handle.into(), |_, _, cx| {
+                studio.update(cx, |s, cx| {
+                    let start = s.document.source.find("café").unwrap();
+                    s.editor.update(cx, |editor, cx| {
+                        editor.set_selected_range(start..start + "café".len(), cx)
+                    });
+                });
+            })
+            .unwrap();
+            inspector_click(&mut cx, handle, &studio, "highlight-selection");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.text_highlights, "2:5-2:9")
+            });
+            cx.update_window(handle.into(), |_, _, cx| {
+                studio.update(cx, |s, cx| {
+                    let end = s.document.source.find("let ok").unwrap();
+                    s.editor
+                        .update(cx, |editor, cx| editor.set_selected_range(0..end, cx));
+                });
+            })
+            .unwrap();
+            inspector_click(&mut cx, handle, &studio, "highlight-selected-lines");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(
+                    s.document.highlights, "1-2",
+                    "a selection ending at column one excludes that line"
+                );
+                assert!(s.error.is_none(), "{:?}", s.error);
+            });
+            capture(
+                &mut cx,
+                handle,
+                &format!("advanced-highlights-{}", width as u32),
+            );
+            inspector_click(&mut cx, handle, &studio, "clear-highlights");
+            cx.read_entity(&studio, |s, _| {
+                assert!(s.document.highlights.is_empty());
+                assert!(s.document.text_highlights.is_empty());
+            });
+            inspector_click(&mut cx, handle, &studio, "reset-comment-font");
+            inspector_click(&mut cx, handle, &studio, "theme-font");
+            cx.read_entity(&studio, |s, _| {
+                assert!(s.document.font_path.is_none());
+                assert!(s.document.comment_font_path.is_none());
+                assert!(s.document.font_id.is_none());
+                assert!(s.document.comment_font_id.is_none());
+                assert!(s.error.is_none(), "{:?}", s.error);
+            });
+            inspector_click(&mut cx, handle, &studio, "highlight-selection");
+            cx.read_entity(&studio, |s, _| {
+                assert!(!s.document.text_highlights.is_empty())
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                cx.write_to_clipboard(ClipboardItem::new_string("replacement".into()));
+                window.click("paste-source", cx);
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.source, "replacement");
+                assert!(s.document.text_highlights.is_empty());
+                assert!(s.document.highlights.is_empty());
+                assert!(s.error.is_none(), "{:?}", s.error);
+            });
             println!(
-                "Studio {}×{}: render, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, validation and recovery passed",
+                "Studio {}×{}: render, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, advanced typography, source selections, validation and recovery passed",
                 width, height
             );
         }

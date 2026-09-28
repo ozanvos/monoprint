@@ -3,8 +3,8 @@ mod cli;
 use anyhow::{Context, Result, bail};
 use clap::Parser;
 use monoprint::{
-    Appearance, Font, Language, LineNumbers, MAX_FONT_BYTES, MAX_SOURCE_BYTES, Renderer, Scale,
-    Snippet, Style, Theme,
+    Appearance, BundledFont, Font, Language, LineNumbers, MAX_FONT_BYTES, MAX_SOURCE_BYTES,
+    Renderer, Scale, Snippet, Style, Theme,
 };
 use std::{
     fs,
@@ -25,6 +25,12 @@ fn read_source(reader: impl Read) -> Result<String> {
 
 fn run() -> Result<()> {
     let args = cli::Args::parse();
+    if args.list_fonts {
+        for font in BundledFont::all() {
+            println!("{:<24} {}", font.id(), font.name());
+        }
+        return Ok(());
+    }
     if args.list_themes {
         for theme in Theme::all() {
             println!(
@@ -88,6 +94,9 @@ fn run() -> Result<()> {
     for range in args.highlighted_ranges()? {
         snippet = snippet.highlight(range);
     }
+    for range in &args.highlight_text {
+        snippet = snippet.highlight_text(*range);
+    }
     let mut style = Style::new(args.theme.parse()?)
         .appearance(if args.light {
             Appearance::Light
@@ -96,6 +105,7 @@ fn run() -> Result<()> {
         })
         .transparent(args.transparent)
         .padding(args.padding)
+        .ligatures(args.ligatures)
         .line_numbers(if args.no_line_numbers {
             LineNumbers::Hide
         } else if args.line_numbers {
@@ -106,14 +116,28 @@ fn run() -> Result<()> {
     if let Some(width) = args.width {
         style = style.width(width);
     }
-    if let Some(path) = &args.font_file {
+    if let Some(font) = args.font {
+        style = style.font(font.font());
+    }
+    if let Some(font) = args.comment_font {
+        style = style.comment_font(font.font());
+    }
+    for (path, comment) in [(&args.font_file, false), (&args.comment_font_file, true)] {
+        let Some(path) = path else {
+            continue;
+        };
         let mut bytes = Vec::new();
         fs::File::open(path)
             .with_context(|| format!("opening font {}", path.display()))?
             .take(MAX_FONT_BYTES as u64 + 1)
             .read_to_end(&mut bytes)
             .with_context(|| format!("reading font {}", path.display()))?;
-        style = style.font(Font::from_bytes(bytes)?);
+        let font = Font::from_bytes(bytes)?;
+        style = if comment {
+            style.comment_font(font)
+        } else {
+            style.font(font)
+        };
     }
     let renderer = Renderer::new();
     let rendered = match format {

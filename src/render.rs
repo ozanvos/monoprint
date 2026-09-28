@@ -17,6 +17,15 @@ pub(crate) enum Format {
 
 fn validate_glyphs(bytes: &[u8], text: &str, role: TextRole, code_font: bool) -> Result<()> {
     let face = ttf_parser::Face::parse(bytes, 0).context("font must be a valid TTF or OTF file")?;
+    validate_face_glyphs(&face, text, role, code_font)
+}
+
+fn validate_face_glyphs(
+    face: &ttf_parser::Face<'_>,
+    text: &str,
+    role: TextRole,
+    code_font: bool,
+) -> Result<()> {
     for character in text.chars() {
         if matches!(character, '\n' | '\t' | '\r') {
             continue;
@@ -58,23 +67,51 @@ fn substitute(template: &str, values: &[(&str, &str)]) -> String {
     output
 }
 
-fn code_width(font: &[u8], source: &str) -> Result<f32> {
+fn code_width(
+    font: &[u8],
+    comment_font: Option<&[u8]>,
+    comments: &[std::ops::Range<usize>],
+    source: &str,
+    ligatures: bool,
+) -> Result<f32> {
     let face = ttf_parser::Face::parse(font, 0)?;
-    let unit = 15.0 / f32::from(face.units_per_em());
+    let comment_face = comment_font
+        .map(|bytes| ttf_parser::Face::parse(bytes, 0))
+        .transpose()?;
     let mut longest = 0.0_f32;
+    let mut line_start = 0;
+    let mut comment_index = 0;
     for line in source.split('\n') {
         let mut width = 0.0;
         let mut column = 0;
-        for character in line.chars() {
+        for (offset, character) in line.char_indices() {
+            let position = line_start + offset;
+            while comments
+                .get(comment_index)
+                .is_some_and(|range| range.end <= position)
+            {
+                comment_index += 1;
+            }
+            let face = if comments
+                .get(comment_index)
+                .is_some_and(|range| range.contains(&position))
+            {
+                comment_face.as_ref().unwrap_or(&face)
+            } else {
+                &face
+            };
+            let unit = 15.0 / f32::from(face.units_per_em());
             let count = if character == '\t' { 2 - column % 2 } else { 1 };
             let glyph = face
                 .glyph_index(if character == '\t' { ' ' } else { character })
                 .context("missing glyph")?;
-            width +=
-                count as f32 * (f32::from(face.glyph_hor_advance(glyph).unwrap_or(0)) * unit + 0.1);
+            width += count as f32
+                * (f32::from(face.glyph_hor_advance(glyph).unwrap_or(0)) * unit
+                    + if ligatures { 0.0 } else { 0.1 });
             column += count;
         }
         longest = longest.max(width);
+        line_start += line.len() + 1;
     }
     Ok(longest.max(1.0))
 }
@@ -95,8 +132,37 @@ pub(crate) fn export(
         .as_ref()
         .map(|font| font.bytes())
         .unwrap_or_else(|| assets::font(&theme.font));
-    validate_glyphs(font, source, TextRole::Code, true)?;
-    let code = highlight::code(renderer.registry()?, snippet, source, theme, mode)?;
+    let code = highlight::code(
+        renderer.registry()?,
+        snippet,
+        source,
+        theme,
+        mode,
+        style.comment_font.is_some(),
+    )?;
+    if let Some(comment_font) = &style.comment_font {
+        let code_face = ttf_parser::Face::parse(font, 0)?;
+        let comment_face = ttf_parser::Face::parse(comment_font.bytes(), 0)?;
+        let mut offset = 0;
+        for range in &code.comments {
+            validate_face_glyphs(
+                &code_face,
+                &source[offset..range.start],
+                TextRole::Code,
+                true,
+            )?;
+            validate_face_glyphs(
+                &comment_face,
+                &source[range.clone()],
+                TextRole::Comment,
+                false,
+            )?;
+            offset = range.end;
+        }
+        validate_face_glyphs(&code_face, &source[offset..], TextRole::Code, true)?;
+    } else {
+        validate_glyphs(font, source, TextRole::Code, true)?;
+    }
     let numbers = code.language != "plain"
         && match style.theme.line_numbers() {
             LineNumberPolicy::Fixed(value) => value,
@@ -179,6 +245,12 @@ pub(crate) fn export(
     let mut css = format!(
         "{base_css}\n#capture{{{width}}}.Editor__editor{{display:block}}.Editor__editor:after{{content:none}}.Editor__formatted{{font-family:CodeMono;font-size:14.9px;font-variant-ligatures:none;font-feature-settings:'liga' 0,'calt' 0}}[data-export-input]{{display:block}}.DefaultFrame__header .DefaultFrame__fileName>[data-export-input]{{display:flex;align-items:center;justify-content:center}}\n"
     );
+    if style.ligatures {
+        css += ".Editor__formatted{font-variant-ligatures:common-ligatures contextual;font-feature-settings:'liga' 1,'clig' 1,'calt' 1;letter-spacing:0}";
+    }
+    if !snippet.text_highlights.is_empty() {
+        css += ".Editor__editor .highlighted-text{background-color:var(--ink-highlight,rgba(128,128,128,0.28))}";
+    }
     // All image URLs are resolved from the embedded asset bundle; no network access.
     for (name, data) in assets::images() {
         template = template.replace(&format!("asset:{name}"), data);
@@ -187,7 +259,14 @@ pub(crate) fn export(
     if style.width.is_none() {
         css += &format!(
             ".Editor__formatted>pre{{width:{}px}}",
-            code_width(font, source)?.ceil()
+            code_width(
+                font,
+                style.comment_font.as_ref().map(|font| font.bytes()),
+                &code.comments,
+                source,
+                style.ligatures
+            )?
+            .ceil()
         );
     }
     let fill_template = |template: &str| {
@@ -254,6 +333,9 @@ pub(crate) fn export(
     }
     if format == Format::Html {
         let mut fonts = font_face("CodeMono", font) + &font_face("Inter", assets::font("inter"));
+        if let Some(font) = &style.comment_font {
+            fonts += &font_face("CommentFont", font.bytes());
+        }
         if secondary_font {
             fonts += &font_face("IBM Plex Mono", assets::font("ibm-plex-mono"));
         }

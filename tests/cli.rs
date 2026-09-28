@@ -212,6 +212,120 @@ fn custom_fonts_are_bounded_and_titles_use_their_actual_font() {
 }
 
 #[test]
+fn advanced_typography_and_text_highlights_reach_every_export() {
+    let w = Workspace::new();
+    let fonts = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/fonts");
+    let code = fonts.join("fira-code.ttf");
+    let comments = fonts.join("space-mono.ttf");
+    let listed = String::from_utf8(success(w.run(&["--list-fonts"], ""))).unwrap();
+    for font in monoprint::BundledFont::all() {
+        assert!(listed.contains(font.id()));
+        assert!(listed.contains(font.name()));
+    }
+    for format in ["png", "svg", "html"] {
+        assert_eq!(
+            success(w.run(
+                &[
+                    "--font",
+                    "fira-code",
+                    "--comment-font",
+                    "space-mono",
+                    "-l",
+                    "rust",
+                    "-o",
+                    "-",
+                    "--format",
+                    format
+                ],
+                "let x = 1; // comment"
+            )),
+            success(w.run(
+                &[
+                    "--font-file",
+                    code.to_str().unwrap(),
+                    "--comment-font-file",
+                    comments.to_str().unwrap(),
+                    "-l",
+                    "rust",
+                    "-o",
+                    "-",
+                    "--format",
+                    format
+                ],
+                "let x = 1; // comment"
+            ))
+        );
+    }
+    for format in ["png", "svg", "html"] {
+        let bytes = success(w.run(
+            &[
+                "-l",
+                "rust",
+                "--font-file",
+                code.to_str().unwrap(),
+                "--comment-font-file",
+                comments.to_str().unwrap(),
+                "--ligatures",
+                "--highlight",
+                "2",
+                "--highlight-text",
+                "1:5-1:9",
+                "--highlight-text",
+                "2:4-2:11",
+                "-o",
+                "-",
+                "--format",
+                format,
+            ],
+            "let café = 1;\n// comment\n",
+        ));
+        assert!(!bytes.is_empty());
+        if format == "html" {
+            let html = String::from_utf8(bytes).unwrap();
+            assert!(html.contains("font-family:CommentFont;"));
+            assert!(html.contains("class=\"highlighted-text\""));
+        }
+    }
+    assert_eq!(
+        success(w.run(&["-o", "-", "--format", "svg"], "a => b")),
+        success(w.run(&["--no-ligatures", "-o", "-", "--format", "svg"], "a => b"))
+    );
+    for (args, message) in [
+        (vec!["--font", "missing"], "unknown bundled font"),
+        (
+            vec!["--font", "fira-code", "--font-file", "unused.ttf"],
+            "cannot be used with",
+        ),
+        (
+            vec![
+                "--comment-font",
+                "inter",
+                "--comment-font-file",
+                "unused.ttf",
+            ],
+            "cannot be used with",
+        ),
+        (vec!["--ligatures", "--no-ligatures"], "cannot be used with"),
+        (vec!["--highlight-text", "1-2"], "invalid text highlight"),
+        (vec!["--highlight-text", "1:1-2:1"], "outside the source"),
+    ] {
+        let mut command = vec!["-o", "out.png"];
+        command.extend(args);
+        failure(w.run(&command, "x"), message);
+        assert!(!w.0.join("out.png").exists());
+    }
+    fs::File::create(w.0.join("large.ttf"))
+        .unwrap()
+        .set_len(64 * 1024 * 1024 + 1)
+        .unwrap();
+    failure(
+        w.run(&["--comment-font-file", "large.ttf", "-o", "out.png"], "x"),
+        "font exceeds 64 MiB",
+    );
+    assert!(!w.0.join("out.png").exists());
+}
+
+#[test]
 fn stripe_geometry_does_not_rewrite_source_text() {
     let w = Workspace::new();
     let source = format!("StripeFrame__isSmall\n{}", "\n".repeat(12));

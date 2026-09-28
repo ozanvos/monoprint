@@ -39,6 +39,7 @@ impl PreviewWorker {
             .name("monoprint-preview".into())
             .spawn(move || {
                 let mut fonts = FontCache::default();
+                let mut comment_fonts = FontCache::default();
                 loop {
                     let (lock, wake) = &*shared;
                     let mut state = lock.lock().unwrap();
@@ -68,8 +69,15 @@ impl PreviewWorker {
                         .map(|e| e.to_string());
                     let start = Instant::now();
                     let result = (|| -> anyhow::Result<Preview> {
-                        let font = fonts.load(document.font_path.as_deref())?;
-                        let (snippet, style) = document.prepare(font)?;
+                        let font = fonts.load_selection(
+                            document.font_id.as_deref(),
+                            document.font_path.as_deref(),
+                        )?;
+                        let comments = comment_fonts.load_selection(
+                            document.comment_font_id.as_deref(),
+                            document.comment_font_path.as_deref(),
+                        )?;
+                        let (snippet, style) = document.prepare(font, comments)?;
                         let png = renderer.png(&snippet, &style, Scale::X2)?;
                         let width = u32::from_be_bytes(png[16..20].try_into()?);
                         let height = u32::from_be_bytes(png[20..24].try_into()?);

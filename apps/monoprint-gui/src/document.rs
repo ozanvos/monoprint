@@ -48,9 +48,14 @@ pub struct Document {
     pub width: String,
     pub title: String,
     pub highlights: String,
+    pub text_highlights: String,
+    pub ligatures: bool,
     pub scale: u32,
     pub format: Format,
     pub font_path: Option<PathBuf>,
+    pub comment_font_path: Option<PathBuf>,
+    pub font_id: Option<String>,
+    pub comment_font_id: Option<String>,
 }
 impl Default for Document {
     fn default() -> Self {
@@ -65,15 +70,46 @@ impl Default for Document {
             width: "720".into(),
             title: "".into(),
             highlights: "".into(),
+            text_highlights: "".into(),
+            ligatures: false,
             scale: 2,
             format: Format::Png,
             font_path: None,
+            comment_font_path: None,
+            font_id: None,
+            comment_font_id: None,
         }
     }
 }
 
 impl Document {
-    pub fn prepare(&self, font: Option<Font>) -> Result<(Snippet, Style)> {
+    pub fn typeface_selection(&self, comments: bool) -> &str {
+        let (id, path) = if comments {
+            (&self.comment_font_id, &self.comment_font_path)
+        } else {
+            (&self.font_id, &self.font_path)
+        };
+        id.as_deref()
+            .unwrap_or(if path.is_some() { "custom" } else { "" })
+    }
+
+    /// Select a bundled ID, or an empty ID to restore inheritance.
+    pub fn select_typeface(&mut self, comments: bool, id: &str) {
+        let id = (!id.is_empty()).then(|| id.to_owned());
+        if comments {
+            self.comment_font_id = id;
+            self.comment_font_path = None;
+        } else {
+            self.font_id = id;
+            self.font_path = None;
+        }
+    }
+
+    pub fn prepare(
+        &self,
+        font: Option<Font>,
+        comment_font: Option<Font>,
+    ) -> Result<(Snippet, Style)> {
         ensure!(
             self.source.len() <= monoprint::MAX_SOURCE_BYTES,
             "Code is too large. Use a snippet smaller than 1 MiB."
@@ -99,6 +135,7 @@ impl Document {
             .appearance(appearance)
             .padding(padding)
             .transparent(self.transparent)
+            .ligatures(self.ligatures)
             .line_numbers(if self.numbers {
                 LineNumbers::Show
             } else {
@@ -120,6 +157,9 @@ impl Document {
         if let Some(font) = font {
             style = style.font(font);
         }
+        if let Some(font) = comment_font {
+            style = style.comment_font(font);
+        }
         let mut snippet = Snippet::new(&self.source).language(self.language.parse::<Language>()?);
         if !self.title.is_empty() {
             snippet = snippet.title(&self.title);
@@ -132,6 +172,13 @@ impl Document {
             .count();
         for (start, end) in highlight_ranges(&self.highlights, lines)? {
             snippet = snippet.highlight(start..=end);
+        }
+        for range in self
+            .text_highlights
+            .split(',')
+            .filter(|value| !value.trim().is_empty())
+        {
+            snippet = snippet.highlight_text(range.parse()?);
         }
         Ok((snippet, style))
     }
@@ -196,6 +243,16 @@ pub struct FontCache {
     current: Option<(PathBuf, std::time::SystemTime, u64, Font)>,
 }
 impl FontCache {
+    pub fn load_selection(
+        &mut self,
+        id: Option<&str>,
+        path: Option<&Path>,
+    ) -> Result<Option<Font>> {
+        if let Some(id) = id {
+            return Ok(Some(id.parse::<monoprint::BundledFont>()?.font()));
+        }
+        self.load(path)
+    }
     pub fn load(&mut self, path: Option<&Path>) -> Result<Option<Font>> {
         let Some(path) = path else { return Ok(None) };
         let metadata = fs::metadata(path)
@@ -220,8 +277,13 @@ impl FontCache {
 }
 
 pub fn export(renderer: &Renderer, document: &Document, format: Format) -> Result<Vec<u8>> {
-    let font = FontCache::default().load(document.font_path.as_deref())?;
-    let (snippet, style) = document.prepare(font)?;
+    let font = FontCache::default()
+        .load_selection(document.font_id.as_deref(), document.font_path.as_deref())?;
+    let comments = FontCache::default().load_selection(
+        document.comment_font_id.as_deref(),
+        document.comment_font_path.as_deref(),
+    )?;
+    let (snippet, style) = document.prepare(font, comments)?;
     Ok(match format {
         Format::Png => renderer.png(&snippet, &style, Scale::try_from(document.scale)?)?,
         Format::Svg => renderer.svg(&snippet, &style)?.into_bytes(),
@@ -362,9 +424,9 @@ mod tests {
         d.select_theme("removed-frame".parse().unwrap());
         assert!(!d.light);
         d.width = "150".into();
-        assert!(d.prepare(None).is_err());
+        assert!(d.prepare(None, None).is_err());
         d.width.clear();
-        assert!(d.prepare(None).is_ok());
+        assert!(d.prepare(None, None).is_ok());
     }
     #[test]
     fn output_extension_never_redirects_an_approved_overwrite() {
@@ -413,9 +475,24 @@ mod tests {
             transparent: true,
             numbers: true,
             highlights: "2,4-6".into(),
+            text_highlights: "1:4-1:10, 2:6-2:11".into(),
+            ligatures: true,
+            font_path: Some(
+                Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/fonts/fira-code.ttf"),
+            ),
+            comment_font_path: Some(
+                Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/fonts/space-mono.ttf"),
+            ),
             ..Default::default()
         };
-        let (snippet, style) = d.prepare(None).unwrap();
+        let (snippet, style) = d
+            .prepare(
+                FontCache::default().load(d.font_path.as_deref()).unwrap(),
+                FontCache::default()
+                    .load(d.comment_font_path.as_deref())
+                    .unwrap(),
+            )
+            .unwrap();
         assert_eq!(
             export(&renderer, &d, Format::Png).unwrap(),
             renderer.png(&snippet, &style, Scale::X2).unwrap()
@@ -437,6 +514,10 @@ mod tests {
             source: "\tfn main() {}\n\n".into(),
             transparent: true,
             highlights: "1-2".into(),
+            text_highlights: "1:2-1:4".into(),
+            ligatures: true,
+            font_path: Some("code.ttf".into()),
+            comment_font_path: Some("comments.otf".into()),
             ..Default::default()
         };
         save_session(&path, &d).unwrap();
@@ -444,5 +525,25 @@ mod tests {
         assert_eq!(restored.source, d.source);
         assert!(restored.transparent);
         assert_eq!(restored.highlights, "1-2");
+        assert_eq!(restored.text_highlights, d.text_highlights);
+        assert!(restored.ligatures);
+        assert_eq!(restored.font_path, d.font_path);
+        assert_eq!(restored.comment_font_path, d.comment_font_path);
+        let old: Document = serde_json::from_str(r#"{"source":"old draft"}"#).unwrap();
+        assert!(!old.ligatures);
+        assert!(old.comment_font_path.is_none());
+        assert!(old.text_highlights.is_empty());
+        assert!(old.font_id.is_none());
+        assert!(old.comment_font_id.is_none());
+        let mut named = restored;
+        named.select_typeface(false, "fira-code");
+        named.select_typeface(true, "inter");
+        assert!(named.font_path.is_none());
+        assert!(named.comment_font_path.is_none());
+        save_session(&path, &named).unwrap();
+        let named = load_session(&path).unwrap();
+        assert_eq!(named.typeface_selection(false), "fira-code");
+        assert_eq!(named.typeface_selection(true), "inter");
+        assert!(export(&Renderer::new(), &named, Format::Png).is_ok());
     }
 }

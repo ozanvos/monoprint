@@ -56,15 +56,37 @@ pub struct Args {
     /// Highlight source lines, e.g. 1,3-5.
     #[arg(long, default_value = "")]
     pub highlight: String,
+    /// Highlight exact text: one-based line:column-line:column, end exclusive.
+    /// Repeat for multiple ranges. Columns count Unicode characters, not bytes.
+    #[arg(long, value_name = "RANGE")]
+    pub highlight_text: Vec<monoprint::TextRange>,
+    /// Bundled code typeface ID; see --list-fonts. Defaults to the theme's font.
+    #[arg(long, conflicts_with = "font_file")]
+    pub font: Option<monoprint::BundledFont>,
+    /// Bundled comment typeface ID; defaults to the code font.
+    #[arg(long, conflicts_with = "comment_font_file")]
+    pub comment_font: Option<monoprint::BundledFont>,
     /// Override the code font with a locally supplied TTF or OTF font.
     #[arg(long)]
     pub font_file: Option<PathBuf>,
+    /// Separate TTF/OTF typeface for grammar-recognized comments and docstrings.
+    #[arg(long)]
+    pub comment_font_file: Option<PathBuf>,
+    /// Enable coding ligatures supported by the selected fonts (off by default).
+    #[arg(long, conflicts_with = "no_ligatures")]
+    pub ligatures: bool,
+    /// Disable coding ligatures (default).
+    #[arg(long)]
+    pub no_ligatures: bool,
     #[arg(long)]
     pub force: bool,
     #[arg(long, conflicts_with = "list_languages")]
     pub list_themes: bool,
     #[arg(long)]
     pub list_languages: bool,
+    /// List bundled typeface IDs and family names.
+    #[arg(long, conflicts_with_all = ["list_themes", "list_languages"])]
+    pub list_fonts: bool,
 }
 
 impl Args {

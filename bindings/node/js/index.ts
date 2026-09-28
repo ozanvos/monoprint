@@ -57,7 +57,7 @@ export interface LanguageInfo {
 }
 
 export type ErrorCode = 'INVALID_ARGUMENT' | 'INVALID_OPTION' | 'UNKNOWN_THEME'
-  | 'UNKNOWN_LANGUAGE' | 'INVALID_FONT' | 'UNSUPPORTED_GLYPH' | 'IMAGE_TOO_LARGE'
+  | 'UNKNOWN_LANGUAGE' | 'UNKNOWN_FONT' | 'INVALID_FONT' | 'UNSUPPORTED_GLYPH' | 'IMAGE_TOO_LARGE'
   | 'RENDER_FAILED' | 'NATIVE_BINDING_UNAVAILABLE';
 
 /** Stable machine-readable fields; error messages remain human-facing. */
@@ -73,7 +73,7 @@ export interface ErrorDetails {
   readonly start?: number;
   readonly end?: number;
   readonly lineCount?: number;
-  readonly text?: 'code' | 'title';
+  readonly text?: 'code' | 'comment' | 'title';
   readonly character?: string;
   readonly codeFont?: boolean;
   readonly width?: number;
