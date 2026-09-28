@@ -1,4 +1,5 @@
 use crate::{
+    canvas_resize::{CanvasResize, ResizeEdge},
     document::{self, Document, Format},
     preview::{Preview, PreviewWorker},
     viewport::PreviewViewport,
@@ -114,6 +115,8 @@ pub struct Studio {
     pub exporting: bool,
     pub copy_state: CopyState,
     pub viewport: PreviewViewport,
+    pub canvas_resize: Option<CanvasResize>,
+    live_preview_since: Option<u64>,
     pub theme_filter: ThemeFilter,
     pub wrap: bool,
     pub source_name: String,
@@ -196,7 +199,12 @@ impl Studio {
             while let Ok(completion) = results.recv().await {
                 if this
                     .update(cx, |this, cx| {
-                        if completion.revision != this.revision {
+                        let current = completion.revision == this.revision;
+                        let live = this.live_preview_since.is_some_and(|start| {
+                            completion.revision >= start
+                                && completion.revision > this.preview_revision
+                        });
+                        if !current && (!live || completion.result.is_err()) {
                             return;
                         }
                         this.preview_revision = completion.revision;
@@ -215,6 +223,10 @@ impl Studio {
                         }
                         if let Some(error) = completion.session_error {
                             this.notice = Some(format!("Session could not be saved: {error}"));
+                        }
+                        this.sync_canvas_resize();
+                        if current {
+                            this.live_preview_since = None;
                         }
                         cx.notify();
                     })
@@ -379,6 +391,8 @@ impl Studio {
             exporting: false,
             copy_state: CopyState::Idle,
             viewport: PreviewViewport::default(),
+            canvas_resize: None,
+            live_preview_since: None,
             theme_filter: ThemeFilter::All,
             wrap: true,
             source_name,
@@ -404,11 +418,105 @@ impl Studio {
     }
 
     pub fn changed(&mut self, cx: &mut Context<Self>) {
+        self.canvas_resize = None;
+        self.live_preview_since = None;
         self.revision += 1;
         self.error = None;
         self.notice = None;
         self.worker.request(self.revision, self.document.clone());
         cx.notify();
+    }
+
+    pub fn begin_canvas_resize(
+        &mut self,
+        edge: ResizeEdge,
+        position: Point<Pixels>,
+        cx: &mut Context<Self>,
+    ) {
+        let Some((_, preview)) = &self.preview else {
+            return;
+        };
+        if self.canvas_resize.is_some() {
+            return;
+        }
+        let Some(padding) = self
+            .document
+            .padding
+            .trim()
+            .parse::<u32>()
+            .ok()
+            .filter(|padding| *padding <= 512)
+        else {
+            return;
+        };
+        let image = size(
+            px(preview.width as f32 / 2.),
+            px(preview.height as f32 / 2.),
+        );
+        self.viewport.end_drag();
+        self.canvas_resize = Some(CanvasResize::new(
+            edge,
+            position,
+            image,
+            &self.viewport,
+            document::width_range(padding),
+        ));
+        cx.notify();
+    }
+
+    pub fn update_canvas_resize(
+        &mut self,
+        position: Point<Pixels>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(resize) = &mut self.canvas_resize else {
+            return;
+        };
+        if !resize.dragging || !resize.update(position) {
+            return;
+        }
+        self.document.width = resize.width.to_string();
+        self.width.update(cx, |field, cx| {
+            field.set_value(self.document.width.clone(), window, cx)
+        });
+        self.sync_canvas_resize();
+        self.revision += 1;
+        self.error = None;
+        self.notice = None;
+        self.live_preview_since.get_or_insert(self.revision);
+        self.worker
+            .request_live(self.revision, self.document.clone());
+        cx.notify();
+    }
+
+    pub fn end_canvas_resize(&mut self, cx: &mut Context<Self>) {
+        if let Some(resize) = &mut self.canvas_resize {
+            resize.dragging = false;
+        }
+        self.sync_canvas_resize();
+        cx.notify();
+    }
+
+    fn sync_canvas_resize(&mut self) {
+        let Some(resize) = &self.canvas_resize else {
+            return;
+        };
+        if resize.changed
+            && let Some((_, preview)) = &self.preview
+        {
+            let width = px(preview.width as f32 / 2.);
+            let height = px(preview.height as f32 / 2.);
+            self.viewport.zoom = crate::viewport::PreviewZoom::Custom(resize.scale);
+            self.viewport.pan = resize.origin(width)
+                - point(
+                    (self.viewport.bounds.size.width - width * resize.scale) / 2.,
+                    (self.viewport.bounds.size.height - height * resize.scale) / 2.,
+                );
+        }
+        if !resize.dragging && (!resize.changed || self.preview_revision == self.revision) {
+            self.canvas_resize = None;
+        }
     }
     pub fn filter_themes(&mut self, cx: &mut Context<Self>) {
         let query = self.theme_search.read(cx).value().trim().to_lowercase();

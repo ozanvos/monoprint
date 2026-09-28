@@ -1,4 +1,5 @@
 mod appearance;
+mod canvas_resize;
 mod document;
 #[cfg(target_os = "macos")]
 mod material;

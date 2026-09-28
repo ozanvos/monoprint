@@ -1,4 +1,6 @@
-use crate::{appearance::*, document::Format, studio::*, viewport::PreviewZoom};
+use crate::{
+    appearance::*, canvas_resize::ResizeEdge, document::Format, studio::*, viewport::PreviewZoom,
+};
 use gpui_kit::assets::IconName;
 use gpui_kit::{
     component::{
@@ -7,6 +9,7 @@ use gpui_kit::{
         scroll::Scrollbar,
         select::Select,
         switch::Switch,
+        tooltip::Tooltip,
         *,
     },
     prelude::*,
@@ -456,6 +459,10 @@ impl Studio {
             .overflow_hidden()
             .flex()
             .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| {
+                if this.canvas_resize.is_some() {
+                    cx.stop_propagation();
+                    return;
+                }
                 if let Some(image) = this.preview_size() {
                     this.viewport
                         .pan_by(event.delta.pixel_delta(px(24.)), image);
@@ -464,6 +471,10 @@ impl Studio {
                 }
             }))
             .on_pinch(cx.listener(|this, event: &PinchEvent, _, cx| {
+                if this.canvas_resize.is_some() {
+                    cx.stop_propagation();
+                    return;
+                }
                 if let Some(image) = this.preview_size() {
                     this.viewport.zoom_by(event.delta, event.position, image);
                     cx.stop_propagation();
@@ -473,7 +484,7 @@ impl Studio {
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|this, event: &MouseDownEvent, _, cx| {
-                    if this.preview.is_some() {
+                    if this.preview.is_some() && this.canvas_resize.is_none() {
                         this.viewport.start_drag(event.position);
                         cx.stop_propagation();
                         cx.notify();
@@ -482,11 +493,28 @@ impl Studio {
             );
         if let Some((image, preview)) = &self.preview {
             let image_size = self.preview_size().unwrap();
-            self.viewport.constrain_pan(image_size);
-            let origin = self.viewport.origin(image_size);
-            let displayed = image_size.map(|length| length * self.viewport.scale(image_size));
+            if self.canvas_resize.is_none() {
+                self.viewport.constrain_pan(image_size);
+            }
+            let scale = self.viewport.scale(image_size);
+            let displayed = image_size.map(|length| length * scale);
+            let image_origin = self.viewport.origin(image_size);
+            let (origin, width) = self
+                .canvas_resize
+                .as_ref()
+                .map(|resize| {
+                    let width = px(resize.width as f32);
+                    (resize.origin(width), width * resize.scale)
+                })
+                .unwrap_or((image_origin, displayed.width));
+            let active = self.canvas_resize.is_some();
+            let handle_y = ((px(0.) - origin.y).max(px(0.))
+                + (size.height - origin.y).min(displayed.height))
+                / 2.;
             stage = stage
-                .cursor(if self.viewport.is_dragging() {
+                .cursor(if active {
+                    CursorStyle::ResizeLeftRight
+                } else if self.viewport.is_dragging() {
                     CursorStyle::ClosedHand
                 } else {
                     CursorStyle::OpenHand
@@ -496,14 +524,33 @@ impl Studio {
                         .absolute()
                         .left(origin.x)
                         .top(origin.y)
-                        .w(displayed.width)
+                        .w(width)
                         .h(displayed.height)
-                        .child(canvas_checker(p))
                         .child(
-                            img(image.clone())
+                            div()
+                                .relative()
                                 .size_full()
-                                .object_fit(ObjectFit::Contain),
+                                .overflow_hidden()
+                                .child(canvas_checker(p))
+                                // Keep the cached pixels at their natural scale until
+                                // the worker returns reflowed code for the new width.
+                                .child(
+                                    img(image.clone())
+                                        .absolute()
+                                        .left(image_origin.x - origin.x)
+                                        .top_0()
+                                        .w(displayed.width)
+                                        .h(displayed.height)
+                                        .object_fit(ObjectFit::Contain),
+                                ),
                         )
+                        .child(div().absolute().inset_0().border_1().border_color(
+                            rgb(if active { p.accent } else { p.strong }).opacity(if active {
+                                1.
+                            } else {
+                                0.5
+                            }),
+                        ))
                         .child(
                             div()
                                 .absolute()
@@ -511,9 +558,53 @@ impl Studio {
                                 .w_full()
                                 .text_size(px(10.))
                                 .text_color(rgb(p.muted))
-                                .child(format!("{} × {}", preview.width / 2, preview.height / 2)),
+                                .child(if active && self.revision != self.preview_revision {
+                                    format!("{} px wide · Updating…", self.document.width)
+                                } else {
+                                    format!("{} × {}", preview.width / 2, preview.height / 2)
+                                }),
                         ),
                 );
+            for (id, edge, x) in [
+                ("resize-image-left", ResizeEdge::Left, origin.x),
+                ("resize-image-right", ResizeEdge::Right, origin.x + width),
+            ] {
+                stage = stage.child(
+                    div()
+                        .id(id)
+                        .absolute()
+                        .left(x - px(12.))
+                        .top(origin.y + handle_y - px(22.))
+                        .w(px(24.))
+                        .h(px(44.))
+                        .flex()
+                        .items_center()
+                        .justify_center()
+                        .cursor(CursorStyle::ResizeLeftRight)
+                        .aria_label("Resize image width")
+                        .tooltip(|window, cx| {
+                            Tooltip::new("Drag to resize image width · height follows code")
+                                .build(window, cx)
+                        })
+                        .child(
+                            div()
+                                .w(px(7.))
+                                .h(px(28.))
+                                .rounded(px(4.))
+                                .bg(rgb(p.control))
+                                .border_1()
+                                .border_color(rgb(p.accent)),
+                        )
+                        .on_mouse_down(
+                            MouseButton::Left,
+                            cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+                                this.begin_canvas_resize(edge, event.position, cx);
+                                cx.stop_propagation();
+                            }),
+                        )
+                        .test_support(),
+                );
+            }
         } else {
             stage = stage.child(
                 div()
@@ -539,12 +630,23 @@ impl Studio {
                 cx.processor(|this, bounds, _, _| this.viewport.bounds = bounds),
                 move |_, _, window, _| {
                     let moving = studio.clone();
-                    window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx| {
+                    window.on_mouse_event(move |event: &MouseMoveEvent, phase, window, cx| {
                         if !phase.capture() {
                             return;
                         }
                         let _ = moving.update(cx, |this, cx| {
-                            if this.viewport.is_dragging() {
+                            if this
+                                .canvas_resize
+                                .as_ref()
+                                .is_some_and(|resize| resize.dragging)
+                            {
+                                if event.pressed_button == Some(MouseButton::Left) {
+                                    this.update_canvas_resize(event.position, window, cx);
+                                } else {
+                                    this.end_canvas_resize(cx);
+                                }
+                                cx.stop_propagation();
+                            } else if this.viewport.is_dragging() {
                                 if event.pressed_button == Some(MouseButton::Left) {
                                     if let Some(image) = this.preview_size() {
                                         this.viewport.drag_to(event.position, image);
@@ -557,10 +659,18 @@ impl Studio {
                             }
                         });
                     });
-                    window.on_mouse_event(move |event: &MouseUpEvent, phase, _, cx| {
+                    window.on_mouse_event(move |event: &MouseUpEvent, phase, window, cx| {
                         if phase.capture() && event.button == MouseButton::Left {
                             let _ = studio.update(cx, |this, cx| {
-                                if this.viewport.is_dragging() {
+                                if this
+                                    .canvas_resize
+                                    .as_ref()
+                                    .is_some_and(|resize| resize.dragging)
+                                {
+                                    this.update_canvas_resize(event.position, window, cx);
+                                    this.end_canvas_resize(cx);
+                                    cx.stop_propagation();
+                                } else if this.viewport.is_dragging() {
                                     this.viewport.end_drag();
                                     cx.stop_propagation();
                                     cx.notify();
@@ -652,6 +762,7 @@ impl Studio {
                                     .selected(self.viewport.zoom == zoom)
                                     .toggled(self.viewport.zoom == zoom)
                                     .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.canvas_resize = None;
                                         this.viewport.reset(zoom);
                                         cx.notify();
                                     }))

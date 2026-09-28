@@ -12,6 +12,11 @@ use std::{
 
 pub const EXAMPLE: &str = "// A little code. A lasting impression.\ntype Theme = { name: string; dark: boolean };\n\nexport function print(theme: Theme): string {\n  const scale = 2;\n  return `${theme.name} at ${scale}×`;\n}\n\nprint({ name: \"Monoprint\", dark: true });";
 
+/// Valid outer widths after padding has been validated (0–512 px).
+pub fn width_range(padding: u32) -> std::ops::RangeInclusive<u32> {
+    (2 * padding + 49).max(80)..=8192
+}
+
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 pub enum Format {
     #[default]
@@ -164,9 +169,9 @@ impl Document {
                 .parse()
                 .context("Width must be a whole number, or leave it empty for auto-fit.")?;
             ensure!(
-                (80..=8192).contains(&width) && width > 2 * padding + 48,
+                width_range(padding).contains(&width),
                 "Width must be {}–8192 px at this padding.",
-                (2 * padding + 49).max(80)
+                width_range(padding).start()
             );
             style = style.width(width);
         }

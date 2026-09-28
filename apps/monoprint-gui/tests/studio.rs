@@ -1,6 +1,9 @@
 //! Real GPUI controls and Metal pixels, without controlling the user's desktop.
 #[path = "../src/appearance.rs"]
 mod appearance;
+#[allow(dead_code, unused_imports)]
+#[path = "../src/canvas_resize.rs"]
+mod canvas_resize;
 #[allow(dead_code, unused_imports)] // Shared source also contains standard-harness tests.
 #[path = "../src/document.rs"]
 mod document;
@@ -212,6 +215,199 @@ mod macos {
             assert_eq!(serde_json::to_string(&s.document).unwrap(), document);
             assert!(Arc::ptr_eq(&s.preview.as_ref().unwrap().0, &cached_image));
         });
+    }
+
+    fn assert_canvas_resizing(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        // Actual pointer hit targets, not calls to the resize methods.
+        click(cx, handle, studio, "half-preview");
+        let (source, initial_width, initial_height, initial_revision) =
+            cx.read_entity(studio, |s, _| {
+                (
+                    s.document.source.clone(),
+                    s.document.width.clone(),
+                    s.preview.as_ref().unwrap().1.height,
+                    s.revision,
+                )
+            });
+        let right = cx
+            .update_window(handle.into(), |_, window, _| {
+                window.find("resize-image-right").bounds().center()
+            })
+            .unwrap();
+        cx.update_window(handle.into(), |_, window, cx| {
+            pointer_click(window, right, cx)
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |s, _| {
+            assert_eq!(
+                s.revision, initial_revision,
+                "a click must not resize or render"
+            );
+            assert!(s.canvas_resize.is_none());
+            assert_eq!(s.viewport.zoom, viewport::PreviewZoom::Half);
+        });
+        let left_before = cx
+            .update_window(handle.into(), |_, window, _| {
+                window.find("resize-image-left").bounds().center().x
+            })
+            .unwrap();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.drag(right, right - point(px(110.), px(0.)), cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            let s = studio.read(cx);
+            assert_eq!(
+                s.document.width, "500",
+                "110 screen px at 50% is 220 export px"
+            );
+            assert_eq!(s.width.read(cx).value().as_ref(), "500");
+            assert_eq!(s.preview.as_ref().unwrap().1.width, 1000);
+            assert!(
+                s.preview.as_ref().unwrap().1.height > initial_height,
+                "code must reflow rather than stretch"
+            );
+            assert!(s.canvas_resize.is_none());
+            assert_eq!(s.document.source, source);
+            assert!(
+                (window.find("resize-image-left").bounds().center().x - left_before).abs() < px(1.)
+            );
+        })
+        .unwrap();
+        capture(
+            cx,
+            handle,
+            &format!(
+                "resized-canvas-{}",
+                f32::from(cx.read_entity(studio, |s, _| s.viewport.bounds.size.width)) as u32
+            ),
+        );
+
+        let (left, fixed_right) = cx
+            .update_window(handle.into(), |_, window, _| {
+                (
+                    window.find("resize-image-left").bounds().center(),
+                    window.find("resize-image-right").bounds().center().x,
+                )
+            })
+            .unwrap();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.drag(left, left - point(px(40.), px(0.)), cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            let s = studio.read(cx);
+            assert_eq!(s.document.width, "580");
+            assert_eq!(s.preview.as_ref().unwrap().1.width, 1160);
+            assert!(
+                (window.find("resize-image-right").bounds().center().x - fixed_right).abs()
+                    < px(1.)
+            );
+        })
+        .unwrap();
+
+        // Keep moving without the typing debounce's 90 ms pause. A completed
+        // intermediate frame must arrive before mouse-up, even with newer sizes queued.
+        let revision = cx.read_entity(studio, |s, _| s.revision);
+        let start = cx
+            .update_window(handle.into(), |_, window, cx| {
+                let start = window.find("resize-image-right").bounds().center();
+                window.dispatch_event(
+                    MouseMoveEvent {
+                        position: start,
+                        ..Default::default()
+                    }
+                    .to_platform_input(),
+                    cx,
+                );
+                window.render_frame(cx);
+                window.dispatch_event(
+                    MouseDownEvent {
+                        position: start,
+                        button: MouseButton::Left,
+                        click_count: 1,
+                        ..Default::default()
+                    }
+                    .to_platform_input(),
+                    cx,
+                );
+                start
+            })
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(5);
+        let mut step = 0;
+        let end = loop {
+            let position = start + point(px(10. + (step % 15) as f32), px(0.));
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.render_frame(cx);
+                window.dispatch_event(
+                    MouseMoveEvent {
+                        position,
+                        pressed_button: Some(MouseButton::Left),
+                        ..Default::default()
+                    }
+                    .to_platform_input(),
+                    cx,
+                );
+                window.render_frame(cx);
+            })
+            .unwrap();
+            cx.run_until_parked();
+            let arrived = cx.read_entity(studio, |s, _| {
+                assert!(s.canvas_resize.as_ref().unwrap().dragging);
+                s.preview_revision > revision
+            });
+            if arrived {
+                break position;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "continuous resize must display intermediate renders"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+            step += 1;
+        };
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.dispatch_event(
+                MouseUpEvent {
+                    position: end,
+                    button: MouseButton::Left,
+                    click_count: 1,
+                    ..Default::default()
+                }
+                .to_platform_input(),
+                cx,
+            );
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |s, _| {
+            assert!(s.canvas_resize.is_none());
+            assert_eq!(
+                s.preview.as_ref().unwrap().1.width,
+                s.document.width.parse::<u32>().unwrap() * 2
+            );
+            assert_eq!(s.document.source, source);
+            assert!(s.error.is_none());
+        });
+        // Restore the document and camera before the rest of the inspector tests.
+        cx.update_window(handle.into(), |_, window, cx| {
+            studio.update(cx, |s, cx| {
+                s.width.update(cx, |field, cx| {
+                    field.replace_all(initial_width.clone(), window, cx)
+                })
+            });
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        click(cx, handle, studio, "fit-preview");
     }
 
     fn assert_material_visible(
@@ -584,6 +780,7 @@ mod macos {
                     "interface appearance and zoom must not change the export or request renders"
                 );
             });
+            assert_canvas_resizing(&mut cx, handle, &studio);
             inspector_click(&mut cx, handle, &studio, "code-typeface");
             std::thread::sleep(Duration::from_millis(180));
             settle(&mut cx, handle, &studio);
@@ -1386,7 +1583,7 @@ mod macos {
             gutter_click(&mut cx, handle, &studio, 1);
             cx.read_entity(&studio, |s, _| assert!(s.document.highlights.is_empty()));
             println!(
-                "Studio {}×{}: render, sidebar resizing, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, typography, interface appearance, canvas pan/pinch/drag, source selections, validation and recovery passed",
+                "Studio {}×{}: render, sidebar resizing, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, typography, interface appearance, canvas pan/pinch/drag/live resize, source selections, validation and recovery passed",
                 width, height
             );
         }

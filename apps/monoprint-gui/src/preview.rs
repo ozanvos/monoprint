@@ -19,7 +19,7 @@ pub struct Completion {
 }
 #[derive(Default)]
 struct Pending {
-    latest: Option<(u64, Document)>,
+    latest: Option<(u64, Document, bool)>,
     closed: bool,
 }
 
@@ -49,8 +49,9 @@ impl PreviewWorker {
                     if state.closed {
                         break;
                     }
-                    // Debounce until edits settle, always replacing the pending snapshot.
-                    loop {
+                    // Typing waits for a pause; direct manipulation renders as
+                    // soon as the worker is free, replacing any pending size.
+                    while state.latest.as_ref().is_some_and(|request| request.2) {
                         let (next, timeout) =
                             wake.wait_timeout(state, Duration::from_millis(90)).unwrap();
                         state = next;
@@ -61,7 +62,7 @@ impl PreviewWorker {
                             break;
                         }
                     }
-                    let (revision, document) = state.latest.take().unwrap();
+                    let (revision, document, _) = state.latest.take().unwrap();
                     drop(state);
                     let session_error = session
                         .save(revision, &document)
@@ -105,8 +106,14 @@ impl PreviewWorker {
         (Self { pending }, rx)
     }
     pub fn request(&self, revision: u64, document: Document) {
+        self.enqueue(revision, document, true);
+    }
+    pub fn request_live(&self, revision: u64, document: Document) {
+        self.enqueue(revision, document, false);
+    }
+    fn enqueue(&self, revision: u64, document: Document, debounce: bool) {
         let (lock, wake) = &*self.pending;
-        lock.lock().unwrap().latest = Some((revision, document));
+        lock.lock().unwrap().latest = Some((revision, document, debounce));
         wake.notify_one();
     }
 }
