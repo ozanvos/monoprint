@@ -3,6 +3,7 @@ mod document;
 #[cfg(target_os = "macos")]
 mod material;
 mod preview;
+mod source_highlight;
 mod studio;
 mod view;
 use gpui_kit::{

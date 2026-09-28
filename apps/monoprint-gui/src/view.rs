@@ -4,6 +4,7 @@ use gpui_kit::{
     component::{
         button::*,
         input::{Editor, Input},
+        scroll::Scrollbar,
         select::Select,
         switch::Switch,
         *,
@@ -111,9 +112,18 @@ impl Studio {
                         Button::new("copy-image")
                             .outline()
                             .small()
-                            .icon(IconName::Copy)
-                            .label("Copy image")
-                            .disabled(self.exporting)
+                            .w(px(118.))
+                            .icon(if self.copy_state == CopyState::Copied {
+                                IconName::Check
+                            } else {
+                                IconName::Copy
+                            })
+                            .label(match self.copy_state {
+                                CopyState::Idle => "Copy image",
+                                CopyState::Copying => "Copying…",
+                                CopyState::Copied => "Copied",
+                            })
+                            .disabled(self.exporting || self.copy_state == CopyState::Copying)
                             .tooltip("Copy PNG at the selected scale · ⌘⇧C")
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.copy_image(&CopyImage, window, cx)
@@ -129,7 +139,7 @@ impl Studio {
                             } else {
                                 format!("Export {}", self.document.format.label())
                             })
-                            .disabled(self.exporting)
+                            .disabled(self.exporting || self.copy_state == CopyState::Copying)
                             .tooltip("Save an image · ⌘S")
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.export_file(&ExportImage, window, cx)
@@ -412,6 +422,154 @@ impl Studio {
                     }),
             )
     }
+    fn theme_gallery(&self, cx: &Context<Self>) -> impl IntoElement {
+        let count = self.filtered_themes.len();
+        let gallery = uniform_list(
+            "theme-gallery",
+            count.div_ceil(2),
+            cx.processor(|this, rows: std::ops::Range<usize>, _, cx| {
+                rows.map(|row| {
+                    let mut tiles = div().flex().gap_2().w_full().h(px(96.)).pb_2().pr_3();
+                    for column in 0..2 {
+                        tiles = tiles.child(
+                            div().flex_1().min_w_0().children(
+                                this.filtered_themes
+                                    .get(row * 2 + column)
+                                    .map(|index| this.theme_tile(*index, cx)),
+                            ),
+                        );
+                    }
+                    tiles
+                })
+                .collect::<Vec<_>>()
+            }),
+        )
+        .size_full()
+        .track_scroll(&self.theme_scroll);
+        div()
+            .flex()
+            .flex_col()
+            .flex_shrink_0()
+            .gap_3()
+            .p_4()
+            .border_b_1()
+            .border_color(rgb(BORDER))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .justify_between()
+                    .child(section("Theme"))
+                    .child(div().text_size(px(11.)).text_color(rgb(MUTED)).child(
+                        if count == self.thumbnails.len() {
+                            format!("{count} themes")
+                        } else {
+                            format!("{count} of {}", self.thumbnails.len())
+                        },
+                    )),
+            )
+            .child(
+                Input::new(&self.theme_search)
+                    .small()
+                    .cleanable(true)
+                    .prefix(Icon::new(IconName::Search).size(px(13.)))
+                    .aria_label("Find a theme"),
+            )
+            .child(
+                div()
+                    .id("theme-gallery-viewport")
+                    .relative()
+                    .h(px(236.))
+                    .w_full()
+                    .overflow_hidden()
+                    .when(count > 0, |view| {
+                        view.child(gallery)
+                            .child(Scrollbar::vertical(&self.theme_scroll))
+                    })
+                    .when(count == 0, |view| {
+                        view.child(
+                            div()
+                                .size_full()
+                                .flex()
+                                .flex_col()
+                                .items_center()
+                                .justify_center()
+                                .gap_2()
+                                .text_size(px(12.))
+                                .text_color(rgb(MUTED))
+                                .child("No matching themes")
+                                .child(
+                                    Button::new("clear-theme-search")
+                                        .ghost()
+                                        .small()
+                                        .label("Clear search")
+                                        .on_click(cx.listener(|this, _, window, cx| {
+                                            this.theme_search.update(cx, |input, cx| {
+                                                input.replace_all("", window, cx)
+                                            });
+                                        })),
+                                ),
+                        )
+                    }),
+            )
+    }
+
+    fn theme_tile(&self, index: usize, cx: &Context<Self>) -> impl IntoElement {
+        let (theme, image) = &self.thumbnails[index];
+        let theme = *theme;
+        let selected = self.document.theme == theme.id();
+        Button::new(("theme-swatch", index))
+            .ghost()
+            .p_0()
+            .w_full()
+            .min_w_0()
+            .h_full()
+            .selected(selected)
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .w_full()
+                    .gap_1()
+                    .child(
+                        div()
+                            .h(px(68.))
+                            .w_full()
+                            .rounded_md()
+                            .overflow_hidden()
+                            .border_2()
+                            .border_color(rgb(if selected { ACCENT } else { BORDER }))
+                            .bg(rgb(CANVAS))
+                            .child(
+                                img(image.clone())
+                                    .size_full()
+                                    .object_fit(ObjectFit::Contain),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .gap_1()
+                            .px_1()
+                            .text_size(px(11.))
+                            .text_color(rgb(if selected { TEXT } else { MUTED }))
+                            .child(div().flex_1().min_w_0().truncate().child(theme.name()))
+                            .when(selected, |view| {
+                                view.child(
+                                    Icon::new(IconName::Check)
+                                        .size(px(11.))
+                                        .text_color(rgb(ACCENT)),
+                                )
+                            }),
+                    ),
+            )
+            .accessibility_label(format!("{} theme", theme.name()))
+            .tooltip(theme.name())
+            .on_click(cx.listener(move |this, _, window, cx| this.select_theme(theme, window, cx)))
+    }
+
     fn inspector(&self, cx: &Context<Self>) -> impl IntoElement {
         let theme = self
             .document
@@ -427,55 +585,6 @@ impl Studio {
                 _ => None,
             }
         };
-        let swatches = self.thumbnails.chunks(3).enumerate().map(|(row, themes)| {
-            div().flex().gap_2().children(themes.iter().enumerate().map(
-                move |(column, (theme, image))| {
-                    let theme = *theme;
-                    div()
-                        .flex()
-                        .flex_col()
-                        .flex_1()
-                        .min_w_0()
-                        .gap_1()
-                        .child(
-                            Button::new(("theme-swatch", row * 3 + column))
-                                .ghost()
-                                .p_0()
-                                .h(px(46.))
-                                .w_full()
-                                .overflow_hidden()
-                                .rounded_md()
-                                .border_2()
-                                .border_color(rgb(if self.document.theme == theme.id() {
-                                    ACCENT
-                                } else {
-                                    BORDER
-                                }))
-                                .child(
-                                    img(image.clone())
-                                        .w_full()
-                                        .h_full()
-                                        .object_fit(ObjectFit::Cover),
-                                )
-                                .accessibility_label(format!("{} theme", theme.name()))
-                                .tooltip(theme.name())
-                                .on_click(cx.listener(move |this, _, window, cx| {
-                                    this.select_theme(theme, window, cx)
-                                })),
-                        )
-                        .child(
-                            div()
-                                .text_size(px(10.))
-                                .text_color(rgb(if self.document.theme == theme.id() {
-                                    TEXT
-                                } else {
-                                    MUTED
-                                }))
-                                .child(theme.name()),
-                        )
-                },
-            ))
-        });
         div()
             .w(px(300.))
             .flex_shrink_0()
@@ -483,6 +592,7 @@ impl Studio {
             .flex_col()
             .border_l_1()
             .border_color(rgb(BORDER))
+            .child(self.theme_gallery(cx))
             .child(
                 div()
                     .id("style-inspector")
@@ -493,27 +603,6 @@ impl Studio {
                     .flex()
                     .flex_col()
                     .gap_4()
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .child(section("Theme"))
-                            .child(
-                                div()
-                                    .text_size(px(11.))
-                                    .text_color(rgb(MUTED))
-                                    .child("33 looks"),
-                            ),
-                    )
-                    .child(div().flex().flex_col().gap_2().children(swatches))
-                    .child(
-                        Select::new(&self.themes)
-                            .small()
-                            .w_full()
-                            .accessibility_label("All themes")
-                            .search_placeholder("Explore all themes…"),
-                    )
                     .child(
                         div()
                             .flex()

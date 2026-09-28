@@ -56,26 +56,16 @@ pub fn init(cx: &mut App) {
     Theme::sync_base(cx);
 }
 pub fn thumbnails() -> Vec<(monoprint::Theme, Arc<Image>)> {
-    macro_rules! theme {
-        ($name:literal) => {
+    let catalog: &[(&str, &[u8])] = include!("../assets/themes/catalog.rs");
+    let mut thumbnails = catalog
+        .iter()
+        .map(|(id, bytes)| {
             (
-                $name.parse().unwrap(),
-                Arc::new(Image::from_bytes(
-                    ImageFormat::Png,
-                    include_bytes!(concat!("../assets/themes/", $name, ".png")).to_vec(),
-                )),
+                id.parse::<monoprint::Theme>().expect("bundled theme"),
+                Arc::new(Image::from_bytes(ImageFormat::Png, bytes.to_vec())),
             )
-        };
-    }
-    vec![
-        theme!("removed-frame"),
-        theme!("removed-frame"),
-        theme!("removed-frame"),
-        theme!("removed-frame"),
-        theme!("removed-frame"),
-        theme!("removed-frame"),
-        theme!("removed-frame"),
-        theme!("removed-frame"),
-        theme!("removed-frame"),
-    ]
+        })
+        .collect::<Vec<_>>();
+    thumbnails.sort_by_key(|(theme, _)| theme.name().to_lowercase());
+    thumbnails
 }

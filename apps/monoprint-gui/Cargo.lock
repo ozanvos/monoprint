@@ -4268,6 +4268,7 @@ version = "0.1.0"
 dependencies = [
  "anyhow",
  "async-channel",
+ "giallo",
  "gpui-kit",
  "monoprint",
  "objc2 0.6.4",

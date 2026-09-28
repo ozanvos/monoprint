@@ -10,7 +10,7 @@ use gpui_kit::{
     *,
 };
 use monoprint::{Language, Renderer, Theme};
-use std::{path::PathBuf, sync::Arc};
+use std::{path::PathBuf, sync::Arc, time::Duration};
 
 gpui_kit::actions!(
     monoprint_gui,
@@ -37,6 +37,14 @@ impl SelectItem for Choice {
 }
 pub type Choices = SelectState<SearchableVec<Choice>>;
 
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+pub enum CopyState {
+    #[default]
+    Idle,
+    Copying,
+    Copied,
+}
+
 pub struct Studio {
     pub document: Document,
     pub editor: Entity<EditorState>,
@@ -45,7 +53,9 @@ pub struct Studio {
     pub width: Entity<InputState>,
     pub padding: Entity<InputState>,
     pub language: Entity<Choices>,
-    pub themes: Entity<Choices>,
+    pub theme_search: Entity<InputState>,
+    pub theme_scroll: UniformListScrollHandle,
+    pub filtered_themes: Vec<usize>,
     pub focus: FocusHandle,
     pub preview: Option<(Arc<Image>, Preview)>,
     pub revision: u64,
@@ -53,12 +63,14 @@ pub struct Studio {
     pub error: Option<String>,
     pub notice: Option<String>,
     pub exporting: bool,
+    pub copy_state: CopyState,
     pub zoom: bool,
     pub wrap: bool,
     pub source_name: String,
     pub last_export: Option<PathBuf>,
     pub thumbnails: Vec<(Theme, Arc<Image>)>,
     _render_task: Task<()>,
+    _copy_feedback_task: Option<Task<()>>,
     renderer: Renderer,
     worker: PreviewWorker,
     _subscriptions: Vec<Subscription>,
@@ -77,10 +89,12 @@ impl Studio {
         let theme = document.theme.parse::<Theme>().unwrap_or_default();
         document.select_theme(theme);
         let editor = cx.new(|cx| {
-            EditorState::new(window, cx)
-                .language(editor_language(&document.language))
+            let mut editor = EditorState::new(window, cx)
+                .language(&document.language)
                 .default_value(document.source.clone())
-                .soft_wrap(true)
+                .soft_wrap(true);
+            editor.set_highlighter_factory(crate::source_highlight::factory(), cx);
+            editor
         });
         let title = input(&document.title, "Optional filename", window, cx);
         let highlights = input(&document.highlights, "e.g. 2, 4-6", window, cx);
@@ -94,17 +108,12 @@ impl Studio {
             .collect::<Vec<_>>();
         languages.sort_by_key(|a| a.name.to_lowercase());
         let language = choices(languages, &document.language, window, cx);
-        let themes = choices(
-            Theme::all()
-                .map(|t| Choice {
-                    id: t.id().into(),
-                    name: t.name().into(),
-                })
-                .collect(),
-            &document.theme,
-            window,
-            cx,
-        );
+        let theme_search = input("", "Find a theme…", window, cx);
+        let thumbnails = crate::appearance::thumbnails();
+        let theme_scroll = UniformListScrollHandle::new();
+        if let Some(index) = thumbnails.iter().position(|(item, _)| *item == theme) {
+            theme_scroll.scroll_to_item(index / 2, ScrollStrategy::Center);
+        }
         let session = Arc::new(document::SessionStore::new(session));
         let renderer = Renderer::new();
         let (worker, results) = PreviewWorker::new(renderer.clone(), session.clone());
@@ -173,20 +182,30 @@ impl Studio {
                 return;
             };
             this.document.language = id.clone();
-            this.editor.update(cx, |state, cx| {
-                state.set_highlighter(editor_language(id), cx)
-            });
+            this.editor
+                .update(cx, |state, cx| state.set_highlighter(id, cx));
             this.changed(cx);
         }));
-        subscriptions.push(cx.subscribe_in(&themes, window, |this, _, event, _, cx| {
-            let SelectEvent::Confirm(Some(id)) = event else {
-                return;
-            };
-            if let Ok(theme) = id.parse() {
-                this.document.select_theme(theme);
-                this.changed(cx);
-            }
-        }));
+        subscriptions.push(
+            cx.subscribe_in(&theme_search, window, |this, entity, event, _, cx| {
+                if matches!(event, InputEvent::Change) {
+                    let query = entity.read(cx).value().trim().to_lowercase();
+                    this.filtered_themes = this
+                        .thumbnails
+                        .iter()
+                        .enumerate()
+                        .filter(|(_, (theme, _))| {
+                            theme.name().to_lowercase().contains(&query)
+                                || theme.id().contains(&query)
+                        })
+                        .map(|(index, _)| index)
+                        .collect();
+                    this.theme_scroll
+                        .scroll_to_item_strict(0, ScrollStrategy::Top);
+                    cx.notify();
+                }
+            }),
+        );
         // Flush the latest editing state on normal application quit, including the
         // last keystroke if the debounced preview has not started yet.
         let quit_session = session.clone();
@@ -208,7 +227,9 @@ impl Studio {
             width,
             padding,
             language,
-            themes,
+            theme_search,
+            theme_scroll,
+            filtered_themes: (0..thumbnails.len()).collect(),
             focus: cx.focus_handle(),
             preview: None,
             revision: 0,
@@ -216,14 +237,16 @@ impl Studio {
             error: None,
             notice: None,
             exporting: false,
+            copy_state: CopyState::Idle,
             zoom: false,
             wrap: true,
             source_name,
             last_export: None,
-            thumbnails: crate::appearance::thumbnails(),
+            thumbnails,
             renderer,
             worker,
             _render_task: render_task,
+            _copy_feedback_task: None,
             _subscriptions: subscriptions,
             _quit: quit,
         };
@@ -239,11 +262,8 @@ impl Studio {
         self.worker.request(self.revision, self.document.clone());
         cx.notify();
     }
-    pub fn select_theme(&mut self, theme: Theme, window: &mut Window, cx: &mut Context<Self>) {
+    pub fn select_theme(&mut self, theme: Theme, _window: &mut Window, cx: &mut Context<Self>) {
         self.document.select_theme(theme);
-        self.themes.update(cx, |state, cx| {
-            state.set_selected_value(&theme.id().to_owned(), window, cx)
-        });
         self.changed(cx);
     }
     pub fn paste(&mut self, _: &PasteSource, window: &mut Window, cx: &mut Context<Self>) {
@@ -325,7 +345,7 @@ impl Studio {
         self.highlights
             .update(cx, |state, cx| state.set_value("", window, cx));
         self.editor.update(cx, |state, cx| {
-            state.set_highlighter(editor_language(language.id()), cx);
+            state.set_highlighter(language.id(), cx);
             state.set_value(source, window, cx);
         });
         self.changed(cx);
@@ -369,7 +389,7 @@ impl Studio {
         .detach();
     }
     pub fn export_file(&mut self, _: &ExportImage, window: &mut Window, cx: &mut Context<Self>) {
-        if self.exporting {
+        if self.exporting || self.copy_state == CopyState::Copying {
             return;
         }
         let document = self.document.clone();
@@ -418,10 +438,11 @@ impl Studio {
         .detach();
     }
     pub fn copy_image(&mut self, _: &CopyImage, window: &mut Window, cx: &mut Context<Self>) {
-        if self.exporting {
+        if self.exporting || self.copy_state == CopyState::Copying {
             return;
         }
-        self.exporting = true;
+        self._copy_feedback_task = None;
+        self.copy_state = CopyState::Copying;
         cx.notify();
         let document = self.document.clone();
         let renderer = self.renderer.clone();
@@ -431,14 +452,21 @@ impl Studio {
         cx.spawn_in(window, async move |this, cx| {
             let result = task.await;
             let _ = this.update(cx, |this, cx| {
-                this.exporting = false;
+                this.copy_state = CopyState::Idle;
                 match result {
                     Ok(bytes) => {
                         cx.write_to_clipboard(ClipboardItem::new_image(&Image::from_bytes(
                             ImageFormat::Png,
                             bytes,
                         )));
-                        this.notice = Some("Image copied. Ready to share.".into());
+                        this.copy_state = CopyState::Copied;
+                        this._copy_feedback_task = Some(cx.spawn(async move |this, cx| {
+                            cx.background_executor().timer(Duration::from_secs(2)).await;
+                            let _ = this.update(cx, |this, cx| {
+                                this.copy_state = CopyState::Idle;
+                                cx.notify();
+                            });
+                        }));
                     }
                     Err(e) => this.notice = Some(format!("Could not copy image: {e:#}")),
                 }
@@ -473,15 +501,6 @@ fn choices(
         .map(|row| gpui_kit::component::IndexPath::default().row(row));
     cx.new(|cx| SelectState::new(SearchableVec::new(items), index, window, cx).searchable(true))
 }
-pub fn editor_language(id: &str) -> &str {
-    match id {
-        "tsx" => "tsx",
-        "shellscript" => "bash",
-        "plain" => "plaintext",
-        other => other,
-    }
-}
-
 impl Focusable for Studio {
     fn focus_handle(&self, _: &App) -> FocusHandle {
         self.focus.clone()

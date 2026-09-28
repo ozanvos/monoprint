@@ -11,6 +11,9 @@ mod material;
 #[allow(unused_imports)]
 #[path = "../src/preview.rs"]
 mod preview;
+#[allow(dead_code, unused_imports)]
+#[path = "../src/source_highlight.rs"]
+mod source_highlight;
 #[path = "../src/studio.rs"]
 mod studio;
 #[path = "../src/view.rs"]
@@ -49,6 +52,7 @@ mod macos {
             std::thread::sleep(Duration::from_millis(10));
         }
         // Image decode and editor parsing finish on GPUI's executor after layout.
+        cx.advance_clock(Duration::from_millis(100));
         for _ in 0..3 {
             cx.run_until_parked();
             cx.update_window(handle.into(), |_, window, cx| window.render_frame(cx))
@@ -143,6 +147,152 @@ mod macos {
                 assert!(s.preview.is_some(), "{:?}", s.error)
             });
             capture(&mut cx, handle, &format!("studio-{}", width as u32));
+
+            let (candy, last, initial_revision) = cx.read_entity(&studio, |s, _| {
+                let mut bundled = s
+                    .thumbnails
+                    .iter()
+                    .map(|(theme, _)| theme.id())
+                    .collect::<Vec<_>>();
+                bundled.sort();
+                assert_eq!(
+                    bundled,
+                    monoprint::Theme::all()
+                        .map(|theme| theme.id())
+                        .collect::<Vec<_>>()
+                );
+                (
+                    s.thumbnails
+                        .iter()
+                        .position(|(theme, _)| theme.id() == "removed-frame")
+                        .unwrap(),
+                    s.thumbnails.len() - 1,
+                    s.revision,
+                )
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                assert!(window.find(("theme-swatch", candy)).visible());
+                assert!(window.find(("theme-swatch", candy)).bounds().size.width <= px(128.));
+                assert!(
+                    window.try_find(("theme-swatch", last)).is_none(),
+                    "offscreen themes should not build views"
+                );
+                window.scroll(
+                    ("theme-swatch", candy),
+                    ScrollDelta::Pixels(point(px(0.), px(-2000.))),
+                    cx,
+                );
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, _| {
+                assert!(window.find(("theme-swatch", last)).visible());
+                assert!(window.try_find(("theme-swatch", candy)).is_none());
+            })
+            .unwrap();
+            capture(
+                &mut cx,
+                handle,
+                &format!("themes-scrolled-{}", width as u32),
+            );
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(
+                    s.revision, initial_revision,
+                    "browsing must not request a render"
+                )
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.theme_search
+                        .update(cx, |input, cx| input.replace_all("  eViL  ", window, cx));
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            let rabbit = cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.filtered_themes.len(), 1);
+                let index = s.filtered_themes[0];
+                assert_eq!(s.thumbnails[index].0.id(), "removed-frame");
+                assert_eq!(s.revision, initial_revision);
+                index
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.click(("theme-swatch", rabbit), cx)
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| assert_eq!(s.document.theme, "removed-frame"));
+            capture(
+                &mut cx,
+                handle,
+                &format!("themes-filtered-{}", width as u32),
+            );
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.theme_search.update(cx, |input, cx| {
+                        input.replace_all("no matching theme", window, cx)
+                    });
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| assert!(s.filtered_themes.is_empty()));
+            capture(&mut cx, handle, &format!("themes-empty-{}", width as u32));
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.click("clear-theme-search", cx)
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.filtered_themes.len(), s.thumbnails.len())
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.theme_scroll
+                        .scroll_to_item(candy / 2, ScrollStrategy::Center);
+                    s.select_theme("removed-frame".parse().unwrap(), window, cx);
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+
+            // Copy updates only its own button, writes an image, and resets its
+            // feedback timeout on a second copy instead of flashing a banner.
+            for attempt in 0..2 {
+                cx.update_window(handle.into(), |_, window, cx| {
+                    window.click("copy-image", cx);
+                    studio.read_with(cx, |s, _| {
+                        assert_eq!(s.copy_state, studio::CopyState::Copying);
+                        assert!(!s.exporting);
+                    });
+                })
+                .unwrap();
+                cx.run_until_parked();
+                cx.read_entity(&studio, |s, cx| {
+                    assert_eq!(s.copy_state, studio::CopyState::Copied);
+                    assert!(s.notice.is_none());
+                    assert!(matches!(
+                        cx.read_from_clipboard().unwrap().entries(),
+                        [ClipboardEntry::Image(_)]
+                    ));
+                });
+                cx.update_window(handle.into(), |_, window, cx| window.render_frame(cx))
+                    .unwrap();
+                if attempt == 0 {
+                    capture(&mut cx, handle, &format!("copied-{}", width as u32));
+                }
+                cx.advance_clock(Duration::from_secs(1));
+                cx.run_until_parked();
+                cx.read_entity(&studio, |s, _| {
+                    assert_eq!(s.copy_state, studio::CopyState::Copied)
+                });
+            }
+            cx.advance_clock(Duration::from_secs(1));
+            cx.run_until_parked();
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.copy_state, studio::CopyState::Idle)
+            });
+
             cx.update_window(handle.into(), |_, window, cx| {
                 cx.write_to_clipboard(ClipboardItem::new_string("const pasted = 7;".into()));
                 window.click("paste-source", cx);
@@ -154,6 +304,13 @@ mod macos {
                 assert_eq!(s.document.source, "const pasted = 7;");
                 assert_eq!(s.document.padding, "32");
             });
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.install_source("greet.rb".into(), "# Monochrome, using Giallo\ndef greet(name)\n  puts \"Hello, #{name}!\"\nend\n".into(), window, cx)
+                });
+            }).unwrap();
+            settle(&mut cx, handle, &studio);
+            capture(&mut cx, handle, &format!("source-ruby-{}", width as u32));
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
                     s.install_source("main.rs".into(), "fn main() {}".into(), window, cx)
@@ -215,6 +372,15 @@ mod macos {
                 assert!(s.error.as_ref().unwrap().contains("Width"));
             });
             cx.update_window(handle.into(), |_, window, cx| {
+                window.click("copy-image", cx)
+            })
+            .unwrap();
+            cx.run_until_parked();
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.copy_state, studio::CopyState::Idle);
+                assert!(s.notice.as_ref().unwrap().contains("Could not copy image"));
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
                     s.width
                         .update(cx, |input, cx| input.replace_all("720", window, cx))
@@ -224,7 +390,7 @@ mod macos {
             settle(&mut cx, handle, &studio);
             cx.read_entity(&studio, |s, _| assert!(s.error.is_none(), "{:?}", s.error));
             println!(
-                "Studio {}×{}: render, theme, transparency, format, editor, validation and recovery passed",
+                "Studio {}×{}: render, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, validation and recovery passed",
                 width, height
             );
         }
