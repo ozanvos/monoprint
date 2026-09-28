@@ -16,6 +16,7 @@ for (let i = 0; i < args.length; i++) {
 // Never delete a caller-selected output path. Refuse stale packages instead.
 if (await fs.stat(destination).then(() => true, () => false)) throw new Error(`${destination} already exists; choose a fresh --out directory`);
 run(process.execPath, [path.join(root, 'scripts/import-grammar-metadata.mjs'), '--check']);
+run(process.execPath, [path.join(root, 'scripts/import-editor-themes.mjs'), '--check']);
 run(process.execPath, [path.join(directory, 'scripts/build.mjs'), '--js-only']);
 const hash = await inputHash();
 const artifacts = (await filesUnder(source)).filter(file => file.endsWith('.node'));

@@ -65,6 +65,8 @@ pub enum InvalidOption {
     },
     /// PNG scale is outside 1..=6.
     Scale(u32),
+    /// A background name is not one of the five supported treatments.
+    Background(String),
     /// This theme does not provide the selected appearance.
     Appearance {
         /// Selected theme.
@@ -178,6 +180,10 @@ impl fmt::Display for InvalidOption {
                 "width {width} must be between {min} and {max}px and leave room for the code after padding"
             ),
             Self::Scale(value) => write!(f, "PNG scale {value} must be between 1 and 6"),
+            Self::Background(value) => write!(
+                f,
+                "unknown background {value:?}; use theme, solid, lattice, halftone, or none"
+            ),
             Self::Appearance { theme, appearance } => {
                 write!(f, "{} has no {appearance} variant", theme.name())
             }

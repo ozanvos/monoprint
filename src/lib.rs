@@ -53,7 +53,9 @@
 #![warn(missing_docs)]
 
 mod assets;
+mod background;
 mod catalog;
+mod editor_theme;
 mod effects;
 mod error;
 mod font;
@@ -63,6 +65,7 @@ mod pixels;
 mod render;
 mod resample;
 
+pub use background::Background;
 pub use catalog::{Language, LineNumberPolicy, Theme};
 pub use error::{Error, InvalidOption, RenderError, TextRole};
 pub use font::{BundledFont, Font};

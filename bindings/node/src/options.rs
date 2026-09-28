@@ -15,6 +15,7 @@ struct Options {
     padding: Option<u32>,
     width: Option<u32>,
     transparent: Option<bool>,
+    background: Option<String>,
     line_numbers: Option<Numbers>,
     scale: Option<u32>,
 }
@@ -91,6 +92,9 @@ pub fn render(
     }
     if let Some(transparent) = options.transparent {
         style = style.transparent(transparent);
+    }
+    if let Some(background) = options.background {
+        style = style.background(background.parse().map_err(errors::encode)?);
     }
     if let Some(numbers) = options.line_numbers {
         style = style.line_numbers(match numbers {

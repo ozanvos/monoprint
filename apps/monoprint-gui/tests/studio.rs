@@ -272,7 +272,7 @@ mod macos {
                 );
                 window.scroll(
                     ("theme-swatch", candy),
-                    ScrollDelta::Pixels(point(px(0.), px(-2000.))),
+                    ScrollDelta::Pixels(point(px(0.), px(-5000.))),
                     cx,
                 );
             })
@@ -419,18 +419,44 @@ mod macos {
 
             cx.update_window(handle.into(), |_, window, cx| {
                 assert!(window.find("export-image").visible());
-                assert!(window.find("transparent-background").visible());
                 window.click("light-appearance", cx);
-                window.click("transparent-background", cx);
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
+            inspector_click(&mut cx, handle, &studio, "background-none");
             cx.read_entity(&studio, |s, _| {
                 assert!(s.document.light);
-                assert!(s.document.transparent);
+                assert_eq!(
+                    s.document.background().unwrap(),
+                    monoprint::Background::None
+                );
                 assert!(s.error.is_none());
             });
             capture(&mut cx, handle, &format!("transparent-{}", width as u32));
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.select_theme("catppuccin-latte".parse().unwrap(), window, cx)
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            for background in monoprint::Background::ALL {
+                cx.update_window(handle.into(), |_, window, cx| {
+                    window.click(format!("background-{background}"), cx);
+                })
+                .unwrap();
+                settle(&mut cx, handle, &studio);
+                cx.read_entity(&studio, |s, _| {
+                    assert!(s.document.light);
+                    assert_eq!(s.document.background().unwrap(), background);
+                    assert!(s.error.is_none());
+                });
+                capture(
+                    &mut cx,
+                    handle,
+                    &format!("latte-{background}-{}", width as u32),
+                );
+            }
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
                     s.select_theme("removed-frame".parse().unwrap(), window, cx)
@@ -442,6 +468,15 @@ mod macos {
                 assert!(!s.document.light);
                 assert_eq!(s.document.theme, "removed-frame");
             });
+            // Restore the inspector's top before checking the disabled appearance.
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio
+                    .read(cx)
+                    .settings_scroll
+                    .set_offset(point(px(0.), px(0.)));
+                window.render_frame(cx);
+            })
+            .unwrap();
             cx.update_window(handle.into(), |_, window, cx| {
                 window.click("light-appearance", cx);
                 window.click("svg", cx);

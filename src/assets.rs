@@ -14,6 +14,25 @@ pub struct Theme {
     #[serde(default)]
     pub line_numbers_toggleable: bool,
     pub syntax: BTreeMap<String, BTreeMap<String, String>>,
+    pub background: Option<Gradient>,
+    pub editor: Option<EditorTheme>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Gradient {
+    pub from: String,
+    pub to: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct EditorTheme {
+    pub family: String,
+    pub surface: String,
+    pub foreground: String,
+    pub gutter: String,
+    pub border: String,
+    pub solid: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -27,8 +46,16 @@ pub struct Grammar {
 
 pub fn themes() -> &'static BTreeMap<String, Theme> {
     static DATA: LazyLock<BTreeMap<String, Theme>> = LazyLock::new(|| {
-        serde_json::from_str(include_str!("../assets/removed-frames/themes.json"))
-            .expect("bundled theme manifest")
+        let mut themes: BTreeMap<String, Theme> =
+            serde_json::from_str(include_str!("../assets/removed-frames/themes.json"))
+                .expect("bundled legacy frame theme manifest");
+        let editor: BTreeMap<String, Theme> =
+            serde_json::from_str(include_str!("../assets/editor/themes.json"))
+                .expect("bundled editor theme manifest");
+        for (id, theme) in editor {
+            assert!(themes.insert(id, theme).is_none(), "duplicate theme ID");
+        }
+        themes
     });
     &DATA
 }

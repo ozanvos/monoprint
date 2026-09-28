@@ -8,7 +8,7 @@ export async function prepareNotices(destination, targets) {
   await fs.cp(path.join(root, 'licenses'), path.join(destination, 'licenses'), { recursive: true });
   await fs.cp(path.join(directory, 'licenses'), path.join(destination, 'licenses/node'), { recursive: true });
   for (const file of ['docs/grammar-licenses.md', 'docs/grammar-license-validation.json', 'assets/fonts/manifest.json',
-    'assets/removed-frames/provenance.json', 'assets/grammar-provenance.json', 'vendor/takumi-svg/PATCHES.md',
+    'assets/removed-frames/provenance.json', 'assets/editor/sources.json', 'assets/grammar-provenance.json', 'vendor/takumi-svg/PATCHES.md',
     'vendor/takumi-svg/LICENSE-MIT', 'vendor/takumi-svg/LICENSE-APACHE',
     'vendor/takumi-raster/PATCHES.md', 'vendor/takumi-raster/LICENSE-MIT', 'vendor/takumi-raster/LICENSE-APACHE',
     ...(await fs.readdir(path.join(root, 'assets/fonts'))).filter(n => n.endsWith('-OFL.txt')).map(n => `assets/fonts/${n}`)]) {

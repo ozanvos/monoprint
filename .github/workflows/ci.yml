@@ -13,6 +13,7 @@ jobs:
           node-version: 22
       - run: node --test scripts/grammar-policy.test.mjs
       - run: node scripts/import-grammar-metadata.mjs --check
+      - run: node scripts/import-editor-themes.mjs --check
       - uses: dtolnay/rust-toolchain@stable
         with:
           components: rustfmt, clippy

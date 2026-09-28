@@ -457,7 +457,6 @@ pub(crate) fn draw_inline_layout(
   let decoration_mask = runs.iter().fold(TextDecorationLines::empty(), |acc, run| {
     acc | run.glyph_run.brush.decoration_line
   });
-  let need_text_shadow = !font_style.text_shadow.is_empty();
   let need_under_overline =
     decoration_mask.intersects(TextDecorationLines::UNDERLINE | TextDecorationLines::OVERLINE);
   let need_line_through = decoration_mask.contains(TextDecorationLines::LINE_THROUGH);
@@ -484,12 +483,22 @@ pub(crate) fn draw_inline_layout(
   };
 
   // Reference: https://www.w3.org/TR/css-text-decor-3/#painting-order
-  if need_text_shadow {
-    for run in &runs {
+  for run in &runs {
+    // Inline tokens may override the container's shadows (including `none`).
+    let run_style = match run
+      .glyph_run
+      .brush
+      .source_span_id
+      .and_then(|id| spans.get(id as usize))
+    {
+      Some(ProcessedInlineSpan::Text { style, .. }) => style.as_ref(),
+      _ => font_style,
+    };
+    if !run_style.text_shadow.is_empty() {
       let opts = line_options(run);
       draw_with_inline_opacity(canvas, run.glyph_run.brush.opacity, |canvas| {
         draw_glyph_run_text_shadow(
-          font_style,
+          run_style,
           &run.glyph_run,
           &run.resolved_glyphs,
           canvas,

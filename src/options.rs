@@ -1,4 +1,4 @@
-use crate::{Error, Font, InvalidOption, Language, Theme};
+use crate::{Background, Error, Font, InvalidOption, Language, Theme};
 use std::{
     fmt,
     ops::{Range, RangeInclusive},
@@ -244,7 +244,7 @@ impl Snippet {
 pub struct Style {
     pub(crate) theme: Theme,
     pub(crate) appearance: Appearance,
-    pub(crate) transparent: bool,
+    pub(crate) background: Background,
     pub(crate) padding: u32,
     pub(crate) width: Option<u32>,
     pub(crate) line_numbers: LineNumbers,
@@ -258,7 +258,7 @@ impl fmt::Debug for Style {
         f.debug_struct("Style")
             .field("theme", &self.theme)
             .field("appearance", &self.appearance)
-            .field("transparent", &self.transparent)
+            .field("background", &self.background)
             .field("padding", &self.padding)
             .field("width", &self.width)
             .field("line_numbers", &self.line_numbers)
@@ -273,7 +273,7 @@ impl Default for Style {
         Self {
             theme: Theme::default(),
             appearance: Appearance::Dark,
-            transparent: false,
+            background: Background::Theme,
             padding: 64,
             width: None,
             line_numbers: LineNumbers::Auto,
@@ -285,17 +285,21 @@ impl Default for Style {
     }
 }
 impl Style {
-    /// Use a theme with all other defaults unchanged.
+    /// Use a theme's preferred appearance with all other defaults unchanged.
     pub fn new(theme: Theme) -> Self {
         Self {
             theme,
+            appearance: theme.default_appearance(),
             ..Self::default()
         }
     }
-    /// Change the theme, retaining the other settings.
+    /// Change the theme, retaining the appearance if supported and other settings.
     #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.theme = theme;
+        if !theme.supports(self.appearance) {
+            self.appearance = theme.default_appearance();
+        }
         self.reset_mixed_fonts();
         self
     }
@@ -308,7 +312,18 @@ impl Style {
     /// Remove the decorative background while preserving the code window.
     #[must_use]
     pub fn transparent(mut self, transparent: bool) -> Self {
-        self.transparent = transparent;
+        self.background = if transparent {
+            Background::None
+        } else {
+            Background::Theme
+        };
+        self
+    }
+    /// Set the outer canvas treatment without changing the code window.
+    /// This and [`Self::transparent`] replace one another; the last setter wins.
+    #[must_use]
+    pub fn background(mut self, background: Background) -> Self {
+        self.background = background;
         self
     }
     /// Outer padding in CSS pixels, from 0 through 512.

@@ -1,5 +1,10 @@
 # Local rendering fix
 
+Inline text shadow fix: `src/text.rs` reads each glyph run's resolved source-span
+style instead of applying only the container's shadows. This enables SynthWave's
+per-token glow and explicit `text-shadow:none` overrides without changing text
+layout. Pixel coverage lives in `tests/editor_themes.rs`.
+
 Based on unmodified crates.io `takumi-svg` 0.3.22, Git revision recorded in `.cargo_vcs_info.json`. Original MIT/Apache notices are included.
 
 Changes in `src/render.rs`:

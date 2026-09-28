@@ -48,7 +48,7 @@ test('styles are reusable snapshots and explicit auto/null restore defaults', as
 });
 
 test('catalog discovery is immutable, canonical, and follows reviewed grammar exclusions', () => {
-  assert.equal(getThemes().length, 33);
+  assert.equal(getThemes().length, 64);
   assert.equal(getLanguages().length, 230);
   assert.deepEqual(getThemes().find(t => t.id === 'removed-frame').appearances, ['dark']);
   assert.ok(getLanguages().some(l => l.id === 'tsx' && l.aliases.includes('typescript')));
@@ -67,6 +67,21 @@ test('all theme appearances work through the TypeScript interface', async () => 
       assert.match(await html('let x = 1;', { language: 'rust', theme: theme.id, appearance }), /^<!doctype html>/);
     }
   }
+});
+
+test('editor palettes select their appearance and background overrides replace the legacy alias', () => {
+  const latte = getThemes().find(t => t.id === 'catppuccin-latte');
+  assert.equal(latte.family, 'Catppuccin');
+  assert.equal(latte.defaultAppearance, 'light');
+  assert.match(htmlSync(source, { theme: latte.id }), /data-theme="light"/);
+  const renderer = new Renderer({ transparent: true, theme: latte.id });
+  for (const background of ['theme', 'solid', 'lattice', 'halftone', 'none']) {
+    assert.equal(renderer.htmlSync(source, { background }), htmlSync(source, { theme: latte.id, background }));
+  }
+  assert.equal(new Renderer({ background: 'lattice' }).htmlSync(source, { transparent: true }),
+    htmlSync(source, { background: 'none' }));
+  assert.throws(() => htmlSync(source, { background: 'wallpaper' }), code('INVALID_ARGUMENT'));
+  assert.throws(() => htmlSync(source, { background: 'solid', transparent: true }), code('INVALID_ARGUMENT'));
 });
 
 test('custom font bytes are copied and a font can be reused across renderers', async () => {

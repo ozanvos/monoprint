@@ -1,5 +1,7 @@
 use anyhow::{Context, Result, bail, ensure};
-use monoprint::{Appearance, Font, Language, LineNumbers, Renderer, Scale, Snippet, Style, Theme};
+use monoprint::{
+    Appearance, Background, Font, Language, LineNumbers, Renderer, Scale, Snippet, Style, Theme,
+};
 use serde::{Deserialize, Serialize};
 use std::{
     fs,
@@ -43,6 +45,7 @@ pub struct Document {
     pub theme: String,
     pub light: bool,
     pub transparent: bool,
+    pub background: String,
     pub numbers: bool,
     pub padding: String,
     pub width: String,
@@ -65,6 +68,7 @@ impl Default for Document {
             theme: "removed-frame".into(),
             light: false,
             transparent: false,
+            background: "theme".into(),
             numbers: false,
             padding: "64".into(),
             width: "720".into(),
@@ -83,6 +87,18 @@ impl Default for Document {
 }
 
 impl Document {
+    pub fn background(&self) -> Result<Background> {
+        // Older saved documents use the transparency flag.
+        Ok(if self.transparent {
+            Background::None
+        } else {
+            self.background.parse()?
+        })
+    }
+    pub fn select_background(&mut self, background: Background) {
+        self.transparent = false;
+        self.background = background.to_string();
+    }
     pub fn typeface_selection(&self, comments: bool) -> &str {
         let (id, path) = if comments {
             (&self.comment_font_id, &self.comment_font_path)
@@ -122,7 +138,7 @@ impl Document {
         };
         ensure!(
             theme.supports(appearance),
-            "{} supports dark appearance only.",
+            "{} does not support {appearance} appearance.",
             theme.name()
         );
         let padding: u32 = self
@@ -134,7 +150,7 @@ impl Document {
         let mut style = Style::new(theme)
             .appearance(appearance)
             .padding(padding)
-            .transparent(self.transparent)
+            .background(self.background()?)
             .ligatures(self.ligatures)
             .line_numbers(if self.numbers {
                 LineNumbers::Show
@@ -184,8 +200,12 @@ impl Document {
     }
     pub fn select_theme(&mut self, theme: Theme) {
         self.theme = theme.id().into();
-        if !theme.supports(Appearance::Light) {
-            self.light = false;
+        if !theme.supports(if self.light {
+            Appearance::Light
+        } else {
+            Appearance::Dark
+        }) {
+            self.light = theme.default_appearance() == Appearance::Light;
         }
     }
     pub fn suggested_name(&self) -> String {
@@ -427,6 +447,27 @@ mod tests {
         assert!(d.prepare(None, None).is_err());
         d.width.clear();
         assert!(d.prepare(None, None).is_ok());
+    }
+
+    #[test]
+    fn editor_palettes_backgrounds_and_legacy_sessions() {
+        let mut doc = Document {
+            transparent: true,
+            ..Document::default()
+        };
+        assert_eq!(doc.background().unwrap(), Background::None);
+        doc.select_theme("catppuccin-latte".parse().unwrap());
+        assert!(doc.light);
+        for background in Background::ALL {
+            doc.select_background(background);
+            assert_eq!(doc.background().unwrap(), background);
+            assert!(doc.prepare(None, None).is_ok());
+            let restored: Document =
+                serde_json::from_str(&serde_json::to_string(&doc).unwrap()).unwrap();
+            assert_eq!(restored.background().unwrap(), background);
+        }
+        doc.select_theme("nord".parse().unwrap());
+        assert!(!doc.light);
     }
     #[test]
     fn output_extension_never_redirects_an_approved_overwrite() {

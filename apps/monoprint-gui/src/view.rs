@@ -12,7 +12,7 @@ use gpui_kit::{
     prelude::*,
     *,
 };
-use monoprint::{Appearance, Language, LineNumberPolicy, Theme as ImageTheme};
+use monoprint::{Appearance, Background, Language, LineNumberPolicy, Theme as ImageTheme};
 
 impl Render for Studio {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -420,7 +420,7 @@ impl Studio {
             };
             let (w, h) = (w * ratio, h * ratio);
             let mut artboard = div().relative().w(px(w)).h(px(h)).flex_shrink_0().m_auto();
-            if self.document.transparent {
+            if self.document.background().ok() == Some(Background::None) {
                 artboard = artboard.child(canvas_checker(w, h));
             }
             canvas = canvas.child(
@@ -809,6 +809,7 @@ impl Studio {
             .parse::<ImageTheme>()
             .unwrap_or_default();
         let supports_light = theme.supports(Appearance::Light);
+        let supports_dark = theme.supports(Appearance::Dark);
         let numbers = if self.document.language == Language::PLAIN.id() {
             Some(false)
         } else {
@@ -846,6 +847,7 @@ impl Studio {
                                     .label("Dark")
                                     .icon(IconName::Moon)
                                     .selected(!self.document.light)
+                                    .disabled(!supports_dark)
                                     .flex_1()
                                     .on_click(cx.listener(|this, _, _, cx| {
                                         this.document.light = false;
@@ -914,14 +916,39 @@ impl Studio {
                                     }))
                             })),
                     )
-                    .child(row(
-                        "Transparent background",
-                        Switch::new("transparent-background")
-                            .small()
-                            .checked(self.document.transparent)
-                            .on_change(cx.listener(|this, value, _, cx| {
-                                this.document.transparent = *value;
-                                this.changed(cx);
+                    .child(field(
+                        "Background",
+                        div()
+                            .flex()
+                            .flex_wrap()
+                            .gap_1()
+                            .children(Background::ALL.into_iter().map(|background| {
+                                let label = match background {
+                                    Background::Theme => "Theme",
+                                    Background::Solid => "Solid",
+                                    Background::Lattice => "Lattice",
+                                    Background::Halftone => "Halftone",
+                                    Background::None => "None",
+                                };
+                                Button::new(format!("background-{background}"))
+                                    .xsmall()
+                                    .px_2()
+                                    .min_w_0()
+                                    .label(label)
+                                    .selected(self.document.background().ok() == Some(background))
+                                    .when(
+                                        self.document.background().ok() == Some(background),
+                                        |button| button.bg(rgb(ACCENT)).text_color(rgb(0x16293F)),
+                                    )
+                                    .tooltip(if background == Background::None {
+                                        "Transparent canvas; keep the code window"
+                                    } else {
+                                        label
+                                    })
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.document.select_background(background);
+                                        this.changed(cx);
+                                    }))
                             })),
                     ))
                     .child(row(

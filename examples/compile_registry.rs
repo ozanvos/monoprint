@@ -10,6 +10,13 @@ fn main() -> Result<()> {
     let root = Path::new(&root);
     ensure!(
         Command::new("node")
+            .args(["scripts/import-editor-themes.mjs", "--check"])
+            .status()?
+            .success(),
+        "editor theme source/license validation failed"
+    );
+    ensure!(
+        Command::new("node")
             .args(["scripts/import-grammar-metadata.mjs", "--check-inputs"])
             .arg(root)
             .status()

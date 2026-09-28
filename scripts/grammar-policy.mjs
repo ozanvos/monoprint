@@ -134,7 +134,9 @@ export async function registryReceipt({ policy }) {
     assert.equal(grammar.license, entry.license);
     assert.equal(grammar.licenseUrl, entry.licenseSource);
   }
-  const files = [POLICY, EVIDENCE, CATALOG, NOTICE, 'licenses/grammars-LICENSE.txt', 'assets/registry.zst'];
+  const files = [POLICY, EVIDENCE, CATALOG, NOTICE, 'licenses/grammars-LICENSE.txt', 'assets/registry.zst',
+    'assets/editor/themes.json', 'assets/editor/sources.json', 'licenses/editor-themes-NOTICE.txt',
+    'licenses/editor-themes-provenance.json'];
   const checksums = {};
   for (const file of files) checksums[file] = sha256(await fs.readFile(file));
   for (const name of (await fs.readdir('assets/themes')).filter(n => n.endsWith('.json')).sort()) {

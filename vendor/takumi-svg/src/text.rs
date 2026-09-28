@@ -178,19 +178,29 @@ fn emit_runs(
   }
 
   // text-shadow paints below the glyphs; later-listed shadows paint lowest.
-  for shadow in font_style.painted_text_shadows() {
-    let color = Rgba(shadow.color.0);
-    let filter = if shadow.blur_radius > 0.0 {
-      Some(doc.blur_filter(shadow.blur_radius / 2.0)?)
-    } else {
-      None
+  for run in &runs.runs {
+    // Inline tokens may override the container's shadows (including `none`).
+    let run_style = match run
+      .glyph_run
+      .brush
+      .source_span_id
+      .and_then(|id| spans.get(id as usize))
+    {
+      Some(ProcessedInlineSpan::Text { style, .. }) => style.as_ref(),
+      _ => font_style,
     };
-    let group = doc.begin_group(IDENTITY, 1.0, None, filter.as_deref())?;
-    let shadow_frame = frame.shifted(shadow.offset_x, shadow.offset_y);
-    for run in &runs.runs {
-      emit_run_glyphs(doc, run, font_style, shadow_frame, Some(color), None, None)?;
+    for shadow in run_style.painted_text_shadows() {
+      let color = Rgba(shadow.color.0);
+      let filter = if shadow.blur_radius > 0.0 {
+        Some(doc.blur_filter(shadow.blur_radius / 2.0)?)
+      } else {
+        None
+      };
+      let group = doc.begin_group(IDENTITY, 1.0, None, filter.as_deref())?;
+      let shadow_frame = frame.shifted(shadow.offset_x, shadow.offset_y);
+      emit_run_glyphs(doc, run, run_style, shadow_frame, Some(color), None, None)?;
+      doc.end_group(group)?;
     }
-    doc.end_group(group)?;
   }
 
   let decorations: Vec<Vec<DecorationRect>> = runs

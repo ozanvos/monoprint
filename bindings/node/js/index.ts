@@ -8,6 +8,8 @@ export type { ThemeId, LanguageId } from './catalog-types.js';
 /** PNG output pixels per CSS pixel. Defaults to 4; SVG/HTML use CSS dimensions. */
 export type Scale = 1 | 2 | 3 | 4 | 5 | 6;
 export type Appearance = 'dark' | 'light';
+/** Outer canvas treatment, independent of the code window. */
+export type Background = 'theme' | 'solid' | 'lattice' | 'halftone' | 'none';
 /** A one-based line number or an inclusive [first, last] pair. */
 export type Highlight = number | readonly [number, number];
 
@@ -15,7 +17,7 @@ export type Highlight = number | readonly [number, number];
 export interface Style {
   /** Candy by default. IDs and capabilities are discoverable with `getThemes()`. */
   theme?: ThemeId;
-  /** Dark by default. Stripe has no light variant. */
+  /** The theme's preferred appearance by default; unsupported variants fail. */
   appearance?: Appearance;
   /** Outer CSS pixels, 0–512. Defaults to 64. */
   padding?: number;
@@ -23,6 +25,8 @@ export interface Style {
   width?: number | 'auto';
   /** Remove the decorative background, retaining the code window. */
   transparent?: boolean;
+  /** Defaults to 'theme'. Mutually exclusive with transparent in one options object. */
+  background?: Background;
   /** Theme defaults and fixed partner-theme rules apply; plain text hides numbers. */
   lineNumbers?: boolean | 'auto';
   /** Reusable TTF/OTF code font. `null` restores the theme font. */
@@ -47,6 +51,8 @@ export interface PngOptions extends RenderOptions { scale?: Scale }
 export interface ThemeInfo {
   readonly id: ThemeId;
   readonly name: string;
+  readonly family: string;
+  readonly defaultAppearance: Appearance;
   readonly appearances: readonly Appearance[];
   readonly lineNumbers: { readonly toggleable: boolean; readonly default: boolean };
 }
@@ -199,7 +205,7 @@ function readCatalog(): void {
     appearances: Object.freeze(t.appearances), lineNumbers: Object.freeze(t.lineNumbers) })));
   cachedLanguages = Object.freeze(catalog.languages.map(l => Object.freeze({ ...l, aliases: Object.freeze(l.aliases) })));
 }
-/** All 33 themes and their appearance/line-number capabilities, without initializing rendering. */
+/** All bundled themes, families and appearance/line-number capabilities, without initializing rendering. */
 export function getThemes(): readonly ThemeInfo[] { readCatalog(); return cachedThemes!; }
 /** All selectable highlighting languages plus plain text, with aliases. */
 export function getLanguages(): readonly LanguageInfo[] { readCatalog(); return cachedLanguages!; }

@@ -1,0 +1,715 @@
+{
+  "ayu-dark": {
+    "id": "ayu-dark",
+    "name": "Ayu Dark",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#bfbdb6ff",
+        "--ink-highlight": "#3388ff40"
+      }
+    },
+    "background": {
+      "from": "#6b5131",
+      "to": "#42312d"
+    },
+    "editor": {
+      "family": "Ayu",
+      "surface": "#10141cff",
+      "foreground": "#bfbdb6ff",
+      "gutter": "#5a6378a6",
+      "border": "#2a2d33",
+      "solid": "#312a24"
+    }
+  },
+  "ayu-light": {
+    "id": "ayu-light",
+    "name": "Ayu Light",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#5c6166ff",
+        "--ink-highlight": "#035bd626"
+      }
+    },
+    "background": {
+      "from": "#fdead2",
+      "to": "#faeae1"
+    },
+    "editor": {
+      "family": "Ayu",
+      "surface": "#fcfcfcff",
+      "foreground": "#5c6166ff",
+      "gutter": "#828e9f66",
+      "border": "#e4e5e6",
+      "solid": "#fcf3e8"
+    }
+  },
+  "ayu-mirage": {
+    "id": "ayu-mirage",
+    "name": "Ayu Mirage",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#cccac2ff",
+        "--ink-highlight": "#409fff40"
+      }
+    },
+    "background": {
+      "from": "#775e41",
+      "to": "#514141"
+    },
+    "editor": {
+      "family": "Ayu",
+      "surface": "#242936ff",
+      "foreground": "#cccac2ff",
+      "gutter": "#707a8c80",
+      "border": "#3d414b",
+      "solid": "#433c3a"
+    }
+  },
+  "catppuccin-frappe": {
+    "id": "catppuccin-frappe",
+    "name": "Catppuccin Frappé",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#c6d0f5ff",
+        "--ink-highlight": "#949cbb40"
+      }
+    },
+    "background": {
+      "from": "#6b5f89",
+      "to": "#5b5369"
+    },
+    "editor": {
+      "family": "Catppuccin",
+      "surface": "#303446ff",
+      "foreground": "#c6d0f5ff",
+      "gutter": "#838ba7ff",
+      "border": "#474b60",
+      "solid": "#46445f"
+    }
+  },
+  "catppuccin-latte": {
+    "id": "catppuccin-latte",
+    "name": "Catppuccin Latte",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#4c4f69ff",
+        "--ink-highlight": "#7c7f934d"
+      }
+    },
+    "background": {
+      "from": "#e6def6",
+      "to": "#f0e9f2"
+    },
+    "editor": {
+      "family": "Catppuccin",
+      "surface": "#eff1f5ff",
+      "foreground": "#4c4f69ff",
+      "gutter": "#8c8fa1ff",
+      "border": "#d7d9e0",
+      "solid": "#ebe8f5"
+    }
+  },
+  "catppuccin-macchiato": {
+    "id": "catppuccin-macchiato",
+    "name": "Catppuccin Macchiato",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#cad3f5ff",
+        "--ink-highlight": "#939ab740"
+      }
+    },
+    "background": {
+      "from": "#635782",
+      "to": "#524960"
+    },
+    "editor": {
+      "family": "Catppuccin",
+      "surface": "#24273aff",
+      "foreground": "#cad3f5ff",
+      "gutter": "#8087a2ff",
+      "border": "#3d4156",
+      "solid": "#3b3954"
+    }
+  },
+  "catppuccin-mocha": {
+    "id": "catppuccin-mocha",
+    "name": "Catppuccin Mocha",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#cdd6f4ff",
+        "--ink-highlight": "#9399b240"
+      }
+    },
+    "background": {
+      "from": "#60527a",
+      "to": "#4d4257"
+    },
+    "editor": {
+      "family": "Catppuccin",
+      "surface": "#1e1e2eff",
+      "foreground": "#cdd6f4ff",
+      "gutter": "#7f849cff",
+      "border": "#383a4c",
+      "solid": "#36314a"
+    }
+  },
+  "dracula": {
+    "id": "dracula",
+    "name": "Dracula Theme",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#f8f8f2ff",
+        "--ink-highlight": "#44475aff"
+      }
+    },
+    "background": {
+      "from": "#615280",
+      "to": "#573b56"
+    },
+    "editor": {
+      "family": "Dracula",
+      "surface": "#282a36ff",
+      "foreground": "#f8f8f2ff",
+      "gutter": "#6272a4ff",
+      "border": "#474952",
+      "solid": "#3d3951"
+    }
+  },
+  "dracula-soft": {
+    "id": "dracula-soft",
+    "name": "Dracula Theme Soft",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#f6f6f4ff",
+        "--ink-highlight": "#44475aff"
+      }
+    },
+    "background": {
+      "from": "#615280",
+      "to": "#573b56"
+    },
+    "editor": {
+      "family": "Dracula",
+      "surface": "#282a36ff",
+      "foreground": "#f6f6f4ff",
+      "gutter": "#7b7f8bff",
+      "border": "#474953",
+      "solid": "#3d3951"
+    }
+  },
+  "github-dark-default": {
+    "id": "github-dark-default",
+    "name": "GitHub Dark Default",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#e6edf3ff",
+        "--ink-highlight": "#2e3238ff"
+      }
+    },
+    "background": {
+      "from": "#39444f",
+      "to": "#2c323a"
+    },
+    "editor": {
+      "family": "GitHub",
+      "surface": "#0d1117ff",
+      "foreground": "#e6edf3ff",
+      "gutter": "#6e7681ff",
+      "border": "#2e3238",
+      "solid": "#1d242c"
+    }
+  },
+  "github-dark-dimmed": {
+    "id": "github-dark-dimmed",
+    "name": "GitHub Dark Dimmed",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#adbac7ff",
+        "--ink-highlight": "#373d45ff"
+      }
+    },
+    "background": {
+      "from": "#46515e",
+      "to": "#3d434c"
+    },
+    "editor": {
+      "family": "GitHub",
+      "surface": "#22272eff",
+      "foreground": "#adbac7ff",
+      "gutter": "#636e7bff",
+      "border": "#373d45",
+      "solid": "#2f3740"
+    }
+  },
+  "github-light-default": {
+    "id": "github-light-default",
+    "name": "GitHub Light Default",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#1f2328ff",
+        "--ink-highlight": "#dddedfff"
+      }
+    },
+    "background": {
+      "from": "#e0e5ea",
+      "to": "#edeff2"
+    },
+    "editor": {
+      "family": "GitHub",
+      "surface": "#ffffffff",
+      "foreground": "#1f2328ff",
+      "gutter": "#8c959fff",
+      "border": "#dddedf",
+      "solid": "#f0f2f5"
+    }
+  },
+  "gruvbox-dark-hard": {
+    "id": "gruvbox-dark-hard",
+    "name": "Gruvbox Dark Hard",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#ebdbb2ff",
+        "--ink-highlight": "#689d6a40"
+      }
+    },
+    "background": {
+      "from": "#644e21",
+      "to": "#383a1f"
+    },
+    "editor": {
+      "family": "Gruvbox",
+      "surface": "#1d2021ff",
+      "foreground": "#ebdbb2ff",
+      "gutter": "#665c54ff",
+      "border": "#3c3c37",
+      "solid": "#373121"
+    }
+  },
+  "gruvbox-dark-medium": {
+    "id": "gruvbox-dark-medium",
+    "name": "Gruvbox Dark Medium",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#ebdbb2ff",
+        "--ink-highlight": "#689d6a40"
+      }
+    },
+    "background": {
+      "from": "#6b5325",
+      "to": "#414025"
+    },
+    "editor": {
+      "family": "Gruvbox",
+      "surface": "#282828ff",
+      "foreground": "#ebdbb2ff",
+      "gutter": "#665c54ff",
+      "border": "#45433d",
+      "solid": "#413827"
+    }
+  },
+  "gruvbox-dark-soft": {
+    "id": "gruvbox-dark-soft",
+    "name": "Gruvbox Dark Soft",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#ebdbb2ff",
+        "--ink-highlight": "#689d6a40"
+      }
+    },
+    "background": {
+      "from": "#71582a",
+      "to": "#48472a"
+    },
+    "editor": {
+      "family": "Gruvbox",
+      "surface": "#32302fff",
+      "foreground": "#ebdbb2ff",
+      "gutter": "#665c54ff",
+      "border": "#4e4a43",
+      "solid": "#493f2d"
+    }
+  },
+  "gruvbox-light-hard": {
+    "id": "gruvbox-light-hard",
+    "name": "Gruvbox Light Hard",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#3c3836ff",
+        "--ink-highlight": "#689d6a40"
+      }
+    },
+    "background": {
+      "from": "#f1deaa",
+      "to": "#e8e4b5"
+    },
+    "editor": {
+      "family": "Gruvbox",
+      "surface": "#f9f5d7ff",
+      "foreground": "#3c3836ff",
+      "gutter": "#bdae93ff",
+      "border": "#ddd9bf",
+      "solid": "#f5eac1"
+    }
+  },
+  "gruvbox-light-medium": {
+    "id": "gruvbox-light-medium",
+    "name": "Gruvbox Light Medium",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#3c3836ff",
+        "--ink-highlight": "#689d6a40"
+      }
+    },
+    "background": {
+      "from": "#f2db9e",
+      "to": "#e9e1a8"
+    },
+    "editor": {
+      "family": "Gruvbox",
+      "surface": "#fbf1c7ff",
+      "foreground": "#3c3836ff",
+      "gutter": "#bdae93ff",
+      "border": "#ded5b1",
+      "solid": "#f7e6b3"
+    }
+  },
+  "gruvbox-light-soft": {
+    "id": "gruvbox-light-soft",
+    "name": "Gruvbox Light Soft",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#3c3836ff",
+        "--ink-highlight": "#689d6a40"
+      }
+    },
+    "background": {
+      "from": "#ebd295",
+      "to": "#e2d79f"
+    },
+    "editor": {
+      "family": "Gruvbox",
+      "surface": "#f2e5bcff",
+      "foreground": "#3c3836ff",
+      "gutter": "#bdae93ff",
+      "border": "#d7cba8",
+      "solid": "#efdca9"
+    }
+  },
+  "night-owl": {
+    "id": "night-owl",
+    "name": "Night Owl",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#d6deebff",
+        "--ink-highlight": "#1d3b53ff"
+      }
+    },
+    "background": {
+      "from": "#324e79",
+      "to": "#1d414b"
+    },
+    "editor": {
+      "family": "Night Owl",
+      "surface": "#011627ff",
+      "foreground": "#d6deebff",
+      "gutter": "#4b6479ff",
+      "border": "#213444",
+      "solid": "#132b45"
+    }
+  },
+  "night-owl-light": {
+    "id": "night-owl-light",
+    "name": "Night Owl Light",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#403f53ff",
+        "--ink-highlight": "#e0e0e0ff"
+      }
+    },
+    "background": {
+      "from": "#dde7fc",
+      "to": "#e5f5f2"
+    },
+    "editor": {
+      "family": "Night Owl",
+      "surface": "#fbfbfbff",
+      "foreground": "#403f53ff",
+      "gutter": "#90a7b2ff",
+      "border": "#dfdfe2",
+      "solid": "#ecf1fb"
+    }
+  },
+  "nord": {
+    "id": "nord",
+    "name": "Nord",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#d8dee9ff",
+        "--ink-highlight": "#434c5ecc"
+      }
+    },
+    "background": {
+      "from": "#506977",
+      "to": "#485251"
+    },
+    "editor": {
+      "family": "Nord",
+      "surface": "#2e3440ff",
+      "foreground": "#d8dee9ff",
+      "gutter": "#4c566aff",
+      "border": "#484e59",
+      "solid": "#3b4854"
+    }
+  },
+  "one-dark-pro": {
+    "id": "one-dark-pro",
+    "name": "One Dark Pro",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#abb2bfff",
+        "--ink-highlight": "#67769660"
+      }
+    },
+    "background": {
+      "from": "#3e5e7b",
+      "to": "#4b3d59"
+    },
+    "editor": {
+      "family": "One Dark Pro",
+      "surface": "#282c34ff",
+      "foreground": "#abb2bfff",
+      "gutter": "#495162ff",
+      "border": "#3c4049",
+      "solid": "#303e4e"
+    }
+  },
+  "rose-pine": {
+    "id": "rose-pine",
+    "name": "Rosé Pine",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#e0def4ff",
+        "--ink-highlight": "#6e6a8633"
+      }
+    },
+    "background": {
+      "from": "#69565d",
+      "to": "#1e2b3c"
+    },
+    "editor": {
+      "family": "Rosé Pine",
+      "surface": "#191724ff",
+      "foreground": "#e0def4ff",
+      "gutter": "#908caaff",
+      "border": "#373543",
+      "solid": "#362e39"
+    }
+  },
+  "rose-pine-dawn": {
+    "id": "rose-pine-dawn",
+    "name": "Rosé Pine Dawn",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#575279ff",
+        "--ink-highlight": "#6e6a8614"
+      }
+    },
+    "background": {
+      "from": "#f6e6e0",
+      "to": "#d6dddc"
+    },
+    "editor": {
+      "family": "Rosé Pine",
+      "surface": "#faf4edff",
+      "foreground": "#575279ff",
+      "gutter": "#797593ff",
+      "border": "#e2dcdc",
+      "solid": "#f8ede7"
+    }
+  },
+  "rose-pine-moon": {
+    "id": "rose-pine-moon",
+    "name": "Rosé Pine Moon",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#e0def4ff",
+        "--ink-highlight": "#817c9c26"
+      }
+    },
+    "background": {
+      "from": "#6f5c68",
+      "to": "#26334a"
+    },
+    "editor": {
+      "family": "Rosé Pine",
+      "surface": "#232136ff",
+      "foreground": "#e0def4ff",
+      "gutter": "#908caaff",
+      "border": "#3f3d53",
+      "solid": "#3f3748"
+    }
+  },
+  "solarized-dark": {
+    "id": "solarized-dark",
+    "name": "Solarized Dark",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#839496ff",
+        "--ink-highlight": "#274642ff"
+      }
+    },
+    "background": {
+      "from": "#10585b",
+      "to": "#28402a"
+    },
+    "editor": {
+      "family": "Solarized",
+      "surface": "#002b36ff",
+      "foreground": "#839496ff",
+      "gutter": "#3f5d64ff",
+      "border": "#143b44",
+      "solid": "#063c44"
+    }
+  },
+  "solarized-light": {
+    "id": "solarized-light",
+    "name": "Solarized Light",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#657b83ff",
+        "--ink-highlight": "#eee8d5ff"
+      }
+    },
+    "background": {
+      "from": "#c8e1d0",
+      "to": "#f0e2ba"
+    },
+    "editor": {
+      "family": "Solarized",
+      "surface": "#fdf6e3ff",
+      "foreground": "#657b83ff",
+      "gutter": "#b4bbb5ff",
+      "border": "#e6e4d5",
+      "solid": "#e4ecda"
+    }
+  },
+  "synthwave-84": {
+    "id": "synthwave-84",
+    "name": "Synthwave '84",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#ffffffff",
+        "--ink-highlight": "#ffffff20"
+      }
+    },
+    "background": {
+      "from": "#784674",
+      "to": "#2a525f"
+    },
+    "editor": {
+      "family": "SynthWave ’84",
+      "surface": "#262335ff",
+      "foreground": "#ffffffff",
+      "gutter": "#ffffff73",
+      "border": "#474453",
+      "solid": "#44304c"
+    }
+  },
+  "tokyo-night": {
+    "id": "tokyo-night",
+    "name": "Tokyo Night",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#a9b1d6ff",
+        "--ink-highlight": "#515c7e4d"
+      }
+    },
+    "background": {
+      "from": "#3e4e75",
+      "to": "#3d3754"
+    },
+    "editor": {
+      "family": "Tokyo Night",
+      "surface": "#1a1b26ff",
+      "foreground": "#a9b1d6ff",
+      "gutter": "#363b54ff",
+      "border": "#2f3240",
+      "solid": "#272e43"
+    }
+  },
+  "tokyo-night-light": {
+    "id": "tokyo-night-light",
+    "name": "Tokyo Night Light",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#343b59ff",
+        "--ink-highlight": "#acb0bf40"
+      }
+    },
+    "background": {
+      "from": "#cbd6f0",
+      "to": "#ded9ef"
+    },
+    "editor": {
+      "family": "Tokyo Night",
+      "surface": "#e6e7edff",
+      "foreground": "#343b59ff",
+      "gutter": "#9da0abff",
+      "border": "#cbcdd7",
+      "solid": "#d9dfee"
+    }
+  },
+  "tokyo-night-storm": {
+    "id": "tokyo-night-storm",
+    "name": "Tokyo Night Storm",
+    "font": "jetbrains-mono",
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#a9b1d6ff",
+        "--ink-highlight": "#6f7bb640"
+      }
+    },
+    "background": {
+      "from": "#455682",
+      "to": "#454164"
+    },
+    "editor": {
+      "family": "Tokyo Night",
+      "surface": "#24283bff",
+      "foreground": "#a9b1d6ff",
+      "gutter": "#3b4261ff",
+      "border": "#383d52",
+      "solid": "#303955"
+    }
+  }
+}

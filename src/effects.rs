@@ -62,7 +62,7 @@ pub fn prepare(theme: &str, style: &Style, width: f32, height: f32) -> Effects {
         w.hypot(h)
     );
     let mut paths = String::new();
-    if style.transparent && theme != "removed-frame" {
+    if style.background != crate::Background::Theme && theme != "removed-frame" {
         return Effects {
             css,
             overlay: paths,
@@ -168,7 +168,8 @@ pub fn prepare(theme: &str, style: &Style, width: f32, height: f32) -> Effects {
         }
         "removed-frame" => {
             css += ".NuxtFrame__window [data-frameborder]{display:none}";
-            if style.appearance != Appearance::Light && !style.transparent {
+            if style.appearance != Appearance::Light && style.background == crate::Background::Theme
+            {
                 // Blur the full off-canvas source before clipping to the export.
                 // Native CSS filters otherwise lose the glow outside the viewport.
                 css += ".NuxtFrame__window:before,.NuxtFrame__window:after{display:none}";

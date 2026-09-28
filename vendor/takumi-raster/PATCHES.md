@@ -1,5 +1,10 @@
 # Local exact-pixel performance changes
 
+Inline text shadow fix: `src/inline_drawing.rs` reads each glyph run's resolved
+source-span style instead of applying only the container's shadows. This retains
+wrapping and shaping while allowing SynthWave's per-token glow and explicit
+`text-shadow:none` overrides. Pixel coverage lives in `tests/editor_themes.rs`.
+
 Based on crates.io `takumi-raster` 0.5.1, upstream revision
 `4180970140a2f1a811e5dbb3b33343c74787bebc` (also recorded in
 `.cargo_vcs_info.json`). Original MIT/Apache licenses are preserved.

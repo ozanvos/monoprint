@@ -302,6 +302,7 @@ impl Studio {
                         .filter(|(_, (theme, _))| {
                             theme.name().to_lowercase().contains(&query)
                                 || theme.id().contains(&query)
+                                || theme.family().to_lowercase().contains(&query)
                         })
                         .map(|(index, _)| index)
                         .collect();

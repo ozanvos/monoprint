@@ -1,0 +1,22 @@
+*,*:before,*:after{box-sizing:border-box;border-width:0;border-style:solid}
+html,body{margin:0}
+div{display:block}
+#capture{position:relative;overflow:hidden;font-family:Inter,sans-serif;font-size:16px;color:var(--editor-foreground)}
+.EditorFrame__window{display:flex;flex-direction:column;min-height:100px;border:1px solid var(--editor-border);border-radius:12px;background:var(--editor-surface);padding-top:8px}
+.EditorFrame__shadow{box-shadow:0 12px 32px #00000026,0 2px 6px #00000018;}
+.EditorFrame__header{display:flex;align-items:center;position:relative;height:28px;padding:0 18px}
+.EditorFrame__controls{display:flex;gap:6px}
+.EditorFrame__controls i{display:block;width:8px;height:8px;border-radius:4px;background:var(--editor-gutter);opacity:.55}
+.EditorFrame__title{position:absolute;left:64px;right:64px;text-align:center;font-size:12px;line-height:16px;color:var(--editor-gutter);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.Editor__editor{display:block;width:100%;min-height:0;color:var(--ink-foreground)}
+.Editor__formatted{padding:16px;margin:0;font-family:inherit;font-size:15px;font-weight:inherit;letter-spacing:.1px;line-height:22.5px;tab-size:2;white-space:pre-wrap}
+.Editor__formatted>pre{margin:0;font-family:inherit;white-space:pre-wrap}
+.Editor__formatted>pre>code{font-family:inherit}
+.Editor__editor .line{display:inline-block;width:calc(100% + 32px);padding:0 16px;margin:0 -16px}
+.Editor__editor .line:before{position:relative;left:6px;display:inline-block;width:1rem;margin-right:1.5rem;margin-left:-2.5rem;color:var(--editor-gutter);content:attr(data-line);opacity:0;text-align:right}
+.Editor__showLineNumbers{--line-number-padding:3rem}
+.Editor__showLineNumbers.Editor__showLineNumbersLarge{--line-number-padding:3.5rem}
+.Editor__showLineNumbers .Editor__formatted{padding-left:var(--line-number-padding)}
+.Editor__showLineNumbers .line{width:calc(100% + 16px + var(--line-number-padding));padding:0 16px 0 var(--line-number-padding);margin:0 -16px 0 calc(-1 * var(--line-number-padding))}
+.Editor__showLineNumbers .line:before{opacity:1}
+.Editor__editor .highlighted-line{background-color:var(--ink-highlight)}

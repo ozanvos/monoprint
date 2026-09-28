@@ -178,7 +178,8 @@ pub fn catalog() -> String {
                 .filter(|appearance| theme.supports(*appearance))
                 .map(|a| a.to_string())
                 .collect();
-            serde_json::json!({ "id": theme.id(), "name": theme.name(), "appearances": appearances,
+            serde_json::json!({ "id": theme.id(), "name": theme.name(), "family": theme.family(),
+            "defaultAppearance": theme.default_appearance().to_string(), "appearances": appearances,
             "lineNumbers": { "toggleable": toggleable, "default": default } })
         })
         .collect();

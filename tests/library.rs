@@ -16,12 +16,12 @@ fn public_values_can_cross_thread_boundaries() {
 
 #[test]
 fn catalog_parsing_discovery_and_filename_inference() {
-    assert_eq!(Theme::all().len(), 33);
+    assert_eq!(Theme::all().len(), 64);
     assert_eq!(
         Theme::all()
             .filter(|t| t.supports(Appearance::Light))
             .count(),
-        32
+        42
     );
     assert_eq!("CANDY".parse::<Theme>().unwrap(), Theme::default());
     assert_eq!(Theme::default().to_string(), "removed-frame");

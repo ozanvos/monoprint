@@ -1,6 +1,6 @@
 use crate::{
     Error, LineNumberPolicy, LineNumbers, Renderer, Scale, Snippet, Style, TextRole, assets,
-    effects, highlight,
+    background, editor_theme, effects, highlight,
 };
 use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::STANDARD};
@@ -172,7 +172,8 @@ pub(crate) fn export(
                 LineNumbers::Hide => false,
             },
         };
-    let weight = if style.font.is_none()
+    let weight = if theme.editor.is_none()
+        && style.font.is_none()
         && matches!(theme.font.as_str(), "jetbrains-mono" | "ibm-plex-mono")
     {
         500
@@ -199,7 +200,7 @@ pub(crate) fn export(
     let key = format!(
         "{}/{mode}/{}/{}/{}",
         theme.id,
-        u8::from(!style.transparent),
+        u8::from(style.background == crate::Background::Theme),
         u8::from(!snippet.title.is_empty()),
         u8::from(!snippet.subtitle.is_empty())
     );
@@ -208,10 +209,14 @@ pub(crate) fn export(
         .find(|g| g.name == code.language || g.aliases.contains(&code.language))
         .map(|g| g.display_name.as_str())
         .unwrap_or("Plain Text");
-    let mut template = assets::templates()
-        .get(&key)
-        .context("missing embedded frame template")?
-        .clone();
+    let mut template = if theme.editor.is_some() {
+        editor_theme::template(!snippet.title.is_empty(), style.background)
+    } else {
+        assets::templates()
+            .get(&key)
+            .context("missing embedded frame template")?
+            .clone()
+    };
     if template.contains("__TITLE__") {
         let title_uses_code_font = matches!(theme.id.as_str(), "removed-frame" | "removed-frame");
         let title_font = match theme.id.as_str() {
@@ -238,13 +243,20 @@ pub(crate) fn export(
         .width
         .map(|w| format!("width:{w}px"))
         .unwrap_or_else(|| "display:inline-block;min-width:520px".into());
-    let base_css = &assets::styles()[&theme.id];
+    let editor_css;
+    let base_css = if theme.editor.is_some() {
+        editor_css = editor_theme::css(theme);
+        &editor_css
+    } else {
+        &assets::styles()[&theme.id]
+    };
     // html-to-image 1.11.13 reduces 15px code to 14.9px on export.
     // Match that in every format, retaining 22.5px leading and the original
     // pre-export fit-width measurement below.
     let mut css = format!(
         "{base_css}\n#capture{{{width}}}.Editor__editor{{display:block}}.Editor__editor:after{{content:none}}.Editor__formatted{{font-family:CodeMono;font-size:14.9px;font-variant-ligatures:none;font-feature-settings:'liga' 0,'calt' 0}}[data-export-input]{{display:block}}.DefaultFrame__header .DefaultFrame__fileName>[data-export-input]{{display:flex;align-items:center;justify-content:center}}\n"
     );
+    css += &background::css(theme, style.appearance, style.background);
     if style.ligatures {
         css += ".Editor__formatted{font-variant-ligatures:common-ligatures contextual;font-feature-settings:'liga' 1,'clig' 1,'calt' 1;letter-spacing:0}";
     }

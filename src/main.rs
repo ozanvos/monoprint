@@ -98,11 +98,6 @@ fn run() -> Result<()> {
         snippet = snippet.highlight_text(*range);
     }
     let mut style = Style::new(args.theme.parse()?)
-        .appearance(if args.light {
-            Appearance::Light
-        } else {
-            Appearance::Dark
-        })
         .transparent(args.transparent)
         .padding(args.padding)
         .ligatures(args.ligatures)
@@ -113,6 +108,16 @@ fn run() -> Result<()> {
         } else {
             LineNumbers::Auto
         });
+    if args.light || args.dark {
+        style = style.appearance(if args.light {
+            Appearance::Light
+        } else {
+            Appearance::Dark
+        });
+    }
+    if let Some(background) = args.background {
+        style = style.background(background);
+    }
     if let Some(width) = args.width {
         style = style.width(width);
     }

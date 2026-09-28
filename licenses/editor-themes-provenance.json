@@ -1,0 +1,449 @@
+{
+  "entries": [
+    {
+      "id": "ayu-dark",
+      "upstream": "https://github.com/ayu-theme/vscode-ayu/blob/97f28cd3c392cb12672a25229f33c4dd420f96ea/ayu-dark.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/ayu-dark.json",
+        "sha256": "d12ec5d45edf0c6dd1b70eafffd1a1990800614dbddcb67ae9722a48bc73afd3"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/ayu-theme/vscode-ayu/97f28cd3c392cb12672a25229f33c4dd420f96ea/LICENSE",
+        "sha256": "b2c797d3cd2f1c96c609ec99485f08a5ac1dfdec80c9cffdec11d35feb37ab52"
+      }
+    },
+    {
+      "id": "ayu-light",
+      "upstream": "https://github.com/ayu-theme/vscode-ayu/blob/97f28cd3c392cb12672a25229f33c4dd420f96ea/ayu-light.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/ayu-light.json",
+        "sha256": "5ccdc6750d014d51a1ea0b8eedf236d9b6d84dbc91770d653fa040098d3c2b3e"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/ayu-theme/vscode-ayu/97f28cd3c392cb12672a25229f33c4dd420f96ea/LICENSE",
+        "sha256": "b2c797d3cd2f1c96c609ec99485f08a5ac1dfdec80c9cffdec11d35feb37ab52"
+      }
+    },
+    {
+      "id": "ayu-mirage",
+      "upstream": "https://github.com/ayu-theme/vscode-ayu/blob/97f28cd3c392cb12672a25229f33c4dd420f96ea/ayu-mirage.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/ayu-mirage.json",
+        "sha256": "bfcb47de92bb5891ec0d2a324c17a5410680dd790349c39d5b22032a992e1003"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/ayu-theme/vscode-ayu/97f28cd3c392cb12672a25229f33c4dd420f96ea/LICENSE",
+        "sha256": "b2c797d3cd2f1c96c609ec99485f08a5ac1dfdec80c9cffdec11d35feb37ab52"
+      }
+    },
+    {
+      "id": "catppuccin-frappe",
+      "upstream": "https://github.com/catppuccin/vscode/blob/befc9e6fc41980f4241408f7049755d47c06ff45/packages/catppuccin-vsc/package.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/catppuccin-frappe.json",
+        "sha256": "ceab2a80285c41a3d22a896028c556d2639e944b155061c05d4e8db29860309f"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/catppuccin/vscode/befc9e6fc41980f4241408f7049755d47c06ff45/LICENSE",
+        "sha256": "814096d2c34cc216c624738a49356f32b7237733b4f7edb0685f4e50ef5074ba"
+      }
+    },
+    {
+      "id": "catppuccin-latte",
+      "upstream": "https://github.com/catppuccin/vscode/blob/befc9e6fc41980f4241408f7049755d47c06ff45/packages/catppuccin-vsc/package.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/catppuccin-latte.json",
+        "sha256": "6f6a644bdfc2f9f726fbe4500019c115dd6a18ba0116357537bcc44ca782d1a5"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/catppuccin/vscode/befc9e6fc41980f4241408f7049755d47c06ff45/LICENSE",
+        "sha256": "814096d2c34cc216c624738a49356f32b7237733b4f7edb0685f4e50ef5074ba"
+      }
+    },
+    {
+      "id": "catppuccin-macchiato",
+      "upstream": "https://github.com/catppuccin/vscode/blob/befc9e6fc41980f4241408f7049755d47c06ff45/packages/catppuccin-vsc/package.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/catppuccin-macchiato.json",
+        "sha256": "838fb5a0d482907a558b5a4bf43976b7249e6cbe0c3f6e0074af99ab691192d2"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/catppuccin/vscode/befc9e6fc41980f4241408f7049755d47c06ff45/LICENSE",
+        "sha256": "814096d2c34cc216c624738a49356f32b7237733b4f7edb0685f4e50ef5074ba"
+      }
+    },
+    {
+      "id": "catppuccin-mocha",
+      "upstream": "https://github.com/catppuccin/vscode/blob/befc9e6fc41980f4241408f7049755d47c06ff45/packages/catppuccin-vsc/package.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/catppuccin-mocha.json",
+        "sha256": "43298c436f7527ef2deee6c5af9fbea61f5eaf547f5b36295c00654e87a9bd88"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/catppuccin/vscode/befc9e6fc41980f4241408f7049755d47c06ff45/LICENSE",
+        "sha256": "814096d2c34cc216c624738a49356f32b7237733b4f7edb0685f4e50ef5074ba"
+      }
+    },
+    {
+      "id": "dracula",
+      "upstream": "https://github.com/dracula/visual-studio-code/blob/61743d6ea21cde34d9ad1009ec784ffe6f5e457c/src/dracula.yml",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/dracula.json",
+        "sha256": "f026b056d5321f7e8469fd811ced975d98e0222a2515d27879f149f751763573"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/dracula/visual-studio-code/61743d6ea21cde34d9ad1009ec784ffe6f5e457c/LICENSE",
+        "sha256": "f08d0bba7f8906ed4e7a76d7e555a883968d83eb550ae298ce893a65aee15dff"
+      }
+    },
+    {
+      "id": "dracula-soft",
+      "upstream": "https://github.com/dracula/visual-studio-code/blob/61743d6ea21cde34d9ad1009ec784ffe6f5e457c/src/dracula.yml",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/dracula-soft.json",
+        "sha256": "e03231d5b1b17910a1f71db90b3bdaa6bc4dc0aae9f9d8bba552fbeb7e13bd39"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/dracula/visual-studio-code/61743d6ea21cde34d9ad1009ec784ffe6f5e457c/LICENSE",
+        "sha256": "f08d0bba7f8906ed4e7a76d7e555a883968d83eb550ae298ce893a65aee15dff"
+      }
+    },
+    {
+      "id": "github-dark-default",
+      "upstream": "https://github.com/primer/github-vscode-theme/blob/f7a67d67fc2302a0ec36ddfb7bdd57142f4575e8/src/theme.js",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/github-dark-default.json",
+        "sha256": "82ed36bb46a16e69056d2b8f67d217bb6e1ae465cc03479548040ef78bde8632"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/primer/github-vscode-theme/f7a67d67fc2302a0ec36ddfb7bdd57142f4575e8/LICENSE",
+        "sha256": "e2c871bb6effe9f6ec8d94d6596db33c4bfe4dd94969a6a9a2fb0473ebe6442e"
+      }
+    },
+    {
+      "id": "github-dark-dimmed",
+      "upstream": "https://github.com/primer/github-vscode-theme/blob/f7a67d67fc2302a0ec36ddfb7bdd57142f4575e8/src/theme.js",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/github-dark-dimmed.json",
+        "sha256": "d862633306756cdbc299fb7652cb996883067b3f6e1dde36243605f13572c60d"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/primer/github-vscode-theme/f7a67d67fc2302a0ec36ddfb7bdd57142f4575e8/LICENSE",
+        "sha256": "e2c871bb6effe9f6ec8d94d6596db33c4bfe4dd94969a6a9a2fb0473ebe6442e"
+      }
+    },
+    {
+      "id": "github-light-default",
+      "upstream": "https://github.com/primer/github-vscode-theme/blob/f7a67d67fc2302a0ec36ddfb7bdd57142f4575e8/src/theme.js",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/github-light-default.json",
+        "sha256": "6254983def23d3bb79bf10ee0b95b923c810e50242deacb283ee9761093937e8"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/primer/github-vscode-theme/f7a67d67fc2302a0ec36ddfb7bdd57142f4575e8/LICENSE",
+        "sha256": "e2c871bb6effe9f6ec8d94d6596db33c4bfe4dd94969a6a9a2fb0473ebe6442e"
+      }
+    },
+    {
+      "id": "gruvbox-dark-hard",
+      "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/gruvbox-dark-hard.json",
+        "sha256": "9be0598abfdf9b0e1e0790aed1ff76f39cb752a4d0903c8ec558cce92adff69c"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/jdinhify/vscode-theme-gruvbox/f0d6e1fc1f325da636b90591eccc45d2f44738fd/LICENSE",
+        "sha256": "91943f88b9f92f4b31437ecf791107f9c4076f3a65c7be503c4580278dc90076"
+      }
+    },
+    {
+      "id": "gruvbox-dark-medium",
+      "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/gruvbox-dark-medium.json",
+        "sha256": "8d301867af3eb863e1ae289e8657264e244ffbf2c12f4c40cd13635b102f0046"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/jdinhify/vscode-theme-gruvbox/f0d6e1fc1f325da636b90591eccc45d2f44738fd/LICENSE",
+        "sha256": "91943f88b9f92f4b31437ecf791107f9c4076f3a65c7be503c4580278dc90076"
+      }
+    },
+    {
+      "id": "gruvbox-dark-soft",
+      "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/gruvbox-dark-soft.json",
+        "sha256": "18af82a9166c19dfb93abf535ac6a50264213440779f23f193a4194b85e41df7"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/jdinhify/vscode-theme-gruvbox/f0d6e1fc1f325da636b90591eccc45d2f44738fd/LICENSE",
+        "sha256": "91943f88b9f92f4b31437ecf791107f9c4076f3a65c7be503c4580278dc90076"
+      }
+    },
+    {
+      "id": "gruvbox-light-hard",
+      "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/gruvbox-light-hard.json",
+        "sha256": "84d9987e9eb3d2cd690a0ba20b265d25cb1d9f9f8907c24d9ab1be6cfd90d7fc"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/jdinhify/vscode-theme-gruvbox/f0d6e1fc1f325da636b90591eccc45d2f44738fd/LICENSE",
+        "sha256": "91943f88b9f92f4b31437ecf791107f9c4076f3a65c7be503c4580278dc90076"
+      }
+    },
+    {
+      "id": "gruvbox-light-medium",
+      "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/gruvbox-light-medium.json",
+        "sha256": "0fee7e7311f0c1c7b15d01cdb327b9651f7220b1702a3bdfcf9b1ead55752d5b"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/jdinhify/vscode-theme-gruvbox/f0d6e1fc1f325da636b90591eccc45d2f44738fd/LICENSE",
+        "sha256": "91943f88b9f92f4b31437ecf791107f9c4076f3a65c7be503c4580278dc90076"
+      }
+    },
+    {
+      "id": "gruvbox-light-soft",
+      "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/gruvbox-light-soft.json",
+        "sha256": "5f2077c4830cda0fc8e325b77ba42bbce1a0c3875ad02f869c3ba10d72e19814"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/jdinhify/vscode-theme-gruvbox/f0d6e1fc1f325da636b90591eccc45d2f44738fd/LICENSE",
+        "sha256": "91943f88b9f92f4b31437ecf791107f9c4076f3a65c7be503c4580278dc90076"
+      }
+    },
+    {
+      "id": "night-owl",
+      "upstream": "https://github.com/sdras/night-owl-vscode-theme/blob/d298950d6378c36c027f1387e307ebf3f145fc90/themes/Night%20Owl-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/night-owl.json",
+        "sha256": "dda3b16f82e8cf18c429401a5a07cd5b60253f6b252657c0a7a51a36d1ad74f6"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/sdras/night-owl-vscode-theme/d298950d6378c36c027f1387e307ebf3f145fc90/LICENSE.md",
+        "sha256": "7167d2a386e197ad4bf85f9bc60653ddce195bfc1243733dc92975e77dc94968"
+      }
+    },
+    {
+      "id": "night-owl-light",
+      "upstream": "https://github.com/sdras/night-owl-vscode-theme/blob/d298950d6378c36c027f1387e307ebf3f145fc90/themes/Night%20Owl-Light-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/night-owl-light.json",
+        "sha256": "ca4a996704d562e7eb46cbacdc8e32b128c6118ec79181749566488c8ff4a6ba"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/sdras/night-owl-vscode-theme/d298950d6378c36c027f1387e307ebf3f145fc90/LICENSE.md",
+        "sha256": "7167d2a386e197ad4bf85f9bc60653ddce195bfc1243733dc92975e77dc94968"
+      }
+    },
+    {
+      "id": "nord",
+      "upstream": "https://github.com/arcticicestudio/nord-visual-studio-code/blob/27045851c5154fe2d9b116e7491c596cdcd72275/themes/nord-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/nord.json",
+        "sha256": "0ea054997b6bbe5ca17baae04576190ca34ab06e52908d8831a6cca91b49d090"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/nordtheme/visual-studio-code/27045851c5154fe2d9b116e7491c596cdcd72275/license",
+        "sha256": "25ac8188d670bd2ad2ce2f4f55ab88573010ee9f7a4502543cb1eea1e2274f8a"
+      }
+    },
+    {
+      "id": "one-dark-pro",
+      "upstream": "https://github.com/Binaryify/OneDark-Pro/blob/d64c6d3c42e0d2f1a6a032af1ebfbb7f8e0acae6/themes/OneDark-Pro.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/one-dark-pro.json",
+        "sha256": "f8154cef4e56ff3ee9eee1857deed551842bc7fe6e2fd27023ae6f0655a94c39"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/Binaryify/OneDark-Pro/d64c6d3c42e0d2f1a6a032af1ebfbb7f8e0acae6/LICENSE.txt",
+        "sha256": "b4bdb28c670386f4fa093650b0bb8773714ce53171a2d1a9adb81756119200f1"
+      }
+    },
+    {
+      "id": "rose-pine",
+      "upstream": "https://github.com/rose-pine/vscode/blob/c9c08b4fe4131b8c686631046b8ce9223613fd24/themes/rose-pine-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/rose-pine.json",
+        "sha256": "e7a308d28bd7328696448e134057c1a9be2f11554b3d6ea7ad0800804d47b7c8"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/rose-pine/vscode/c9c08b4fe4131b8c686631046b8ce9223613fd24/LICENSE",
+        "sha256": "83815aa92fa62cd283c2b9db7f018426cfaa1033962669b838e6695a340adf6a"
+      }
+    },
+    {
+      "id": "rose-pine-dawn",
+      "upstream": "https://github.com/rose-pine/vscode/blob/c9c08b4fe4131b8c686631046b8ce9223613fd24/themes/rose-pine-dawn-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/rose-pine-dawn.json",
+        "sha256": "9553200699233f23be58851bdd5deac89cdc23a0112bf15910993869c38c15a2"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/rose-pine/vscode/c9c08b4fe4131b8c686631046b8ce9223613fd24/LICENSE",
+        "sha256": "83815aa92fa62cd283c2b9db7f018426cfaa1033962669b838e6695a340adf6a"
+      }
+    },
+    {
+      "id": "rose-pine-moon",
+      "upstream": "https://github.com/rose-pine/vscode/blob/c9c08b4fe4131b8c686631046b8ce9223613fd24/themes/rose-pine-moon-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/rose-pine-moon.json",
+        "sha256": "d482cd50102dfd156a795b476b1796a8abe2584d8dbb58e0e1e697fed0e34bf4"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/rose-pine/vscode/c9c08b4fe4131b8c686631046b8ce9223613fd24/LICENSE",
+        "sha256": "83815aa92fa62cd283c2b9db7f018426cfaa1033962669b838e6695a340adf6a"
+      }
+    },
+    {
+      "id": "solarized-dark",
+      "upstream": "https://github.com/microsoft/vscode/blob/2aeed2bb0e981846488f132c7ab095d180e654e3/extensions/theme-solarized-dark/themes/solarized-dark-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/solarized-dark.json",
+        "sha256": "2c5420b947e8be2e64346f5c7983dc29f2614d451294b7b9a1f50a0ed6e6a473"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/microsoft/vscode/2aeed2bb0e981846488f132c7ab095d180e654e3/LICENSE.txt",
+        "sha256": "9480271317925265e806a9a196aaa33410a962fa9d4d1e248a4a5187bc8c9df9"
+      }
+    },
+    {
+      "id": "solarized-light",
+      "upstream": "https://github.com/microsoft/vscode/blob/2aeed2bb0e981846488f132c7ab095d180e654e3/extensions/theme-solarized-light/themes/solarized-light-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/solarized-light.json",
+        "sha256": "5b6499bb74821499dc53495cd6e696f79dd7d90cfbf209de24a8527b5835d507"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/microsoft/vscode/2aeed2bb0e981846488f132c7ab095d180e654e3/LICENSE.txt",
+        "sha256": "9480271317925265e806a9a196aaa33410a962fa9d4d1e248a4a5187bc8c9df9"
+      }
+    },
+    {
+      "id": "synthwave-84",
+      "upstream": "https://github.com/robb0wen/synthwave-vscode/blob/7eaf45c07650295625e1e5ea73274fc50f9ea3c1/themes/synthwave-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/synthwave-84.json",
+        "sha256": "72fbd749421a297dcb8f5c05b81b48cbb2755dc2e102b4f7595def76b76227f1"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/robb0wen/synthwave-vscode/7eaf45c07650295625e1e5ea73274fc50f9ea3c1/LICENSE",
+        "sha256": "4f58ea71ef4a8d224c4abc85143cee79325708ea18c6c3684c14901e337129d5"
+      }
+    },
+    {
+      "id": "tokyo-night",
+      "upstream": "https://github.com/enkia/tokyo-night-vscode-theme/blob/da5546bc4163a02a30d6f3ced90d4ef7dfcb8460/themes/tokyo-night-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/shikijs/textmate-grammars-themes/4cb1625ad87a07fb4674fe97b921a8f756f4694b/packages/tm-themes/themes/tokyo-night.json",
+        "sha256": "b77b29c07cceabd70495101d64f1acd350965be209fc13f33ec246cc5f06da01"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/tokyo-night/tokyo-night-vscode-theme/da5546bc4163a02a30d6f3ced90d4ef7dfcb8460/LICENSE.txt",
+        "sha256": "e3f5d0d772cda0f4f67405696f15a0f335460a2b3944eff40f00675aadacb31b"
+      }
+    },
+    {
+      "id": "tokyo-night-light",
+      "upstream": "https://raw.githubusercontent.com/enkia/tokyo-night-vscode-theme/da5546bc4163a02a30d6f3ced90d4ef7dfcb8460/themes/tokyo-night-light-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/enkia/tokyo-night-vscode-theme/da5546bc4163a02a30d6f3ced90d4ef7dfcb8460/themes/tokyo-night-light-color-theme.json",
+        "sha256": "80273128d232d645cbdf8b5bb8c7c7dfddb9f8825588117cdf84c3a98724b050"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/tokyo-night/tokyo-night-vscode-theme/da5546bc4163a02a30d6f3ced90d4ef7dfcb8460/LICENSE.txt",
+        "sha256": "e3f5d0d772cda0f4f67405696f15a0f335460a2b3944eff40f00675aadacb31b"
+      },
+      "modification": "Correct upstream type=dark to light for the light palette"
+    },
+    {
+      "id": "tokyo-night-storm",
+      "upstream": "https://raw.githubusercontent.com/enkia/tokyo-night-vscode-theme/da5546bc4163a02a30d6f3ced90d4ef7dfcb8460/themes/tokyo-night-storm-color-theme.json",
+      "input": {
+        "url": "https://raw.githubusercontent.com/enkia/tokyo-night-vscode-theme/da5546bc4163a02a30d6f3ced90d4ef7dfcb8460/themes/tokyo-night-storm-color-theme.json",
+        "sha256": "d190b57f2fa662233adc5c8f6e7aeac15330452a0569a2086b979b92b7ce6cea"
+      },
+      "license": "MIT",
+      "licenseSource": {
+        "url": "https://raw.githubusercontent.com/tokyo-night/tokyo-night-vscode-theme/da5546bc4163a02a30d6f3ced90d4ef7dfcb8460/LICENSE.txt",
+        "sha256": "e3f5d0d772cda0f4f67405696f15a0f335460a2b3944eff40f00675aadacb31b"
+      }
+    }
+  ],
+  "glow": {
+    "url": "https://raw.githubusercontent.com/robb0wen/synthwave-vscode/7eaf45c07650295625e1e5ea73274fc50f9ea3c1/src/js/theme_template.js",
+    "sha256": "cad2764a8a7c3715cd8514dd615a31b4b422da5542c9cdf5ffefaf96fcadf639"
+  },
+  "checksums": {
+    "assets/themes/editor-ayu-dark.json": "bbfe0ac93b74f5ef1dfb635674d8345dab9ea6230019c0e27a15be61d466c433",
+    "assets/themes/editor-ayu-light.json": "f98914819068566e9c596bf4c2fc9cfb0e6c77fe1679e06e89f6f6836c682877",
+    "assets/themes/editor-ayu-mirage.json": "c1ac470ba368b3466f8e60dd6eba5126e69191e6e4ff4c59f74d7d8865c16fd4",
+    "assets/themes/editor-catppuccin-frappe.json": "cdbd46b787f991e15b01957ebaf1d705602078c7e169054d345f0bc6ef75e457",
+    "assets/themes/editor-catppuccin-latte.json": "3640eaa93b731f6cad7bd590eda4e568e157bdd3fc7ae6357c5d1bec50a6d6e0",
+    "assets/themes/editor-catppuccin-macchiato.json": "febc70828a8a36a5577a02853192b642a5cf9f97c612a6716ab169aaa540b1bf",
+    "assets/themes/editor-catppuccin-mocha.json": "055a4989c5ee7986da4c91954edf296689e00eb73da0eba86a48c4532a55f5aa",
+    "assets/themes/editor-dracula.json": "bda617c4968aa313d6253a1a81858fc3b4c2194ae819b02bddac4780752bc68f",
+    "assets/themes/editor-dracula-soft.json": "5c8ce7690465f94c890284588ba5ee0b1f6153b9c499c3739d4f7185a8937ba8",
+    "assets/themes/editor-github-dark-default.json": "41105cec86b194ac71b0fe4deb53910472b4fb307c5305ad7645de8bfd52f4fc",
+    "assets/themes/editor-github-dark-dimmed.json": "725fc2825e40067fc8a846967d868456924f4373e786fd8b419a71e5435b959e",
+    "assets/themes/editor-github-light-default.json": "afac171fdca500c421ddcf7b310936875044384803bd762223603fdb44045db5",
+    "assets/themes/editor-gruvbox-dark-hard.json": "e1b5da5e2cad626a7fb17061b5302c0ec5407a4f57085b02a47a67fe5ff03670",
+    "assets/themes/editor-gruvbox-dark-medium.json": "11093f1f27e792aab91fb951a79211ca47a9d193d8ba5cfcde4cf94fbf5d0203",
+    "assets/themes/editor-gruvbox-dark-soft.json": "f06bb6b56b86c13314263a66690e852ffa04c4885f73a90f184ff0fe0c7bab91",
+    "assets/themes/editor-gruvbox-light-hard.json": "31527d0697578f3907685f99e5f894183b01473b1388253cce02c75bd8e2085e",
+    "assets/themes/editor-gruvbox-light-medium.json": "67f2760241d8ce3a63c9f973f67873af3c45dc975590762718a2dd918348c11c",
+    "assets/themes/editor-gruvbox-light-soft.json": "e0cd7355b740e41647048b7b1bf1c2f0d86a0994966ad07f1cb26c90584841fc",
+    "assets/themes/editor-night-owl.json": "8aafb34d9db01450cf4cb3bd94650060492b8737d1a2cd6869b7492462416199",
+    "assets/themes/editor-night-owl-light.json": "e2733178be37d26bbebbb8085bf351bd5db57d813f6230b2bc6e98328e184f18",
+    "assets/themes/editor-nord.json": "c69c02fe03cacae1cc06e9a7129e519febba58c910be9a1b8a7d6e772e4b71d9",
+    "assets/themes/editor-one-dark-pro.json": "b839da196f58112a3f9351748506d47abbdb88c28fcbe02a09c710c48bf529d6",
+    "assets/themes/editor-rose-pine.json": "1e8d292652070076297ad4fbbf563cb76a9849b4691ef50f5b005f5b89ba6de9",
+    "assets/themes/editor-rose-pine-dawn.json": "0dc97aa69ba7e12f09a5939029369bd4edf4df1dd9646a4e3944ccea23684fd0",
+    "assets/themes/editor-rose-pine-moon.json": "76dddcb5c7190d00a37c61a4472e1f9aad6b43e4fa2e45373d07c5f1ae9c4c07",
+    "assets/themes/editor-solarized-dark.json": "1174a0980824a9b5a79dbec655e5cb482c40678105bbc1f35f1ce2c46e4d3517",
+    "assets/themes/editor-solarized-light.json": "5e4a6e5d7558e9203123d72e2da9af3a3a87f4aa7b5fdfd2ccde366d34d4cb6e",
+    "assets/themes/editor-synthwave-84.json": "a662c6f7072c3fb97e0e608082f57348be30d0b52d99cb77b8838333351ac98e",
+    "assets/themes/editor-tokyo-night.json": "cb9593a9e80d5c0a6969e7d419405032fdff4c954150d95c79522de13276a882",
+    "assets/themes/editor-tokyo-night-light.json": "940a317639bcd1f95dc558e44bf1c7a1c1eea824896265c00241eab0850e55ee",
+    "assets/themes/editor-tokyo-night-storm.json": "bb0c3b1d15f36bd26adb18934b3e6956b093a8773cf954229a4b8803853121dc",
+    "assets/editor/themes.json": "acea954a0b299862e65e0da296fda0333fd507232d10076dd243f7d062e0bc30",
+    "licenses/editor-themes-NOTICE.txt": "d14ee5498dfe34956a6f63cc60605541b8dec5fc2b6b4ddc297432f093fea3a7",
+    "assets/editor/sources.json": "7476cd9fe40dbfcc42fdf9546b09996014609f3fd1a0be999dc781c2e1d9d7eb",
+    "scripts/import-editor-themes.mjs": "af9d75edb8f22ad6af08031387e93487279b9773ccfac69ebb6b8b0aa1d87f14"
+  }
+}

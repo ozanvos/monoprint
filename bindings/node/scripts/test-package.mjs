@@ -21,7 +21,7 @@ try {
         assert.ok(tarball.files.includes(`vendor/${backend}/${file}`), `${tarball.name} missing ${backend}/${file}`);
       }
     }
-    for (const required of ['LICENSE', 'THIRD_PARTY_NOTICES.md', 'licenses/grammars-NOTICE.txt', 'licenses/node/napi-LICENSE.txt', 'licenses/sources/giallo-0.5.2.crate', 'licenses/grammar-sources/hcl.json', 'licenses/sources/selectors-0.40.0.crate', 'licenses/sources/cssparser-0.37.0.crate']) {
+    for (const required of ['LICENSE', 'THIRD_PARTY_NOTICES.md', 'licenses/grammars-NOTICE.txt', 'licenses/editor-themes-NOTICE.txt', 'licenses/editor-themes-provenance.json', 'assets/editor/sources.json', 'licenses/node/napi-LICENSE.txt', 'licenses/sources/giallo-0.5.2.crate', 'licenses/grammar-sources/hcl.json', 'licenses/sources/selectors-0.40.0.crate', 'licenses/sources/cssparser-0.37.0.crate']) {
       assert.ok(tarball.files.includes(required), `${tarball.name} missing ${required}`);
     }
     assert.ok(!tarball.files.some(file => file.startsWith('node_modules/') || file.startsWith('test/')));
@@ -40,8 +40,8 @@ import { createRequire } from 'node:module';
 import { Renderer, png, getThemes } from ${JSON.stringify(pkg.name)};
 const cjs = createRequire(import.meta.url)(${JSON.stringify(pkg.name)});
 assert.equal(cjs.Renderer, Renderer);
-assert.equal(getThemes().length, 33);
-const image = await png('const x = 1;', {language:'ts', scale:1});
+assert.equal(getThemes().length, 64);
+const image = await png('const x = 1;', {language:'ts', theme:'catppuccin-latte', background:'halftone', scale:1});
 assert.equal(image[0], 137);
 assert.match(cjs.svgSync('hello'), /<svg/);
 assert.match(await new Renderer().html('hello'), /^<!doctype html>/);

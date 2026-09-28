@@ -2,7 +2,7 @@ import { MonoprintError, limits } from './index.js';
 import type { Font, PngOptions, RenderOptions, Style } from './index.js';
 import type { NativeFont } from './native.js';
 
-const styleKeys = ['theme', 'appearance', 'padding', 'width', 'transparent', 'lineNumbers', 'font'];
+const styleKeys = ['theme', 'appearance', 'padding', 'width', 'transparent', 'background', 'lineNumbers', 'font'];
 const contentKeys = ['language', 'title', 'subtitle', 'highlight'];
 function invalid(option: string, message: string): never {
   throw new MonoprintError('INVALID_ARGUMENT', `${option}: ${message}`, { option });
@@ -27,6 +27,8 @@ function validate(value: Record<string, unknown>, fonts: WeakMap<Font, NativeFon
   for (const key of ['padding', 'scale']) if (key in value) integer(value[key], key);
   if ('width' in value && value.width !== 'auto') integer(value.width, 'width');
   if ('transparent' in value && typeof value.transparent !== 'boolean') invalid('transparent', 'must be boolean');
+  if ('background' in value && !['theme', 'solid', 'lattice', 'halftone', 'none'].includes(value.background as string)) invalid('background', 'must be theme, solid, lattice, halftone, or none');
+  if ('background' in value && 'transparent' in value) invalid('background', 'cannot be combined with transparent');
   if ('lineNumbers' in value && value.lineNumbers !== 'auto' && typeof value.lineNumbers !== 'boolean') invalid('lineNumbers', "must be true, false, or 'auto'");
   if ('font' in value && value.font !== null && (typeof value.font !== 'object' || !fonts.has(value.font as Font))) invalid('font', 'must be created with Font.fromBytes(), or null');
   if ('highlight' in value) {
@@ -51,7 +53,12 @@ export function normalize(format: 'png' | 'svg' | 'html', source: string, style:
   if (typeof source !== 'string') invalid('source', 'must be a string');
   const bytes = Buffer.byteLength(source, 'utf8');
   if (bytes > limits.sourceBytes) throw new MonoprintError('INVALID_OPTION', 'source exceeds 1 MiB', { option: 'source', bytes, max: limits.sourceBytes });
-  const value = { ...style, ...object(options, [...styleKeys, ...contentKeys, ...(format === 'png' ? ['scale'] : [])]) };
+  const overrides = object(options, [...styleKeys, ...contentKeys, ...(format === 'png' ? ['scale'] : [])]);
+  validate(overrides, fonts);
+  const value = { ...style, ...overrides };
+  // The modern option and its compatibility alias describe one setting.
+  if ('background' in overrides) delete value.transparent;
+  if ('transparent' in overrides) delete value.background;
   validate(value, fonts);
   const font = value.font ? fonts.get(value.font as Font) : undefined;
   delete value.font;

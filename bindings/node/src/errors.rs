@@ -48,6 +48,9 @@ pub fn encode(error: Error) -> String {
                 InvalidOption::Scale(value) => {
                     json!({ "option": "scale", "value": value, "min": 1, "max": 6 })
                 }
+                InvalidOption::Background(value) => {
+                    json!({ "option": "background", "value": value })
+                }
                 InvalidOption::Appearance { theme, appearance } => {
                     json!({ "option": "appearance", "theme": theme.id(), "appearance": appearance.to_string() })
                 }

@@ -66,6 +66,13 @@ pub fn thumbnails() -> Vec<(monoprint::Theme, Arc<Image>)> {
             )
         })
         .collect::<Vec<_>>();
-    thumbnails.sort_by_key(|(theme, _)| theme.name().to_lowercase());
+    // Keep related palettes together, with the original frame collection first.
+    thumbnails.sort_by_key(|(theme, _)| {
+        (
+            theme.family() != "Monoprint",
+            theme.family(),
+            theme.name().to_lowercase(),
+        )
+    });
     thumbnails
 }

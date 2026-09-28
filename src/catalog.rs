@@ -1,7 +1,7 @@
 use crate::{Appearance, Error, assets};
 use std::{fmt, path::Path, str::FromStr};
 
-/// A bundled legacy frames theme. Parse an ID or discover themes with [`Theme::all`].
+/// A bundled code-image theme. Parse an ID or discover themes with [`Theme::all`].
 ///
 /// IDs are case-insensitive when parsed. The default is Candy.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
@@ -23,6 +23,21 @@ impl Theme {
     /// Human-readable theme name.
     pub fn name(self) -> &'static str {
         &self.data().name
+    }
+    /// Palette family, or `Monoprint` for the bundled frame presets.
+    pub fn family(self) -> &'static str {
+        self.data()
+            .editor
+            .as_ref()
+            .map_or("Monoprint", |e| e.family.as_str())
+    }
+    /// Preferred appearance: dark when available, otherwise light.
+    pub fn default_appearance(self) -> Appearance {
+        if self.supports(Appearance::Dark) {
+            Appearance::Dark
+        } else {
+            Appearance::Light
+        }
     }
     /// Whether the theme provides this light or dark variant.
     pub fn supports(self, appearance: Appearance) -> bool {

@@ -19,7 +19,11 @@ pub fn code(
     separate_comments: bool,
 ) -> Result<Highlighted> {
     let language = snippet.language.id().to_owned();
-    let theme_name = format!("ink-{}-{mode}", theme.id);
+    let theme_name = if theme.editor.is_some() {
+        format!("editor-{}", theme.id)
+    } else {
+        format!("ink-{}-{mode}", theme.id)
+    };
     // The second palette classifies grammar scopes, independent of theme colors.
     // Dual highlighting shares one tokenization pass and keeps comment boundaries.
     let themes = if separate_comments {
@@ -32,6 +36,10 @@ pub fn code(
     };
     let options = HighlightOptions::new(&language, themes).merge_whitespace(false);
     let result = registry.highlight(source, &options)?;
+    let default_background = match result.theme {
+        ThemeVariant::Single(theme) => theme.default_style.background,
+        ThemeVariant::Dual { light, .. } => light.default_style.background,
+    };
     let marked = highlighted_lines(snippet);
     let mut selections = snippet
         .text_highlights
@@ -73,7 +81,16 @@ pub fn code(
             offset = end;
         }
         for (range, style, comment) in runs {
-            let mut css = format!("color:{};", style.foreground.as_hex());
+            let foreground = style.foreground.as_hex();
+            let mut css = format!("color:{foreground};");
+            if theme.editor.is_some() {
+                if style.background != default_background {
+                    write!(css, "background-color:{};", style.background.as_hex())?;
+                }
+                if theme.id == "synthwave-84" {
+                    css.push_str(crate::editor_theme::glow(&foreground));
+                }
+            }
             if comment {
                 css.push_str("font-family:CommentFont;font-weight:400;");
             }
