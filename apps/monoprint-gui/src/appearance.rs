@@ -71,13 +71,26 @@ impl Palette {
         green: 0x2E8A57,
     };
     pub fn chrome(self) -> Rgba {
-        rgb(if self.light { 0xF0F0EE } else { 0x2E2E2D }).opacity(if cfg!(target_os = "macos") {
-            if self.light { 0.46 } else { 0.66 }
-        } else {
-            1.
-        })
+        material_tint(self.surface, 0.18)
+    }
+    pub fn preview_background(self) -> Rgba {
+        material_tint(self.stage, if self.light { 0.14 } else { 0.24 })
+    }
+    pub fn inspector_background(self) -> Rgba {
+        material_tint(self.raised, if self.light { 0.18 } else { 0.12 })
     }
 }
+
+// AppKit supplies the actual frosting and contrast. These light tints leave it
+// visible; platforms without the native material keep their opaque surfaces.
+fn material_tint(color: u32, opacity: f32) -> Rgba {
+    rgb(color).opacity(if cfg!(target_os = "macos") {
+        opacity
+    } else {
+        1.
+    })
+}
+
 pub fn palette(cx: &App) -> Palette {
     if Theme::global(cx).is_dark() {
         Palette::DARK

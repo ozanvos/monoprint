@@ -23,6 +23,9 @@ mod source_lines;
 mod studio;
 #[path = "../src/view.rs"]
 mod view;
+#[allow(dead_code, unused_imports)]
+#[path = "../src/viewport.rs"]
+mod viewport;
 
 fn main() {
     #[cfg(target_os = "macos")]
@@ -75,6 +78,200 @@ mod macos {
                 .save(std::path::PathBuf::from(dir).join(format!("{name}.png")))
                 .unwrap();
         }
+    }
+
+    fn assert_canvas_gestures(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        let (bounds, image, revision, document, cached_image) = cx.read_entity(studio, |s, _| {
+            let (cached, preview) = s.preview.as_ref().unwrap();
+            (
+                s.viewport.bounds,
+                size(
+                    px(preview.width as f32 / 2.),
+                    px(preview.height as f32 / 2.),
+                ),
+                s.revision,
+                serde_json::to_string(&s.document).unwrap(),
+                cached.clone(),
+            )
+        });
+        let anchor = bounds.center() + point(px(70.), px(-40.));
+        // Native trackpad deltas pan freely in both axes, including momentum.
+        for phase in [TouchPhase::Started, TouchPhase::Moved, TouchPhase::Ended] {
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.dispatch_event(
+                    ScrollWheelEvent {
+                        position: anchor,
+                        delta: ScrollDelta::Pixels(point(px(12.), px(-8.))),
+                        touch_phase: phase,
+                        ..Default::default()
+                    }
+                    .to_platform_input(),
+                    cx,
+                );
+            })
+            .unwrap();
+            settle(cx, handle, studio);
+        }
+        let image_point = cx.read_entity(studio, |s, _| {
+            assert_eq!(s.viewport.pan, point(px(36.), px(-24.)));
+            (anchor - bounds.origin - s.viewport.origin(image)) / s.viewport.scale(image)
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.dispatch_event(
+                PinchEvent {
+                    position: anchor,
+                    delta: 0.5,
+                    phase: TouchPhase::Moved,
+                    ..Default::default()
+                }
+                .to_platform_input(),
+                cx,
+            );
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |s, _| {
+            assert!(matches!(s.viewport.zoom, viewport::PreviewZoom::Custom(_)));
+            let after =
+                (anchor - bounds.origin - s.viewport.origin(image)) / s.viewport.scale(image);
+            assert!((after.x - image_point.x).abs() < px(0.01));
+            assert!((after.y - image_point.y).abs() < px(0.01));
+        });
+        let pan = cx.read_entity(studio, |s, _| s.viewport.pan);
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.drag(anchor, anchor + point(px(50.), px(30.)), cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |s, _| {
+            assert!((s.viewport.pan.x - pan.x - px(50.)).abs() < px(0.01));
+            assert!((s.viewport.pan.y - pan.y - px(30.)).abs() < px(0.01));
+            assert!(!s.viewport.is_dragging());
+        });
+        capture(
+            cx,
+            handle,
+            &format!("canvas-gestures-{}", f32::from(bounds.size.width) as u32),
+        );
+        // Capture continues over an adjacent pane and releases there cleanly.
+        let pan = cx.read_entity(studio, |s, _| s.viewport.pan);
+        let from = point(bounds.right() - px(10.), bounds.center().y);
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.drag(from, from + point(px(30.), px(0.)), cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |s, _| {
+            assert!((s.viewport.pan.x - pan.x - px(30.)).abs() < px(0.01));
+            assert!(!s.viewport.is_dragging());
+        });
+        for preset in ["half-preview", "actual-preview", "fit-preview"] {
+            click(cx, handle, studio, preset);
+            cx.read_entity(studio, |s, _| assert_eq!(s.viewport.pan, Point::default()));
+            if preset != "fit-preview" {
+                cx.update_window(handle.into(), |_, window, cx| {
+                    window.drag(anchor, anchor + point(px(20.), px(10.)), cx);
+                })
+                .unwrap();
+                settle(cx, handle, studio);
+            }
+        }
+        // A gesture over the source editor must not reach the canvas.
+        let outside = point(bounds.left() - px(80.), anchor.y);
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.dispatch_event(
+                PinchEvent {
+                    position: outside,
+                    delta: 0.5,
+                    phase: TouchPhase::Moved,
+                    ..Default::default()
+                }
+                .to_platform_input(),
+                cx,
+            );
+            window.dispatch_event(
+                ScrollWheelEvent {
+                    position: outside,
+                    delta: ScrollDelta::Pixels(point(px(25.), px(25.))),
+                    ..Default::default()
+                }
+                .to_platform_input(),
+                cx,
+            );
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |s, _| {
+            assert_eq!(s.viewport.zoom, viewport::PreviewZoom::Fit);
+            assert_eq!(s.viewport.pan, Point::default());
+            assert_eq!(s.revision, revision, "navigation must not request a render");
+            assert_eq!(serde_json::to_string(&s.document).unwrap(), document);
+            assert!(Arc::ptr_eq(&s.preview.as_ref().unwrap().0, &cached_image));
+        });
+    }
+
+    fn assert_material_visible(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        let (viewport, source_width, copy_button) = cx
+            .update_window(handle.into(), |_, window, cx| {
+                (
+                    window.viewport_size(),
+                    studio.read(cx).source_split.read(cx).sizes()[0],
+                    window.find("copy-image").bounds().center(),
+                )
+            })
+            .unwrap();
+        // The headless renderer clears to opaque black. Compare two backing
+        // colors to verify the real painted layers transmit the material below.
+        let positions = [
+            point(source_width + px(20.), px(70.)),
+            point(viewport.width - px(5.), px(100.)),
+            point(px(20.), px(70.)),
+            copy_button,
+        ];
+        let mut samples = Vec::new();
+        for backing in [0x000000, 0xFFFFFF] {
+            handle
+                .update(cx, |root, _, cx| {
+                    root.style().background = Some(rgb(backing).into());
+                    cx.notify();
+                })
+                .unwrap();
+            settle(cx, handle, studio);
+            let pixels = cx.capture_screenshot(handle.into()).unwrap();
+            let scale = pixels.width() as f32 / f32::from(viewport.width);
+            samples.push(positions.map(|position| {
+                pixels
+                    .get_pixel(
+                        (f32::from(position.x) * scale) as u32,
+                        (f32::from(position.y) * scale) as u32,
+                    )
+                    .0
+            }));
+        }
+        handle
+            .update(cx, |root, _, cx| {
+                root.style().background = Some(transparent_black().into());
+                cx.notify();
+            })
+            .unwrap();
+        settle(cx, handle, studio);
+        for index in 0..2 {
+            assert!(
+                samples[1][index][0].abs_diff(samples[0][index][0]) > 40,
+                "preview and inspector must expose the material at {:?}",
+                positions[index]
+            );
+        }
+        assert_eq!(samples[0][2], samples[1][2], "editor stays opaque");
+        assert_eq!(samples[0][3], samples[1][3], "controls stay opaque");
     }
 
     fn click(
@@ -259,6 +456,7 @@ mod macos {
                 assert!(s.preview.is_some(), "{:?}", s.error)
             });
             capture(&mut cx, handle, &format!("studio-{}", width as u32));
+            assert_material_visible(&mut cx, handle, &studio);
 
             // The select's visible trigger and hit area must both fit the toolbar.
             // Select styles alone do not constrain its full-size outer wrapper.
@@ -285,6 +483,63 @@ mod macos {
                 assert_eq!(code.right(), comments.right());
             })
             .unwrap();
+            let (original_split, original_document, original_revision, original_image) = cx
+                .read_entity(&studio, |s, cx| {
+                    (
+                        s.source_split.read(cx).sizes()[0],
+                        serde_json::to_string(&s.document).unwrap(),
+                        s.revision,
+                        s.preview.as_ref().unwrap().0.clone(),
+                    )
+                });
+            let maximum = if width == 1440. { 560. } else { 480. };
+            for (target, expected, label) in [
+                (440., 440., "wide"),
+                (2000., maximum, "max"),
+                (0., 240., "min"),
+                // Move far enough to cross GPUI's drag threshold before restoring
+                // the narrow window's default (only 2 px above the minimum).
+                (440., 440., "reexpanded"),
+                (
+                    f32::from(original_split),
+                    f32::from(original_split),
+                    "restored",
+                ),
+            ] {
+                cx.update_window(handle.into(), |_, window, cx| {
+                    let current = studio.read(cx).source_split.read(cx).sizes()[0];
+                    window.drag(
+                        point(current, px(height / 2.)),
+                        point(px(target), px(height / 2.)),
+                        cx,
+                    );
+                })
+                .unwrap();
+                settle(&mut cx, handle, &studio);
+                cx.update_window(handle.into(), |_, window, cx| {
+                    // Measure the rendered toolbar as well as the split's state.
+                    let source_right = window.find("wrap-source").bounds().right() + px(9.);
+                    assert!(
+                        (f32::from(source_right) - expected).abs() < 1.,
+                        "{label}: {source_right:?}"
+                    );
+                    let s = studio.read(cx);
+                    assert!(s.source_split.read(cx).sizes()[1] >= px(359.));
+                    assert_eq!(
+                        s.revision, original_revision,
+                        "resizing must not render an export"
+                    );
+                    assert_eq!(
+                        serde_json::to_string(&s.document).unwrap(),
+                        original_document
+                    );
+                    assert!(Arc::ptr_eq(&s.preview.as_ref().unwrap().0, &original_image));
+                })
+                .unwrap();
+                if matches!(label, "wide" | "max" | "min") {
+                    capture(&mut cx, handle, &format!("source-{label}-{}", width as u32));
+                }
+            }
             click(&mut cx, handle, &studio, "wrap-source");
             cx.read_entity(&studio, |s, _| assert!(!s.wrap));
             click(&mut cx, handle, &studio, "wrap-source");
@@ -303,16 +558,18 @@ mod macos {
             });
             click(&mut cx, handle, &studio, "half-preview");
             cx.read_entity(&studio, |s, _| {
-                assert_eq!(s.zoom, studio::PreviewZoom::Half)
+                assert_eq!(s.viewport.zoom, viewport::PreviewZoom::Half)
             });
             capture(&mut cx, handle, &format!("half-preview-{}", width as u32));
             click(&mut cx, handle, &studio, "actual-preview");
             cx.read_entity(&studio, |s, _| {
-                assert_eq!(s.zoom, studio::PreviewZoom::Actual)
+                assert_eq!(s.viewport.zoom, viewport::PreviewZoom::Actual)
             });
             click(&mut cx, handle, &studio, "fit-preview");
+            assert_canvas_gestures(&mut cx, handle, &studio);
             click(&mut cx, handle, &studio, "ui-appearance");
             cx.update(|cx| assert!(appearance::palette(cx).light));
+            assert_material_visible(&mut cx, handle, &studio);
             capture(
                 &mut cx,
                 handle,
@@ -327,7 +584,22 @@ mod macos {
                     "interface appearance and zoom must not change the export or request renders"
                 );
             });
-            inspector_click(&mut cx, handle, &studio, "font-commit-mono");
+            inspector_click(&mut cx, handle, &studio, "code-typeface");
+            std::thread::sleep(Duration::from_millis(180));
+            settle(&mut cx, handle, &studio);
+            capture(
+                &mut cx,
+                handle,
+                &format!("typeface-previews-{}", width as u32),
+            );
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.input("Commit Mono", cx)
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, cx| window.press("enter", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.document.font_id.as_deref(), Some("commit-mono"))
             });
@@ -1114,7 +1386,7 @@ mod macos {
             gutter_click(&mut cx, handle, &studio, 1);
             cx.read_entity(&studio, |s, _| assert!(s.document.highlights.is_empty()));
             println!(
-                "Studio {}×{}: render, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, typography, interface appearance, zoom, source selections, validation and recovery passed",
+                "Studio {}×{}: render, sidebar resizing, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, typography, interface appearance, canvas pan/pinch/drag, source selections, validation and recovery passed",
                 width, height
             );
         }

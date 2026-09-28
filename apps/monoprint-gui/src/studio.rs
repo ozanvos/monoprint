@@ -1,12 +1,14 @@
 use crate::{
     document::{self, Document, Format},
     preview::{Preview, PreviewWorker},
+    viewport::PreviewViewport,
 };
 use gpui_kit::{
     component::{
         input::{
             EditorState, InputEvent, InputState, RopeExt, TextDecoration, TextDecorationCollection,
         },
+        resizable::ResizableState,
         select::{SearchableVec, SelectEvent, SelectItem, SelectState},
     },
     *,
@@ -30,6 +32,13 @@ gpui_kit::actions!(
 pub struct Choice {
     pub id: String,
     pub name: SharedString,
+    pub preview: Option<ChoicePreview>,
+}
+#[derive(Clone, Copy)]
+pub enum ChoicePreview {
+    Typeface(BundledFont),
+    Inherited,
+    Custom,
 }
 impl SelectItem for Choice {
     type Value = String;
@@ -38,6 +47,9 @@ impl SelectItem for Choice {
     }
     fn value(&self) -> &String {
         &self.id
+    }
+    fn render(&self, _: &mut Window, cx: &mut App) -> impl IntoElement {
+        self.menu_item(cx)
     }
     fn matches(&self, query: &str) -> bool {
         let q = query.to_lowercase();
@@ -52,14 +64,6 @@ pub enum CopyState {
     Idle,
     Copying,
     Copied,
-}
-
-#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
-pub enum PreviewZoom {
-    #[default]
-    Fit,
-    Half,
-    Actual,
 }
 
 #[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
@@ -92,6 +96,7 @@ pub struct Studio {
     pub source_marks: TextDecorationCollection,
     pub highlight_menu: Option<HighlightMenu>,
     pub settings_scroll: ScrollHandle,
+    pub source_split: Entity<ResizableState>,
     pub width: Entity<InputState>,
     pub padding: Entity<InputState>,
     pub language: Entity<Choices>,
@@ -108,9 +113,8 @@ pub struct Studio {
     pub notice: Option<String>,
     pub exporting: bool,
     pub copy_state: CopyState,
-    pub zoom: PreviewZoom,
+    pub viewport: PreviewViewport,
     pub theme_filter: ThemeFilter,
-    pub font_scroll: ScrollHandle,
     pub wrap: bool,
     pub source_name: String,
     pub last_export: Option<PathBuf>,
@@ -161,6 +165,7 @@ impl Studio {
             .map(|l| Choice {
                 id: l.id().into(),
                 name: l.name().into(),
+                preview: None,
             })
             .collect::<Vec<_>>();
         languages.sort_by_key(|a| a.name.to_lowercase());
@@ -356,6 +361,7 @@ impl Studio {
             source_marks,
             highlight_menu: None,
             settings_scroll: ScrollHandle::new(),
+            source_split: cx.new(|_| ResizableState::default()),
             width,
             padding,
             language,
@@ -372,9 +378,8 @@ impl Studio {
             notice: None,
             exporting: false,
             copy_state: CopyState::Idle,
-            zoom: PreviewZoom::Fit,
+            viewport: PreviewViewport::default(),
             theme_filter: ThemeFilter::All,
-            font_scroll: ScrollHandle::new(),
             wrap: true,
             source_name,
             last_export: None,
@@ -832,10 +837,12 @@ fn typeface_items(document: &Document, comments: bool) -> Vec<Choice> {
             "Theme typeface"
         }
         .into(),
+        preview: Some(ChoicePreview::Inherited),
     }];
     items.extend(BundledFont::all().map(|font| Choice {
         id: font.id().into(),
         name: font.name().into(),
+        preview: Some(ChoicePreview::Typeface(font)),
     }));
     let path = if comments {
         &document.comment_font_path
@@ -850,6 +857,7 @@ fn typeface_items(document: &Document, comments: bool) -> Vec<Choice> {
     items.push(Choice {
         id: "custom".into(),
         name: label.into(),
+        preview: Some(ChoicePreview::Custom),
     });
     items
 }

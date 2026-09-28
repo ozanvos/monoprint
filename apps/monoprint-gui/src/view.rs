@@ -1,4 +1,4 @@
-use crate::{appearance::*, document::Format, studio::*};
+use crate::{appearance::*, document::Format, studio::*, viewport::PreviewZoom};
 use gpui_kit::assets::IconName;
 use gpui_kit::{
     component::{
@@ -17,6 +17,10 @@ use monoprint::{Appearance, Background, Language, LineNumberPolicy, Theme as Ima
 impl Render for Studio {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let p = palette(cx);
+        let window_width = f32::from(window.viewport_size().width);
+        let (source_width, inspector_width) = pane_widths(window_width);
+        // Keep a usable preview even at the minimum supported window size.
+        let source_max = (window_width - inspector_width - 360.).clamp(240., 560.);
         div()
             .id("monoprint-studio")
             .key_context("Monoprint")
@@ -39,8 +43,39 @@ impl Render for Studio {
                     .flex_1()
                     .min_h_0()
                     .overflow_hidden()
-                    .child(self.source_panel(window, cx))
-                    .child(self.canvas_panel(window, cx))
+                    .child(
+                        div().flex_1().min_w_0().h_full().child(
+                            h_resizable("source-preview-split")
+                                .with_state(&self.source_split)
+                                .with_handle_appearance(std::rc::Rc::new(move |handle, _, _| {
+                                    Some(
+                                        div()
+                                            .flex_none()
+                                            .w(px(1.))
+                                            .h_full()
+                                            .bg(rgb(if handle.is_active() {
+                                                p.accent
+                                            } else {
+                                                p.border
+                                            }))
+                                            .group_hover("handle", |line| line.bg(rgb(p.accent)))
+                                            .into_any_element(),
+                                    )
+                                }))
+                                .child(
+                                    resizable_panel()
+                                        .size(px(source_width))
+                                        .size_range(px(240.)..px(source_max))
+                                        .flex_none()
+                                        .child(self.source_panel(cx)),
+                                )
+                                .child(
+                                    resizable_panel()
+                                        .size_range(px(360.)..Pixels::MAX)
+                                        .child(self.canvas_panel(cx)),
+                                ),
+                        ),
+                    )
                     .child(self.inspector(window, cx)),
             )
             .children(self.selection_toolbar(cx))
@@ -100,16 +135,13 @@ impl Studio {
                     ),
             )
     }
-    fn source_panel(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn source_panel(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         div()
             .bg(rgb(p.canvas))
             .flex()
             .flex_col()
-            .w(px(pane_widths(f32::from(window.viewport_size().width)).0))
-            .flex_shrink_0()
-            .border_r_1()
-            .border_color(rgb(p.border))
+            .size_full()
             .child(
                 div()
                     .h(px(40.))
@@ -401,61 +433,89 @@ impl Studio {
             .with_priority(1),
         )
     }
-    fn canvas_panel(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
+    fn preview_size(&self) -> Option<gpui_kit::Size<Pixels>> {
+        self.preview.as_ref().map(|(_, preview)| {
+            size(
+                px(preview.width as f32 / 2.),
+                px(preview.height as f32 / 2.),
+            )
+        })
+    }
+
+    fn preview_canvas(
+        &mut self,
+        size: gpui_kit::Size<Pixels>,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
         let p = palette(cx);
-        let theme = self
-            .document
-            .theme
-            .parse::<ImageTheme>()
-            .unwrap_or_default();
-        let busy = self.revision != self.preview_revision;
-        let mut canvas = div()
+        self.viewport.bounds.size = size;
+        let mut stage = div()
             .id("preview-canvas")
-            .flex_1()
-            .min_h_0()
-            .min_w_0()
-            .overflow_scroll()
-            .flex()
+            .size_full()
             .relative()
-            .p(px(48.));
-        if let Some((image, preview)) = &self.preview {
-            let size = window.viewport_size();
-            let (source_width, inspector_width) = pane_widths(f32::from(size.width));
-            let available_w =
-                (f32::from(size.width) - source_width - inspector_width - 96.).max(100.);
-            let available_h = (f32::from(size.height) - 40. - 23. - 110.).max(100.);
-            let w = preview.width as f32 / 2.;
-            let h = preview.height as f32 / 2.;
-            let ratio = match self.zoom {
-                PreviewZoom::Actual => 1.,
-                PreviewZoom::Half => 0.5,
-                PreviewZoom::Fit => (available_w / w).min(available_h / h).min(1.),
-            };
-            let (w, h) = (w * ratio, h * ratio);
-            canvas = canvas.child(
-                div()
-                    .relative()
-                    .w(px(w))
-                    .h(px(h))
-                    .flex_shrink_0()
-                    .m_auto()
-                    .child(
-                        img(image.clone())
-                            .size_full()
-                            .object_fit(ObjectFit::Contain),
-                    )
-                    .child(
-                        div()
-                            .absolute()
-                            .top(px(h + 9.))
-                            .w_full()
-                            .text_size(px(10.))
-                            .text_color(rgb(p.muted))
-                            .child(format!("{} × {}", preview.width / 2, preview.height / 2)),
-                    ),
+            .overflow_hidden()
+            .flex()
+            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| {
+                if let Some(image) = this.preview_size() {
+                    this.viewport
+                        .pan_by(event.delta.pixel_delta(px(24.)), image);
+                    cx.stop_propagation();
+                    cx.notify();
+                }
+            }))
+            .on_pinch(cx.listener(|this, event: &PinchEvent, _, cx| {
+                if let Some(image) = this.preview_size() {
+                    this.viewport.zoom_by(event.delta, event.position, image);
+                    cx.stop_propagation();
+                    cx.notify();
+                }
+            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, event: &MouseDownEvent, _, cx| {
+                    if this.preview.is_some() {
+                        this.viewport.start_drag(event.position);
+                        cx.stop_propagation();
+                        cx.notify();
+                    }
+                }),
             );
+        if let Some((image, preview)) = &self.preview {
+            let image_size = self.preview_size().unwrap();
+            self.viewport.constrain_pan(image_size);
+            let origin = self.viewport.origin(image_size);
+            let displayed = image_size.map(|length| length * self.viewport.scale(image_size));
+            stage = stage
+                .cursor(if self.viewport.is_dragging() {
+                    CursorStyle::ClosedHand
+                } else {
+                    CursorStyle::OpenHand
+                })
+                .child(
+                    div()
+                        .absolute()
+                        .left(origin.x)
+                        .top(origin.y)
+                        .w(displayed.width)
+                        .h(displayed.height)
+                        .child(canvas_checker(p))
+                        .child(
+                            img(image.clone())
+                                .size_full()
+                                .object_fit(ObjectFit::Contain),
+                        )
+                        .child(
+                            div()
+                                .absolute()
+                                .top(displayed.height + px(9.))
+                                .w_full()
+                                .text_size(px(10.))
+                                .text_color(rgb(p.muted))
+                                .child(format!("{} × {}", preview.width / 2, preview.height / 2)),
+                        ),
+                );
         } else {
-            canvas = canvas.child(
+            stage = stage.child(
                 div()
                     .flex()
                     .flex_col()
@@ -464,13 +524,65 @@ impl Studio {
                     .text_color(rgb(p.muted))
                     .m_auto()
                     .child(Icon::new(IconName::Image).size(px(28.)))
-                    .child(if busy {
+                    .child(if self.revision != self.preview_revision {
                         "Preparing your canvas…"
                     } else {
                         "Your code image appears here"
                     }),
             );
         }
+        // Track actual canvas bounds and finish an active drag even when the
+        // pointer leaves the canvas. No other pane can initiate a canvas drag.
+        let studio = cx.entity().downgrade();
+        stage.child(
+            canvas(
+                cx.processor(|this, bounds, _, _| this.viewport.bounds = bounds),
+                move |_, _, window, _| {
+                    let moving = studio.clone();
+                    window.on_mouse_event(move |event: &MouseMoveEvent, phase, _, cx| {
+                        if !phase.capture() {
+                            return;
+                        }
+                        let _ = moving.update(cx, |this, cx| {
+                            if this.viewport.is_dragging() {
+                                if event.pressed_button == Some(MouseButton::Left) {
+                                    if let Some(image) = this.preview_size() {
+                                        this.viewport.drag_to(event.position, image);
+                                    }
+                                    cx.stop_propagation();
+                                } else {
+                                    this.viewport.end_drag();
+                                }
+                                cx.notify();
+                            }
+                        });
+                    });
+                    window.on_mouse_event(move |event: &MouseUpEvent, phase, _, cx| {
+                        if phase.capture() && event.button == MouseButton::Left {
+                            let _ = studio.update(cx, |this, cx| {
+                                if this.viewport.is_dragging() {
+                                    this.viewport.end_drag();
+                                    cx.stop_propagation();
+                                    cx.notify();
+                                }
+                            });
+                        }
+                    });
+                },
+            )
+            .absolute()
+            .size_full(),
+        )
+    }
+
+    fn canvas_panel(&self, cx: &mut Context<Self>) -> impl IntoElement {
+        let p = palette(cx);
+        let theme = self
+            .document
+            .theme
+            .parse::<ImageTheme>()
+            .unwrap_or_default();
+        let busy = self.revision != self.preview_revision;
         let dimensions = self
             .preview
             .as_ref()
@@ -493,11 +605,11 @@ impl Studio {
                 .unwrap_or_else(|| "Ready".into())
         };
         div()
-            .flex_1()
+            .size_full()
             .min_w_0()
             .flex()
             .flex_col()
-            .bg(rgb(p.stage))
+            .bg(p.preview_background())
             .child(
                 div()
                     .flex()
@@ -512,6 +624,20 @@ impl Studio {
                     .window_control_area(WindowControlArea::Drag)
                     .gap(px(7.))
                     .child(div().flex_1())
+                    .when_some(
+                        match self.viewport.zoom {
+                            PreviewZoom::Custom(scale) => Some(scale),
+                            _ => None,
+                        },
+                        |view, scale| {
+                            view.child(
+                                div()
+                                    .text_size(px(11.))
+                                    .text_color(rgb(p.muted))
+                                    .child(format!("{:.0}%", scale * 100.)),
+                            )
+                        },
+                    )
                     .child(
                         segments(p).children(
                             [
@@ -523,10 +649,10 @@ impl Studio {
                             .map(|(id, label, zoom)| {
                                 segment(p, id)
                                     .label(label)
-                                    .selected(self.zoom == zoom)
-                                    .toggled(self.zoom == zoom)
+                                    .selected(self.viewport.zoom == zoom)
+                                    .toggled(self.viewport.zoom == zoom)
                                     .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.zoom = zoom;
+                                        this.viewport.reset(zoom);
                                         cx.notify();
                                     }))
                             }),
@@ -565,8 +691,9 @@ impl Studio {
                     .relative()
                     .flex()
                     .overflow_hidden()
-                    .child(canvas_checker(p))
-                    .child(canvas),
+                    .child(container_query(cx.processor(|this, size, _, cx| {
+                        this.preview_canvas(size, cx).into_any_element()
+                    }))),
             )
             .when_some(self.error.clone(), |view, error| {
                 view.child(
@@ -851,7 +978,6 @@ impl Studio {
             .child(div().flex().items_center().justify_between()
                 .child(section(p, "Typeface"))
                 .child(div().text_size(px(11.)).text_color(rgb(p.muted)).child("10 faces")))
-            .child(self.font_gallery(cx))
             .child(self.font_control(false, cx))
             .child(self.font_control(true, cx))
             .child(row(p, "Coding ligatures", Switch::new("coding-ligatures").small()
@@ -862,97 +988,6 @@ impl Studio {
                     this.document.ligatures = *value;
                     this.changed(cx);
                 }))))
-    }
-
-    fn font_gallery(&self, cx: &Context<Self>) -> impl IntoElement {
-        let p = palette(cx);
-        div()
-            .relative()
-            .h(px(207.))
-            .flex_shrink_0()
-            .rounded(px(5.))
-            .border_1()
-            .border_color(rgb(p.strong))
-            .overflow_hidden()
-            .child(
-                div()
-                    .id("font-gallery")
-                    .size_full()
-                    .overflow_y_scroll()
-                    .track_scroll(&self.font_scroll)
-                    .children(monoprint::BundledFont::all().map(|font| {
-                        let selected = self.document.font_id.as_deref() == Some(font.id());
-                        let family = if font.id() == "commit-mono" {
-                            "CommitMono"
-                        } else {
-                            font.name()
-                        };
-                        Button::new(format!("font-{}", font.id()))
-                            .ghost()
-                            .w_full()
-                            .h(px(41.))
-                            .p_0()
-                            .rounded(px(0.))
-                            .bg(rgb(if selected { p.surface3 } else { p.canvas }))
-                            .border_b_1()
-                            .border_color(rgb(p.border))
-                            .selected(selected)
-                            .toggled(selected)
-                            .child(
-                                div()
-                                    .w_full()
-                                    .flex()
-                                    .items_center()
-                                    .px(px(11.))
-                                    .gap(px(11.))
-                                    .child(
-                                        div()
-                                            .w(px(62.))
-                                            .flex_shrink_0()
-                                            .font_family(family)
-                                            .text_size(px(19.))
-                                            .child("{Aa}"),
-                                    )
-                                    .child(
-                                        div()
-                                            .flex_1()
-                                            .min_w_0()
-                                            .flex()
-                                            .flex_col()
-                                            .child(
-                                                div()
-                                                    .text_size(px(11.))
-                                                    .text_color(rgb(p.ink))
-                                                    .truncate()
-                                                    .child(font.name()),
-                                            )
-                                            .child(
-                                                div()
-                                                    .text_size(px(10.))
-                                                    .text_color(rgb(p.muted))
-                                                    .child(if font.id() == "inter" {
-                                                        "proportional"
-                                                    } else {
-                                                        "monospace"
-                                                    }),
-                                            ),
-                                    )
-                                    .child(
-                                        Icon::new(IconName::Check)
-                                            .size(px(12.))
-                                            .text_color(rgb(p.accent))
-                                            .opacity(if selected { 1. } else { 0. }),
-                                    ),
-                            )
-                            .accessibility_label(format!("{} code typeface", font.name()))
-                            .on_click(cx.listener(move |this, _, window, cx| {
-                                this.document.select_typeface(false, font.id());
-                                this.sync_typeface(false, window, cx);
-                                this.changed(cx);
-                            }))
-                    })),
-            )
-            .child(Scrollbar::vertical(&self.font_scroll))
     }
 
     fn font_control(&self, comments: bool, cx: &Context<Self>) -> impl IntoElement {
@@ -1055,7 +1090,7 @@ impl Studio {
             .flex_col()
             .border_l_1()
             .border_color(rgb(p.strong))
-            .bg(rgb(p.raised))
+            .bg(p.inspector_background())
             .child(
                 div()
                     .id("style-inspector")
@@ -1180,7 +1215,7 @@ impl Studio {
                     .px(px(13.))
                     .pt(px(12.))
                     .pb(px(13.))
-                    .bg(rgb(p.surface))
+                    .bg(p.chrome())
                     .border_t_1()
                     .border_color(rgb(p.border))
                     .flex()
@@ -1261,6 +1296,62 @@ impl Studio {
             )
     }
 }
+impl Choice {
+    pub fn menu_item(&self, cx: &App) -> AnyElement {
+        let Some(preview) = self.preview else {
+            return self.name.clone().into_any_element();
+        };
+        let p = palette(cx);
+        let (sample, detail) = match preview {
+            ChoicePreview::Typeface(font) => (
+                div()
+                    .font_family(if font.id() == "commit-mono" {
+                        "CommitMono"
+                    } else {
+                        font.name()
+                    })
+                    .text_size(px(21.))
+                    .child("{Aa}"),
+                if font.id() == "inter" {
+                    "proportional"
+                } else {
+                    "monospace"
+                },
+            ),
+            ChoicePreview::Inherited => (
+                div().text_size(px(22.)).text_color(rgb(p.muted)).child("↳"),
+                "Use the default typeface",
+            ),
+            ChoicePreview::Custom => (
+                div().child(Icon::new(IconName::File).size(px(20.))),
+                "Load a TTF or OTF file",
+            ),
+        };
+        // Keep every row the same height, including inheritance and file choices,
+        // so the dropdown's virtual list can measure and scroll them correctly.
+        div()
+            .flex()
+            .items_center()
+            .h(px(38.))
+            .gap(px(10.))
+            .child(div().w(px(54.)).flex_shrink_0().child(sample))
+            .child(
+                div()
+                    .flex()
+                    .flex_col()
+                    .min_w_0()
+                    .child(div().text_size(px(11.)).truncate().child(self.name.clone()))
+                    .child(
+                        div()
+                            .text_size(px(10.))
+                            .text_color(rgb(p.muted))
+                            .child(detail),
+                    ),
+            )
+            .into_any_element()
+    }
+}
+
 fn settings_section(p: Palette) -> Div {
     div()
         .flex()
@@ -1383,9 +1474,14 @@ fn canvas_checker(p: Palette) -> impl IntoElement {
         |bounds, _, _| bounds,
         move |bounds, _, window, _| {
             let cell = px(7.);
-            window.paint_quad(fill(bounds, rgb(p.stage)));
-            for y in 0..(f32::from(bounds.size.height) / 7.).ceil() as u32 {
-                for x in ((y % 2)..(f32::from(bounds.size.width) / 7.).ceil() as u32).step_by(2) {
+            let visible = bounds.intersect(&window.content_mask().bounds);
+            window.paint_quad(fill(visible, rgb(p.stage)));
+            let first_x = (f32::from(visible.left() - bounds.left()) / 7.).floor() as u32;
+            let first_y = (f32::from(visible.top() - bounds.top()) / 7.).floor() as u32;
+            let end_x = (f32::from(visible.right() - bounds.left()) / 7.).ceil() as u32;
+            let end_y = (f32::from(visible.bottom() - bounds.top()) / 7.).ceil() as u32;
+            for y in first_y..end_y {
+                for x in (first_x + (first_x + y) % 2..end_x).step_by(2) {
                     let origin = bounds.origin + point(cell * x as f32, cell * y as f32);
                     let size = size(
                         cell.min(bounds.right() - origin.x),

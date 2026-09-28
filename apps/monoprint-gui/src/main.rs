@@ -8,6 +8,7 @@ mod source_highlight;
 mod source_lines;
 mod studio;
 mod view;
+mod viewport;
 use gpui_kit::{
     component::{Root, input},
     *,
