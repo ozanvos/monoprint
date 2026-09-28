@@ -1,0 +1,448 @@
+use anyhow::{Context, Result, bail, ensure};
+use monoprint::{Appearance, Font, Language, LineNumbers, Renderer, Scale, Snippet, Style, Theme};
+use serde::{Deserialize, Serialize};
+use std::{
+    fs,
+    io::{Read, Write},
+    path::{Path, PathBuf},
+    sync::Mutex,
+};
+
+pub const EXAMPLE: &str = "// A little code. A lasting impression.\ntype Theme = { name: string; dark: boolean };\n\nexport function print(theme: Theme): string {\n  const scale = 2;\n  return `${theme.name} at ${scale}×`;\n}\n\nprint({ name: \"Monoprint\", dark: true });";
+
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+pub enum Format {
+    #[default]
+    Png,
+    Svg,
+    Html,
+}
+impl Format {
+    pub fn extension(self) -> &'static str {
+        match self {
+            Self::Png => "png",
+            Self::Svg => "svg",
+            Self::Html => "html",
+        }
+    }
+    pub fn label(self) -> &'static str {
+        match self {
+            Self::Png => "PNG",
+            Self::Svg => "SVG",
+            Self::Html => "HTML",
+        }
+    }
+}
+
+/// Serializable editing state. Text fields retain incomplete input until validation.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+#[serde(default)]
+pub struct Document {
+    pub source: String,
+    pub language: String,
+    pub theme: String,
+    pub light: bool,
+    pub transparent: bool,
+    pub numbers: bool,
+    pub padding: String,
+    pub width: String,
+    pub title: String,
+    pub highlights: String,
+    pub scale: u32,
+    pub format: Format,
+    pub font_path: Option<PathBuf>,
+}
+impl Default for Document {
+    fn default() -> Self {
+        Self {
+            source: EXAMPLE.into(),
+            language: "tsx".into(),
+            theme: "removed-frame".into(),
+            light: false,
+            transparent: false,
+            numbers: false,
+            padding: "64".into(),
+            width: "720".into(),
+            title: "".into(),
+            highlights: "".into(),
+            scale: 2,
+            format: Format::Png,
+            font_path: None,
+        }
+    }
+}
+
+impl Document {
+    pub fn prepare(&self, font: Option<Font>) -> Result<(Snippet, Style)> {
+        ensure!(
+            self.source.len() <= monoprint::MAX_SOURCE_BYTES,
+            "Code is too large. Use a snippet smaller than 1 MiB."
+        );
+        let theme: Theme = self.theme.parse()?;
+        let appearance = if self.light {
+            Appearance::Light
+        } else {
+            Appearance::Dark
+        };
+        ensure!(
+            theme.supports(appearance),
+            "{} supports dark appearance only.",
+            theme.name()
+        );
+        let padding: u32 = self
+            .padding
+            .trim()
+            .parse()
+            .context("Padding must be a whole number from 0 to 512.")?;
+        ensure!(padding <= 512, "Padding must be between 0 and 512.");
+        let mut style = Style::new(theme)
+            .appearance(appearance)
+            .padding(padding)
+            .transparent(self.transparent)
+            .line_numbers(if self.numbers {
+                LineNumbers::Show
+            } else {
+                LineNumbers::Hide
+            });
+        if !self.width.trim().is_empty() {
+            let width: u32 = self
+                .width
+                .trim()
+                .parse()
+                .context("Width must be a whole number, or leave it empty for auto-fit.")?;
+            ensure!(
+                (80..=8192).contains(&width) && width > 2 * padding + 48,
+                "Width must be {}–8192 px at this padding.",
+                (2 * padding + 49).max(80)
+            );
+            style = style.width(width);
+        }
+        if let Some(font) = font {
+            style = style.font(font);
+        }
+        let mut snippet = Snippet::new(&self.source).language(self.language.parse::<Language>()?);
+        if !self.title.is_empty() {
+            snippet = snippet.title(&self.title);
+        }
+        let lines = self
+            .source
+            .replace("\r\n", "\n")
+            .replace('\r', "\n")
+            .split('\n')
+            .count();
+        for (start, end) in highlight_ranges(&self.highlights, lines)? {
+            snippet = snippet.highlight(start..=end);
+        }
+        Ok((snippet, style))
+    }
+    pub fn select_theme(&mut self, theme: Theme) {
+        self.theme = theme.id().into();
+        if !theme.supports(Appearance::Light) {
+            self.light = false;
+        }
+    }
+    pub fn suggested_name(&self) -> String {
+        let name = Path::new(&self.title)
+            .file_stem()
+            .and_then(|s| s.to_str())
+            .filter(|s| !s.is_empty())
+            .unwrap_or("monoprint");
+        format!("{name}.{}", self.format.extension())
+    }
+}
+
+fn highlight_ranges(value: &str, lines: usize) -> Result<Vec<(usize, usize)>> {
+    if value.trim().is_empty() {
+        return Ok(Vec::new());
+    }
+    value
+        .split(',')
+        .map(|part| {
+            let part = part.trim();
+            let (first, last) = part.split_once('-').unwrap_or((part, part));
+            let first: usize = first
+                .trim()
+                .parse()
+                .context("Use line numbers such as 1, 3-5 for highlights.")?;
+            let last: usize = last
+                .trim()
+                .parse()
+                .context("Use line numbers such as 1, 3-5 for highlights.")?;
+            ensure!(
+                first > 0 && first <= last && last <= lines,
+                "Highlight lines must be between 1 and {lines}, in ascending ranges."
+            );
+            Ok((first, last))
+        })
+        .collect()
+}
+
+pub fn read_source(path: &Path) -> Result<String> {
+    let mut source = String::new();
+    fs::File::open(path)
+        .with_context(|| format!("Could not open {}", path.display()))?
+        .take(monoprint::MAX_SOURCE_BYTES as u64 + 1)
+        .read_to_string(&mut source)
+        .context("Choose a UTF-8 source file.")?;
+    ensure!(
+        source.len() <= monoprint::MAX_SOURCE_BYTES,
+        "Choose a file smaller than 1 MiB."
+    );
+    Ok(source)
+}
+
+#[derive(Default)]
+pub struct FontCache {
+    current: Option<(PathBuf, std::time::SystemTime, u64, Font)>,
+}
+impl FontCache {
+    pub fn load(&mut self, path: Option<&Path>) -> Result<Option<Font>> {
+        let Some(path) = path else { return Ok(None) };
+        let metadata = fs::metadata(path)
+            .context("Custom font is unavailable. Choose the font again or use Theme font.")?;
+        let modified = metadata.modified()?;
+        if let Some((cached, time, len, font)) = &self.current
+            && cached == path
+            && *time == modified
+            && *len == metadata.len()
+        {
+            return Ok(Some(font.clone()));
+        }
+        let mut bytes = Vec::new();
+        fs::File::open(path)
+            .context("Custom font is unavailable. Choose the font again or use Theme font.")?
+            .take(monoprint::MAX_FONT_BYTES as u64 + 1)
+            .read_to_end(&mut bytes)?;
+        let font = Font::from_bytes(bytes)?;
+        self.current = Some((path.to_owned(), modified, metadata.len(), font.clone()));
+        Ok(Some(font))
+    }
+}
+
+pub fn export(renderer: &Renderer, document: &Document, format: Format) -> Result<Vec<u8>> {
+    let font = FontCache::default().load(document.font_path.as_deref())?;
+    let (snippet, style) = document.prepare(font)?;
+    Ok(match format {
+        Format::Png => renderer.png(&snippet, &style, Scale::try_from(document.scale)?)?,
+        Format::Svg => renderer.svg(&snippet, &style)?.into_bytes(),
+        Format::Html => renderer.html(&snippet, &style)?.into_bytes(),
+    })
+}
+
+/// A name typed in the native save panel must agree with the selected format.
+/// Never silently change an extension and overwrite a different, unapproved path.
+pub fn export_path(mut path: PathBuf, format: Format) -> Result<PathBuf> {
+    match path.extension().and_then(|s| s.to_str()) {
+        None => {
+            path.set_extension(format.extension());
+            ensure!(
+                !path.exists(),
+                "That file already exists. Choose its full name in the save dialog to replace it."
+            );
+        }
+        Some(ext) if ext.eq_ignore_ascii_case(format.extension()) => {}
+        _ => bail!(
+            "Use a .{} filename, or change the export format.",
+            format.extension()
+        ),
+    }
+    Ok(path)
+}
+
+pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
+    let parent = path
+        .parent()
+        .filter(|p| !p.as_os_str().is_empty())
+        .unwrap_or(Path::new("."));
+    let mut file = tempfile::NamedTempFile::new_in(parent)?;
+    file.write_all(bytes)?;
+    file.as_file().sync_all()?;
+    file.persist(path)
+        .map_err(|e| e.error)
+        .with_context(|| format!("Could not save {}", path.display()))?;
+    Ok(())
+}
+
+pub fn session_path() -> Option<PathBuf> {
+    if let Some(path) = std::env::var_os("MONOPRINT_SESSION") {
+        return (path != "off").then(|| PathBuf::from(path));
+    }
+    let home = std::env::var_os("HOME")?;
+    #[cfg(target_os = "macos")]
+    let dir = PathBuf::from(home).join("Library/Application Support/Monoprint");
+    #[cfg(target_os = "windows")]
+    let dir = PathBuf::from(std::env::var_os("APPDATA").unwrap_or(home)).join("Monoprint");
+    #[cfg(not(any(target_os = "windows", target_os = "macos")))]
+    let dir = std::env::var_os("XDG_STATE_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| PathBuf::from(home).join(".local/state"))
+        .join("monoprint");
+    Some(dir.join("studio.json"))
+}
+
+pub fn load_session(path: &Path) -> Result<Document> {
+    let mut bytes = Vec::new();
+    fs::File::open(path)?
+        .take(8 * 1024 * 1024 + 1)
+        .read_to_end(&mut bytes)?;
+    ensure!(
+        bytes.len() <= 8 * 1024 * 1024,
+        "Saved session is too large."
+    );
+    let doc: Document = serde_json::from_slice(&bytes)?;
+    doc.theme.parse::<Theme>()?;
+    doc.language.parse::<Language>()?;
+    Scale::try_from(doc.scale)?;
+    ensure!(
+        doc.source.len() <= monoprint::MAX_SOURCE_BYTES,
+        "Saved code is too large."
+    );
+    Ok(doc)
+}
+
+pub fn save_session(path: &Path, document: &Document) -> Result<()> {
+    ensure!(
+        document.source.len() <= monoprint::MAX_SOURCE_BYTES,
+        "Code exceeds the 1 MiB session limit; the previous session was retained."
+    );
+    let bytes = serde_json::to_vec(document)?;
+    ensure!(
+        bytes.len() <= 8 * 1024 * 1024,
+        "Session exceeds 8 MiB; the previous session was retained."
+    );
+    if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {
+        fs::create_dir_all(parent)?;
+    }
+    write_atomic(path, &bytes)
+}
+
+/// Serializes background saves and the quit flush. An older preview must never
+/// replace the final editing snapshot after application shutdown has begun.
+pub struct SessionStore {
+    path: Option<PathBuf>,
+    saved_revision: Mutex<u64>,
+}
+impl SessionStore {
+    pub fn new(path: Option<PathBuf>) -> Self {
+        Self {
+            path,
+            saved_revision: Mutex::new(0),
+        }
+    }
+    pub fn save(&self, revision: u64, document: &Document) -> Result<()> {
+        let Some(path) = &self.path else {
+            return Ok(());
+        };
+        let mut saved = self.saved_revision.lock().unwrap();
+        if revision <= *saved {
+            return Ok(());
+        }
+        save_session(path, document)?;
+        *saved = revision;
+        Ok(())
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    #[test]
+    fn validates_highlights_without_expanding_unbounded_ranges() {
+        assert_eq!(highlight_ranges("1, 3-5", 5).unwrap(), vec![(1, 1), (3, 5)]);
+        for bad in ["0", "3-2", "1-999999999999999999", "1,", "six"] {
+            assert!(highlight_ranges(bad, 5).is_err(), "{bad}");
+        }
+    }
+    #[test]
+    fn theme_switch_and_geometry_are_validated() {
+        let mut d = Document {
+            light: true,
+            ..Default::default()
+        };
+        d.select_theme("removed-frame".parse().unwrap());
+        assert!(!d.light);
+        d.width = "150".into();
+        assert!(d.prepare(None).is_err());
+        d.width.clear();
+        assert!(d.prepare(None).is_ok());
+    }
+    #[test]
+    fn output_extension_never_redirects_an_approved_overwrite() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("art.png");
+        fs::write(&path, b"keep").unwrap();
+        assert!(export_path(dir.path().join("art"), Format::Png).is_err());
+        assert!(export_path(path.clone(), Format::Svg).is_err());
+        assert_eq!(export_path(path.clone(), Format::Png).unwrap(), path);
+        assert_eq!(fs::read(path).unwrap(), b"keep");
+    }
+    #[test]
+    fn stale_background_save_cannot_replace_quit_snapshot() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.json");
+        let store = SessionStore::new(Some(path.clone()));
+        store
+            .save(
+                2,
+                &Document {
+                    source: "latest".into(),
+                    ..Default::default()
+                },
+            )
+            .unwrap();
+        store.save(1, &Document::default()).unwrap();
+        assert_eq!(load_session(&path).unwrap().source, "latest");
+        assert!(
+            store
+                .save(
+                    3,
+                    &Document {
+                        source: "x".repeat(monoprint::MAX_SOURCE_BYTES + 1),
+                        ..Default::default()
+                    }
+                )
+                .is_err()
+        );
+        assert_eq!(load_session(&path).unwrap().source, "latest");
+    }
+    #[test]
+    fn exports_match_the_public_renderer_in_all_formats() {
+        let renderer = Renderer::new();
+        let d = Document {
+            title: "example.ts".into(),
+            transparent: true,
+            numbers: true,
+            highlights: "2,4-6".into(),
+            ..Default::default()
+        };
+        let (snippet, style) = d.prepare(None).unwrap();
+        assert_eq!(
+            export(&renderer, &d, Format::Png).unwrap(),
+            renderer.png(&snippet, &style, Scale::X2).unwrap()
+        );
+        assert_eq!(
+            export(&renderer, &d, Format::Svg).unwrap(),
+            renderer.svg(&snippet, &style).unwrap().as_bytes()
+        );
+        assert_eq!(
+            export(&renderer, &d, Format::Html).unwrap(),
+            renderer.html(&snippet, &style).unwrap().as_bytes()
+        );
+    }
+    #[test]
+    fn session_round_trip_preserves_source_and_options() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.json");
+        let d = Document {
+            source: "\tfn main() {}\n\n".into(),
+            transparent: true,
+            highlights: "1-2".into(),
+            ..Default::default()
+        };
+        save_session(&path, &d).unwrap();
+        let restored = load_session(&path).unwrap();
+        assert_eq!(restored.source, d.source);
+        assert!(restored.transparent);
+        assert_eq!(restored.highlights, "1-2");
+    }
+}
