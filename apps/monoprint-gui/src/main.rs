@@ -59,6 +59,7 @@ fn main() {
                 KeyBinding::new("secondary-o", OpenSource, Some("Monoprint")),
                 KeyBinding::new("secondary-s", ExportImage, Some("Monoprint")),
                 KeyBinding::new("secondary-shift-c", CopyImage, Some("Monoprint")),
+                KeyBinding::new("secondary-shift-l", ToggleUiAppearance, Some("Monoprint")),
             ]);
             cx.set_menus(vec![
                 Menu {
@@ -89,6 +90,14 @@ fn main() {
                         MenuItem::action("Copy Image", CopyImage),
                     ],
                 },
+                Menu {
+                    disabled: false,
+                    name: "View".into(),
+                    items: vec![MenuItem::action(
+                        "Toggle Light / Dark Interface",
+                        ToggleUiAppearance,
+                    )],
+                },
             ]);
             let bounds = Bounds::centered(None, size(px(1440.), px(900.)), cx);
             cx.open_window(
@@ -104,7 +113,7 @@ fn main() {
                     titlebar: Some(TitlebarOptions {
                         title: Some("Monoprint".into()),
                         appears_transparent: true,
-                        traffic_light_position: Some(point(px(14.), px(21.))),
+                        traffic_light_position: Some(point(px(13.), px(14.))),
                     }),
                     ..Default::default()
                 },

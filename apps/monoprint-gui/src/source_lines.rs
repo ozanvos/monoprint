@@ -1,5 +1,5 @@
 //! Whole-line marks and gutter interaction over the existing editor's geometry.
-use crate::{appearance::ACCENT, studio::Studio};
+use crate::{appearance::palette, studio::Studio};
 use gpui_kit::{
     component::input::{EditorState, RopeExt},
     prelude::*,
@@ -119,12 +119,7 @@ pub fn overlay(editor: &Entity<EditorState>, studio: WeakEntity<Studio>) -> impl
                 .unwrap_or_default();
             for line in &lines {
                 if highlights.iter().any(|range| range.contains(&line.index)) {
-                    window.paint_quad(fill(line.bounds, rgb(ACCENT).opacity(0.10)));
-                    window.paint_quad(fill(line.gutter, rgb(ACCENT).opacity(0.08)));
-                    window.paint_quad(fill(
-                        Bounds::new(line.gutter.origin, size(px(2.), line.gutter.size.height)),
-                        rgb(ACCENT).opacity(0.8),
-                    ));
+                    window.paint_quad(fill(line.bounds, rgb(palette(cx).accent).opacity(0.13)));
                 }
             }
             for hitbox in &hitboxes {

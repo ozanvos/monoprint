@@ -92,17 +92,36 @@ mod macos {
         cx: &mut HeadlessAppContext,
         handle: WindowHandle<Root>,
         studio: &Entity<studio::Studio>,
-        id: &'static str,
+        id: impl Into<ElementId>,
     ) {
+        let id = id.into();
         cx.update_window(handle.into(), |_, window, cx| {
             window.render_frame(cx);
-            let target = window.find(id).bounds();
+            let target = window.find(id.clone()).bounds();
             let scroll = &studio.read(cx).settings_scroll;
             scroll.set_offset(
                 scroll.offset() + point(px(0.), scroll.bounds().center().y - target.center().y),
             );
             window.render_frame(cx);
             window.click(id, cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+    }
+
+    fn reveal_theme_gallery(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let target = studio.read(cx).theme_scroll.0.borrow().base_handle.bounds();
+            let scroll = &studio.read(cx).settings_scroll;
+            scroll.set_offset(
+                scroll.offset() + point(px(0.), scroll.bounds().center().y - target.center().y),
+            );
+            window.render_frame(cx);
         })
         .unwrap();
         settle(cx, handle, studio);
@@ -241,6 +260,156 @@ mod macos {
             });
             capture(&mut cx, handle, &format!("studio-{}", width as u32));
 
+            // The select's visible trigger and hit area must both fit the toolbar.
+            // Select styles alone do not constrain its full-size outer wrapper.
+            cx.update_window(handle.into(), |_, window, _| {
+                let open = window.find("open-source").bounds();
+                let language = window.find("source-language").bounds();
+                let wrap = window.find("wrap-source").bounds();
+                assert_eq!(language.size.height, px(26.));
+                assert!(language.size.width <= px(80.));
+                assert!(language.size.width >= px(40.));
+                assert_eq!(language.center().y, open.center().y);
+                assert_eq!(language.center().y, wrap.center().y);
+                assert!(open.right() < language.left());
+                assert!(language.right() < wrap.left());
+                assert!(
+                    open.left() >= px(76.),
+                    "leave room for the native window controls"
+                );
+                let code = window.find("code-typeface").bounds();
+                let comments = window.find("comment-typeface").bounds();
+                assert_eq!(code.size.height, px(26.));
+                assert_eq!(comments.size.height, px(26.));
+                assert_eq!(code.left(), comments.left());
+                assert_eq!(code.right(), comments.right());
+            })
+            .unwrap();
+            click(&mut cx, handle, &studio, "wrap-source");
+            cx.read_entity(&studio, |s, _| assert!(!s.wrap));
+            click(&mut cx, handle, &studio, "wrap-source");
+            cx.read_entity(&studio, |s, _| assert!(s.wrap));
+
+            click(&mut cx, handle, &studio, "source-language");
+            std::thread::sleep(Duration::from_millis(180));
+            settle(&mut cx, handle, &studio);
+            capture(&mut cx, handle, &format!("language-menu-{}", width as u32));
+            cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
+
+            let original = cx.read_entity(&studio, |s, _| {
+                (s.revision, serde_json::to_string(&s.document).unwrap())
+            });
+            click(&mut cx, handle, &studio, "half-preview");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.zoom, studio::PreviewZoom::Half)
+            });
+            capture(&mut cx, handle, &format!("half-preview-{}", width as u32));
+            click(&mut cx, handle, &studio, "actual-preview");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.zoom, studio::PreviewZoom::Actual)
+            });
+            click(&mut cx, handle, &studio, "fit-preview");
+            click(&mut cx, handle, &studio, "ui-appearance");
+            cx.update(|cx| assert!(appearance::palette(cx).light));
+            capture(
+                &mut cx,
+                handle,
+                &format!("light-interface-{}", width as u32),
+            );
+            click(&mut cx, handle, &studio, "ui-appearance");
+            cx.update(|cx| assert!(!appearance::palette(cx).light));
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(
+                    (s.revision, serde_json::to_string(&s.document).unwrap()),
+                    original,
+                    "interface appearance and zoom must not change the export or request renders"
+                );
+            });
+            inspector_click(&mut cx, handle, &studio, "font-commit-mono");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.font_id.as_deref(), Some("commit-mono"))
+            });
+            inspector_click(&mut cx, handle, &studio, "theme-font");
+            cx.read_entity(&studio, |s, _| assert!(s.document.font_id.is_none()));
+            reveal_theme_gallery(&mut cx, handle, &studio);
+            let revision = cx.read_entity(&studio, |s, _| s.revision);
+            inspector_click(&mut cx, handle, &studio, "themes-light");
+            cx.read_entity(&studio, |s, _| {
+                let expected = monoprint::Theme::all()
+                    .filter(|theme| theme.supports(monoprint::Appearance::Light))
+                    .count();
+                assert_eq!(s.filtered_themes.len(), expected);
+                assert_eq!(s.light_thumbnails.len(), expected);
+                assert!(
+                    s.filtered_themes
+                        .iter()
+                        .all(|&index| s.thumbnails[index].0.supports(monoprint::Appearance::Light))
+                );
+                assert_eq!(s.revision, revision);
+            });
+            reveal_theme_gallery(&mut cx, handle, &studio);
+            capture(
+                &mut cx,
+                handle,
+                &format!("light-theme-filter-{}", width as u32),
+            );
+            let candy_variant = cx.read_entity(&studio, |s, _| {
+                s.thumbnails
+                    .iter()
+                    .position(|(theme, _)| theme.id() == "removed-frame")
+                    .unwrap()
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.click(("theme-swatch", candy_variant), cx)
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert!(
+                    s.document.light,
+                    "selecting a light thumbnail must use its displayed variant"
+                )
+            });
+            inspector_click(&mut cx, handle, &studio, "themes-dark");
+            reveal_theme_gallery(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.click(("theme-swatch", candy_variant), cx)
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| assert!(!s.document.light));
+            inspector_click(&mut cx, handle, &studio, "themes-light");
+            let revision = cx.read_entity(&studio, |s, _| s.revision);
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.theme_search
+                        .update(cx, |input, cx| input.replace_all("Ayu", window, cx))
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.filtered_themes.len(), 1);
+                assert_eq!(s.thumbnails[s.filtered_themes[0]].0.id(), "ayu-light");
+            });
+            inspector_click(&mut cx, handle, &studio, "themes-dark");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.filtered_themes.len(), 2);
+                assert_eq!(s.revision, revision);
+            });
+            inspector_click(&mut cx, handle, &studio, "themes-all");
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.theme_search
+                        .update(cx, |input, cx| input.replace_all("", window, cx))
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            reveal_theme_gallery(&mut cx, handle, &studio);
+
             let (candy, last, initial_revision) = cx.read_entity(&studio, |s, _| {
                 let mut bundled = s
                     .thumbnails
@@ -342,7 +511,7 @@ mod macos {
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
                     s.theme_scroll
-                        .scroll_to_item(candy / 2, ScrollStrategy::Center);
+                        .scroll_to_item(candy / 3, ScrollStrategy::Center);
                     s.select_theme("removed-frame".parse().unwrap(), window, cx);
                 });
             })
@@ -389,10 +558,10 @@ mod macos {
             cx.update_window(handle.into(), |_, window, cx| {
                 cx.write_to_clipboard(ClipboardItem::new_string("const pasted = 7;".into()));
                 window.click("paste-source", cx);
-                window.click(("padding", 32u32), cx);
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
+            inspector_click(&mut cx, handle, &studio, ("padding", 32u32));
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.document.source, "const pasted = 7;");
                 assert_eq!(s.document.padding, "32");
@@ -417,12 +586,16 @@ mod macos {
                 assert_eq!(s.document.title, "main.rs");
             });
 
-            cx.update_window(handle.into(), |_, window, cx| {
+            cx.update_window(handle.into(), |_, window, _| {
                 assert!(window.find("export-image").visible());
-                window.click("light-appearance", cx);
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
+            inspector_click(&mut cx, handle, &studio, "light-appearance");
+            cx.read_entity(&studio, |s, _| assert!(s.document.light));
+            inspector_click(&mut cx, handle, &studio, "dark-appearance");
+            cx.read_entity(&studio, |s, _| assert!(!s.document.light));
+            inspector_click(&mut cx, handle, &studio, "light-appearance");
             inspector_click(&mut cx, handle, &studio, "background-none");
             cx.read_entity(&studio, |s, _| {
                 assert!(s.document.light);
@@ -468,6 +641,15 @@ mod macos {
                 assert!(!s.document.light);
                 assert_eq!(s.document.theme, "removed-frame");
             });
+            let revision = cx.read_entity(&studio, |s, _| s.revision);
+            inspector_click(&mut cx, handle, &studio, "light-appearance");
+            cx.read_entity(&studio, |s, _| {
+                assert!(
+                    !s.document.light,
+                    "an unsupported variant must stay disabled"
+                );
+                assert_eq!(s.revision, revision);
+            });
             // Restore the inspector's top before checking the disabled appearance.
             cx.update_window(handle.into(), |_, window, cx| {
                 studio
@@ -478,7 +660,6 @@ mod macos {
             })
             .unwrap();
             cx.update_window(handle.into(), |_, window, cx| {
-                window.click("light-appearance", cx);
                 window.click("svg", cx);
                 studio.update(cx, |s, cx| {
                     s.width
@@ -533,8 +714,6 @@ mod macos {
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
-            inspector_click(&mut cx, handle, &studio, "advanced-settings");
-            assert!(cx.read_entity(&studio, |s, _| s.advanced));
             cx.update_window(handle.into(), |_, window, _| {
                 assert!(window.try_find("edit-highlight-ranges").is_none());
             })
@@ -935,7 +1114,7 @@ mod macos {
             gutter_click(&mut cx, handle, &studio, 1);
             cx.read_entity(&studio, |s, _| assert!(s.document.highlights.is_empty()));
             println!(
-                "Studio {}×{}: render, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, advanced typography, source selections, validation and recovery passed",
+                "Studio {}×{}: render, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, typography, interface appearance, zoom, source selections, validation and recovery passed",
                 width, height
             );
         }

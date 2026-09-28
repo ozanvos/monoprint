@@ -13,11 +13,12 @@ use std::{cell::RefCell, ops::Range, rc::Rc, sync::OnceLock, time::Duration};
 
 type Runs = Vec<(Range<usize>, HighlightStyle)>;
 
-pub fn factory() -> InputHighlighterFactory {
-    Rc::new(|language| {
+pub fn factory(light: bool) -> InputHighlighterFactory {
+    Rc::new(move |language| {
         let language = language.parse::<monoprint::Language>().ok()?;
         Some(Box::new(SourceHighlighter {
             language: language.id().into(),
+            light,
             runs: Rc::default(),
             task: None,
         }))
@@ -26,6 +27,7 @@ pub fn factory() -> InputHighlighterFactory {
 
 struct SourceHighlighter {
     language: SharedString,
+    light: bool,
     runs: Rc<RefCell<Runs>>,
     task: Option<Task<()>>,
 }
@@ -53,6 +55,7 @@ impl InputHighlighter for SourceHighlighter {
         let text = text.clone();
         let language = self.language.clone();
         let runs = self.runs.clone();
+        let light = self.light;
         self.task = Some(cx.spawn(async move |editor, cx| {
             cx.background_executor()
                 .timer(Duration::from_millis(100))
@@ -62,7 +65,21 @@ impl InputHighlighter for SourceHighlighter {
                 .spawn(async move { highlight(&text.to_string(), &language) })
                 .await;
             match result {
-                Ok(result) => {
+                Ok(mut result) => {
+                    if light {
+                        for (_, style) in &mut result {
+                            style.color = Some(
+                                if style.color == Some(rgb(0x909090).into()) {
+                                    rgb(0x7C7C77)
+                                } else if style.color == Some(rgb(0xB8B8B8).into()) {
+                                    rgb(0x4A4A47)
+                                } else {
+                                    rgb(0x2A2A28)
+                                }
+                                .into(),
+                            );
+                        }
+                    }
                     *runs.borrow_mut() = result;
                     let _ = editor.update(cx, |_, cx| cx.notify());
                 }
@@ -122,7 +139,7 @@ fn highlight(source: &str, language: &str) -> anyhow::Result<Runs> {
 fn editor_style(style: giallo::Style) -> HighlightStyle {
     let hex = style.foreground.as_hex();
     // Mono's #666 comments suit a black export, but need more contrast on our
-    // slate editor. Preserve its three tonal roles with a readable comment floor.
+    // dark editor. Preserve its three tonal roles with a readable comment floor.
     let color = match hex.as_str() {
         "#666666" => rgb(0x909090),
         "#A7A7A7" => rgb(0xb8b8b8),

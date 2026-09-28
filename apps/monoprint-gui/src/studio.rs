@@ -16,7 +16,14 @@ use std::{path::PathBuf, sync::Arc, time::Duration};
 
 gpui_kit::actions!(
     monoprint_gui,
-    [OpenSource, ExportImage, CopyImage, PasteSource, Quit]
+    [
+        OpenSource,
+        ExportImage,
+        CopyImage,
+        PasteSource,
+        ToggleUiAppearance,
+        Quit
+    ]
 );
 
 #[derive(Clone)]
@@ -47,6 +54,31 @@ pub enum CopyState {
     Copied,
 }
 
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+pub enum PreviewZoom {
+    #[default]
+    Fit,
+    Half,
+    Actual,
+}
+
+#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+pub enum ThemeFilter {
+    #[default]
+    All,
+    Light,
+    Dark,
+}
+impl ThemeFilter {
+    pub fn appearance(self) -> Option<monoprint::Appearance> {
+        match self {
+            Self::All => None,
+            Self::Light => Some(monoprint::Appearance::Light),
+            Self::Dark => Some(monoprint::Appearance::Dark),
+        }
+    }
+}
+
 pub struct HighlightMenu {
     pub range: std::ops::Range<usize>,
     pub caret: usize,
@@ -59,7 +91,6 @@ pub struct Studio {
     pub title: Entity<InputState>,
     pub source_marks: TextDecorationCollection,
     pub highlight_menu: Option<HighlightMenu>,
-    pub advanced: bool,
     pub settings_scroll: ScrollHandle,
     pub width: Entity<InputState>,
     pub padding: Entity<InputState>,
@@ -77,11 +108,14 @@ pub struct Studio {
     pub notice: Option<String>,
     pub exporting: bool,
     pub copy_state: CopyState,
-    pub zoom: bool,
+    pub zoom: PreviewZoom,
+    pub theme_filter: ThemeFilter,
+    pub font_scroll: ScrollHandle,
     pub wrap: bool,
     pub source_name: String,
     pub last_export: Option<PathBuf>,
     pub thumbnails: Vec<(Theme, Arc<Image>)>,
+    pub light_thumbnails: std::collections::HashMap<Theme, Arc<Image>>,
     _render_task: Task<()>,
     _copy_feedback_task: Option<Task<()>>,
     renderer: Renderer,
@@ -111,7 +145,10 @@ impl Studio {
                 .language(&document.language)
                 .default_value(document.source.clone())
                 .soft_wrap(true);
-            editor.set_highlighter_factory(crate::source_highlight::factory(), cx);
+            editor.set_highlighter_factory(
+                crate::source_highlight::factory(crate::appearance::palette(cx).light),
+                cx,
+            );
             editor
         });
         let title = input(&document.title, "Optional filename", window, cx);
@@ -142,9 +179,10 @@ impl Studio {
         );
         let theme_search = input("", "Find a theme…", window, cx);
         let thumbnails = crate::appearance::thumbnails();
+        let light_thumbnails = crate::appearance::light_thumbnails(&thumbnails);
         let theme_scroll = UniformListScrollHandle::new();
         if let Some(index) = thumbnails.iter().position(|(item, _)| *item == theme) {
-            theme_scroll.scroll_to_item(index / 2, ScrollStrategy::Center);
+            theme_scroll.scroll_to_item(index / 3, ScrollStrategy::Center);
         }
         let session = Arc::new(document::SessionStore::new(session));
         let renderer = Renderer::new();
@@ -292,23 +330,9 @@ impl Studio {
             ));
         }
         subscriptions.push(
-            cx.subscribe_in(&theme_search, window, |this, entity, event, _, cx| {
+            cx.subscribe_in(&theme_search, window, |this, _, event, _, cx| {
                 if matches!(event, InputEvent::Change) {
-                    let query = entity.read(cx).value().trim().to_lowercase();
-                    this.filtered_themes = this
-                        .thumbnails
-                        .iter()
-                        .enumerate()
-                        .filter(|(_, (theme, _))| {
-                            theme.name().to_lowercase().contains(&query)
-                                || theme.id().contains(&query)
-                                || theme.family().to_lowercase().contains(&query)
-                        })
-                        .map(|(index, _)| index)
-                        .collect();
-                    this.theme_scroll
-                        .scroll_to_item_strict(0, ScrollStrategy::Top);
-                    cx.notify();
+                    this.filter_themes(cx);
                 }
             }),
         );
@@ -331,7 +355,6 @@ impl Studio {
             title,
             source_marks,
             highlight_menu: None,
-            advanced: false,
             settings_scroll: ScrollHandle::new(),
             width,
             padding,
@@ -349,11 +372,14 @@ impl Studio {
             notice: None,
             exporting: false,
             copy_state: CopyState::Idle,
-            zoom: false,
+            zoom: PreviewZoom::Fit,
+            theme_filter: ThemeFilter::All,
+            font_scroll: ScrollHandle::new(),
             wrap: true,
             source_name,
             last_export: None,
             thumbnails,
+            light_thumbnails,
             renderer,
             worker,
             _render_task: render_task,
@@ -379,8 +405,49 @@ impl Studio {
         self.worker.request(self.revision, self.document.clone());
         cx.notify();
     }
+    pub fn filter_themes(&mut self, cx: &mut Context<Self>) {
+        let query = self.theme_search.read(cx).value().trim().to_lowercase();
+        self.filtered_themes = self
+            .thumbnails
+            .iter()
+            .enumerate()
+            .filter(|(_, (theme, _))| {
+                self.theme_filter
+                    .appearance()
+                    .is_none_or(|appearance| theme.supports(appearance))
+                    && (theme.name().to_lowercase().contains(&query)
+                        || theme.id().contains(&query)
+                        || theme.family().to_lowercase().contains(&query))
+            })
+            .map(|(index, _)| index)
+            .collect();
+        self.theme_scroll
+            .scroll_to_item_strict(0, ScrollStrategy::Top);
+        cx.notify();
+    }
+
+    pub fn toggle_ui_appearance(
+        &mut self,
+        _: &ToggleUiAppearance,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        let light = !crate::appearance::palette(cx).light;
+        crate::appearance::apply(light, Some(window), cx);
+        self.editor.update(cx, |editor, cx| {
+            editor.set_highlighter_factory(crate::source_highlight::factory(light), cx);
+        });
+        self.sync_source_marks(cx);
+        cx.notify();
+    }
+
     pub fn select_theme(&mut self, theme: Theme, _window: &mut Window, cx: &mut Context<Self>) {
         self.document.select_theme(theme);
+        if let Some(appearance) = self.theme_filter.appearance()
+            && theme.supports(appearance)
+        {
+            self.document.light = appearance == monoprint::Appearance::Light;
+        }
         self.changed(cx);
     }
     pub fn paste(&mut self, _: &PasteSource, window: &mut Window, cx: &mut Context<Self>) {
@@ -619,7 +686,11 @@ impl Studio {
             crate::selection::resolve(&self.document.source, &self.document.text_highlights)
                 .unwrap_or_default();
         let style = HighlightStyle {
-            background_color: Some(rgb(crate::appearance::ACCENT).opacity(0.18).into()),
+            background_color: Some(
+                rgb(crate::appearance::palette(cx).accent)
+                    .opacity(0.28)
+                    .into(),
+            ),
             ..Default::default()
         };
         self.source_marks.set(
