@@ -12,8 +12,13 @@ mod material;
 #[path = "../src/preview.rs"]
 mod preview;
 #[allow(dead_code, unused_imports)]
+#[path = "../src/selection.rs"]
+mod selection;
+#[allow(dead_code, unused_imports)]
 #[path = "../src/source_highlight.rs"]
 mod source_highlight;
+#[path = "../src/source_lines.rs"]
+mod source_lines;
 #[path = "../src/studio.rs"]
 mod studio;
 #[path = "../src/view.rs"]
@@ -72,6 +77,17 @@ mod macos {
         }
     }
 
+    fn click(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+        id: &'static str,
+    ) {
+        cx.update_window(handle.into(), |_, window, cx| window.click(id, cx))
+            .unwrap();
+        settle(cx, handle, studio);
+    }
+
     fn inspector_click(
         cx: &mut HeadlessAppContext,
         handle: WindowHandle<Root>,
@@ -90,6 +106,61 @@ mod macos {
         })
         .unwrap();
         settle(cx, handle, studio);
+    }
+
+    fn gutter_click(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+        line: usize,
+    ) {
+        cx.update_window(handle.into(), |_, window, cx| {
+            let editor = studio.read(cx).editor.read(cx);
+            let gutter = source_lines::visible_lines(editor)
+                .into_iter()
+                .find(|row| row.index + 1 == line)
+                .unwrap()
+                .gutter;
+            let position = point(
+                gutter.center().x,
+                gutter.top() + editor.line_height().unwrap() / 2.,
+            );
+            pointer_click(window, position, cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+    }
+
+    fn pointer_click(window: &mut Window, position: Point<Pixels>, cx: &mut App) {
+        window.dispatch_event(
+            MouseMoveEvent {
+                position,
+                ..Default::default()
+            }
+            .to_platform_input(),
+            cx,
+        );
+        window.render_frame(cx);
+        window.dispatch_event(
+            MouseDownEvent {
+                position,
+                button: MouseButton::Left,
+                click_count: 1,
+                ..Default::default()
+            }
+            .to_platform_input(),
+            cx,
+        );
+        window.dispatch_event(
+            MouseUpEvent {
+                position,
+                button: MouseButton::Left,
+                click_count: 1,
+                ..Default::default()
+            }
+            .to_platform_input(),
+            cx,
+        );
     }
 
     pub fn run() {
@@ -162,6 +233,8 @@ mod macos {
                 })
                 .unwrap();
             let studio = studio.unwrap();
+            cx.update_window(handle.into(), |_, window, _| window.activate_window())
+                .unwrap();
             settle(&mut cx, handle, &studio);
             cx.read_entity(&studio, |s, _| {
                 assert!(s.preview.is_some(), "{:?}", s.error)
@@ -427,6 +500,10 @@ mod macos {
             settle(&mut cx, handle, &studio);
             inspector_click(&mut cx, handle, &studio, "advanced-settings");
             assert!(cx.read_entity(&studio, |s, _| s.advanced));
+            cx.update_window(handle.into(), |_, window, _| {
+                assert!(window.try_find("edit-highlight-ranges").is_none());
+            })
+            .unwrap();
             for (id, query) in [
                 ("code-typeface", "Fira Code"),
                 ("comment-typeface", "Space Mono"),
@@ -455,18 +532,150 @@ mod macos {
                 assert!(s.error.is_none(), "{:?}", s.error);
             });
             capture(&mut cx, handle, &format!("advanced-fonts-{}", width as u32));
+            let revision = cx.read_entity(&studio, |s, _| s.revision);
+            // Use actual pointer events: selecting text alone must not render an image.
+            cx.update_window(handle.into(), |_, window, cx| {
+                let s = studio.read(cx);
+                let start = s.document.source.find("café").unwrap();
+                let editor = s.editor.read(cx);
+                let bounds = editor
+                    .range_to_bounds(&(start..start + "café".len()))
+                    .unwrap();
+                window.drag(
+                    point(bounds.left() + px(0.1), bounds.center().y),
+                    point(bounds.right() + px(0.1), bounds.center().y),
+                    cx,
+                );
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, cx| {
+                assert_eq!(s.editor.read(cx).selected_text().to_string(), "café");
+                assert_eq!(s.revision, revision);
+            });
+            capture(
+                &mut cx,
+                handle,
+                &format!("selection-toolbar-{}", width as u32),
+            );
+            click(&mut cx, handle, &studio, "highlight-selection");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.text_highlights, "2:5-2:9")
+            });
+            // The same contextual action removes a marked selection, then adds it again.
+            click(&mut cx, handle, &studio, "highlight-selection");
+            cx.read_entity(&studio, |s, cx| {
+                assert!(s.document.text_highlights.is_empty());
+                assert!(s.source_marks.get_ranges(cx).is_empty());
+            });
+            click(&mut cx, handle, &studio, "highlight-selection");
+            // Native decorations follow edits; persisted/export positions must match.
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.editor.update(cx, |editor, cx| {
+                        editor.set_selected_range(0..0, cx);
+                        editor.focus(window, cx);
+                    });
+                });
+                window.input("\n", cx);
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, cx| {
+                assert_eq!(s.document.text_highlights, "3:5-3:9");
+                let marks = s.source_marks.get_ranges(cx);
+                assert_eq!(&s.document.source[marks[0].clone()], "café");
+                assert!(s.error.is_none(), "{:?}", s.error);
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.dispatch_action(Box::new(gpui_kit::component::input::Undo), cx);
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.text_highlights, "2:5-2:9");
+            });
+            capture(
+                &mut cx,
+                handle,
+                &format!("persistent-highlights-{}", width as u32),
+            );
+            // A click on the right half of a Unicode glyph opens removal without
+            // selecting code, even though the caret lands at the exclusive end.
+            let click_revision = cx.read_entity(&studio, |s, _| s.revision);
+            for click_highlight in [true, false, true] {
+                cx.update_window(handle.into(), |_, window, cx| {
+                    let s = studio.read(cx);
+                    let offset = s.document.source.find("café").unwrap()
+                        + if click_highlight { 3 } else { "café".len() };
+                    let end = offset + if click_highlight { "é".len() } else { 1 };
+                    let bounds = s.editor.read(cx).range_to_bounds(&(offset..end)).unwrap();
+                    pointer_click(
+                        window,
+                        point(bounds.left() + bounds.size.width * 0.75, bounds.center().y),
+                        cx,
+                    );
+                })
+                .unwrap();
+                settle(&mut cx, handle, &studio);
+                cx.read_entity(&studio, |s, cx| {
+                    assert_eq!(s.highlight_menu.is_some(), click_highlight);
+                    assert!(s.editor.read(cx).selected_range().is_empty());
+                    assert_eq!(s.document.text_highlights, "2:5-2:9");
+                    assert_eq!(
+                        s.revision, click_revision,
+                        "opening or dismissing a menu must not render an image"
+                    );
+                });
+            }
+            capture(
+                &mut cx,
+                handle,
+                &format!("clicked-highlight-menu-{}", width as u32),
+            );
+            let before_removal = cx.read_entity(&studio, |s, cx| {
+                (s.document.source.clone(), s.editor.read(cx).cursor())
+            });
+            click(&mut cx, handle, &studio, "highlight-selection");
+            cx.read_entity(&studio, |s, cx| {
+                assert!(s.document.text_highlights.is_empty());
+                assert!(s.highlight_menu.is_none());
+                assert_eq!(s.document.source, before_removal.0);
+                assert_eq!(s.editor.read(cx).cursor(), before_removal.1);
+            });
             cx.update_window(handle.into(), |_, _, cx| {
                 studio.update(cx, |s, cx| {
                     let start = s.document.source.find("café").unwrap();
                     s.editor.update(cx, |editor, cx| {
                         editor.set_selected_range(start..start + "café".len(), cx)
                     });
+                    s.highlight_selection(false, cx);
                 });
             })
             .unwrap();
-            inspector_click(&mut cx, handle, &studio, "highlight-selection");
-            cx.read_entity(&studio, |s, _| {
-                assert_eq!(s.document.text_highlights, "2:5-2:9")
+            settle(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, cx| {
+                let s = studio.read(cx);
+                let start = s.document.source.find("café").unwrap();
+                let bounds = s
+                    .editor
+                    .read(cx)
+                    .range_to_bounds(&(start..start + 2))
+                    .unwrap();
+                window.drag(
+                    point(bounds.left() + px(0.1), bounds.center().y),
+                    point(bounds.right() + px(0.1), bounds.center().y),
+                    cx,
+                );
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, cx| {
+                assert!(
+                    s.highlight_menu.is_none(),
+                    "dragging retains normal text selection"
+                );
+                assert_eq!(s.editor.read(cx).selected_text().to_string(), "ca");
             });
             cx.update_window(handle.into(), |_, _, cx| {
                 studio.update(cx, |s, cx| {
@@ -476,7 +685,8 @@ mod macos {
                 });
             })
             .unwrap();
-            inspector_click(&mut cx, handle, &studio, "highlight-selected-lines");
+            settle(&mut cx, handle, &studio);
+            click(&mut cx, handle, &studio, "highlight-selected-lines");
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(
                     s.document.highlights, "1-2",
@@ -484,12 +694,69 @@ mod macos {
                 );
                 assert!(s.error.is_none(), "{:?}", s.error);
             });
+            click(&mut cx, handle, &studio, "highlight-selected-lines");
+            cx.read_entity(&studio, |s, _| assert!(s.document.highlights.is_empty()));
+            click(&mut cx, handle, &studio, "highlight-selected-lines");
+            cx.update_window(handle.into(), |_, _, cx| {
+                studio
+                    .read(cx)
+                    .editor
+                    .clone()
+                    .update(cx, |editor, cx| editor.set_selected_range(0..0, cx));
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            let sample_points = cx.read_entity(&studio, |s, cx| {
+                let row = source_lines::visible_lines(s.editor.read(cx))
+                    .into_iter()
+                    .find(|row| row.index == 1)
+                    .unwrap();
+                [
+                    point(row.gutter.left() + px(4.), row.gutter.center().y),
+                    point(row.bounds.right() - px(4.), row.bounds.center().y),
+                ]
+            });
+            let marked = cx.capture_screenshot(handle.into()).unwrap();
+            gutter_click(&mut cx, handle, &studio, 2);
+            cx.read_entity(&studio, |s, cx| {
+                assert_eq!(s.document.highlights, "1");
+                assert_eq!(
+                    s.document.text_highlights, "2:5-2:9",
+                    "gutter toggles preserve exact marks"
+                );
+                assert_eq!(
+                    s.editor.read(cx).selected_range(),
+                    0..0,
+                    "gutter toggles do not move the caret"
+                );
+            });
+            let unmarked = cx.capture_screenshot(handle.into()).unwrap();
+            let scale = marked.width() as f32 / width;
+            for point in sample_points {
+                let (x, y) = (
+                    (f32::from(point.x) * scale) as u32,
+                    (f32::from(point.y) * scale) as u32,
+                );
+                assert_ne!(
+                    marked.get_pixel(x, y),
+                    unmarked.get_pixel(x, y),
+                    "line tint must cover both gutter and empty code-row space"
+                );
+            }
+            gutter_click(&mut cx, handle, &studio, 2);
+            gutter_click(&mut cx, handle, &studio, 4);
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(
+                    s.document.highlights, "1-2, 4",
+                    "blank lines can be highlighted"
+                );
+            });
             capture(
                 &mut cx,
                 handle,
-                &format!("advanced-highlights-{}", width as u32),
+                &format!("source-highlights-{}", width as u32),
             );
-            inspector_click(&mut cx, handle, &studio, "clear-highlights");
+            click(&mut cx, handle, &studio, "clear-highlights");
             cx.read_entity(&studio, |s, _| {
                 assert!(s.document.highlights.is_empty());
                 assert!(s.document.text_highlights.is_empty());
@@ -503,7 +770,17 @@ mod macos {
                 assert!(s.document.comment_font_id.is_none());
                 assert!(s.error.is_none(), "{:?}", s.error);
             });
-            inspector_click(&mut cx, handle, &studio, "highlight-selection");
+            cx.update_window(handle.into(), |_, _, cx| {
+                studio.update(cx, |s, cx| {
+                    let start = s.document.source.find("café").unwrap();
+                    s.editor.update(cx, |editor, cx| {
+                        editor.set_selected_range(start..start + "café".len(), cx)
+                    });
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            click(&mut cx, handle, &studio, "highlight-selection");
             cx.read_entity(&studio, |s, _| {
                 assert!(!s.document.text_highlights.is_empty())
             });
@@ -519,6 +796,109 @@ mod macos {
                 assert!(s.document.highlights.is_empty());
                 assert!(s.error.is_none(), "{:?}", s.error);
             });
+            // Keep the toolbar attached to a visible selection in a scrolled document.
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.install_source("long.rs".into(), "let value = 42;\n".repeat(80), window, cx);
+                    s.editor.update(cx, |editor, cx| {
+                        editor.set_scroll_offset(point(px(0.), px(-10000.)), cx);
+                        editor.focus(window, cx);
+                    });
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, _, cx| {
+                studio.update(cx, |s, cx| {
+                    let start = s.document.source.rfind("value").unwrap();
+                    s.editor.update(cx, |editor, cx| {
+                        editor.set_selected_range(start..start + 5, cx);
+                    });
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, cx| {
+                let editor = studio.read(cx).editor.read(cx);
+                assert!(editor.scroll_offset().y < px(0.));
+                let viewport = editor.input_bounds();
+                let toolbar = window.find("highlight-selection").bounds();
+                assert!(viewport.contains(&toolbar.center()));
+            })
+            .unwrap();
+            click(&mut cx, handle, &studio, "highlight-selection");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.text_highlights, "80:5-80:10")
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                let s = studio.read(cx);
+                let start = s.document.source.rfind("value").unwrap();
+                let bounds = s
+                    .editor
+                    .read(cx)
+                    .range_to_bounds(&(start..start + 1))
+                    .unwrap();
+                pointer_click(window, bounds.center(), cx);
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert!(
+                    s.highlight_menu.is_some(),
+                    "clicking a scrolled mark opens its menu"
+                )
+            });
+            gutter_click(&mut cx, handle, &studio, 80);
+            cx.read_entity(&studio, |s, _| assert_eq!(s.document.highlights, "80"));
+            capture(
+                &mut cx,
+                handle,
+                &format!("scrolled-selection-{}", width as u32),
+            );
+            gutter_click(&mut cx, handle, &studio, 80);
+            cx.read_entity(&studio, |s, _| assert!(s.document.highlights.is_empty()));
+
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.install_source(
+                        "wrapped.rs".into(),
+                        format!(
+                            "// {}\n\nlet second = true;",
+                            "long café comment ".repeat(10)
+                        ),
+                        window,
+                        cx,
+                    );
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, cx| {
+                let editor = s.editor.read(cx);
+                let rows = source_lines::visible_lines(editor);
+                assert!(rows[0].bounds.size.height > editor.line_height().unwrap() * 2.);
+                assert_eq!(rows[1].index, 1);
+            });
+            gutter_click(&mut cx, handle, &studio, 1);
+            gutter_click(&mut cx, handle, &studio, 2);
+            cx.read_entity(&studio, |s, _| assert_eq!(s.document.highlights, "1-2"));
+            capture(
+                &mut cx,
+                handle,
+                &format!("wrapped-line-highlights-{}", width as u32),
+            );
+            click(&mut cx, handle, &studio, "wrap-source");
+            gutter_click(&mut cx, handle, &studio, 2);
+            cx.read_entity(&studio, |s, _| assert_eq!(s.document.highlights, "1"));
+            cx.update_window(handle.into(), |_, _, cx| {
+                studio.read(cx).editor.clone().update(cx, |editor, cx| {
+                    editor.set_scroll_offset(point(px(-100.), px(0.)), cx)
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            gutter_click(&mut cx, handle, &studio, 1);
+            cx.read_entity(&studio, |s, _| assert!(s.document.highlights.is_empty()));
             println!(
                 "Studio {}×{}: render, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, advanced typography, source selections, validation and recovery passed",
                 width, height

@@ -20,6 +20,7 @@ impl Render for Studio {
             .id("monoprint-studio")
             .key_context("Monoprint")
             .track_focus(&self.focus)
+            .relative()
             .size_full()
             .flex()
             .flex_col()
@@ -41,6 +42,7 @@ impl Render for Studio {
                     .child(self.canvas_panel(window, cx))
                     .child(self.inspector(cx)),
             )
+            .children(self.selection_toolbar(cx))
             .children(Root::render_dialog_layer(window, cx))
             .children(Root::render_sheet_layer(window, cx))
             .children(Root::render_notification_layer(window, cx))
@@ -202,14 +204,62 @@ impl Studio {
                 ),
             )
             .child(
-                div().px_2().flex_1().min_h_0().overflow_hidden().child(
-                    Editor::new(&self.editor)
-                        .appearance(false)
-                        .bordered(false)
-                        .h_full()
-                        .text_size(px(12.))
-                        .aria_label("Source code"),
-                ),
+                div()
+                    .px_4()
+                    .pb_3()
+                    .text_size(px(11.))
+                    .text_color(rgb(MUTED))
+                    .child("Select text or click a line number to highlight."),
+            )
+            .child(
+                div()
+                    .relative()
+                    .px_2()
+                    .flex_1()
+                    .min_h_0()
+                    .overflow_hidden()
+                    .child(
+                        Editor::new(&self.editor)
+                            .appearance(false)
+                            .bordered(false)
+                            .h_full()
+                            .text_size(px(12.))
+                            .aria_label("Source code"),
+                    )
+                    .child(crate::source_lines::overlay(
+                        &self.editor,
+                        cx.entity().downgrade(),
+                    )),
+            )
+            .when(
+                !self.document.highlights.is_empty() || !self.document.text_highlights.is_empty(),
+                |view| {
+                    view.child(
+                        div()
+                            .px_4()
+                            .py_2()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .border_t_1()
+                            .border_color(rgb(BORDER))
+                            .child(
+                                div()
+                                    .text_size(px(11.))
+                                    .text_color(rgb(ACCENT))
+                                    .child("Highlights applied"),
+                            )
+                            .child(
+                                Button::new("clear-highlights")
+                                    .ghost()
+                                    .xsmall()
+                                    .label("Clear all")
+                                    .on_click(
+                                        cx.listener(|this, _, _, cx| this.clear_highlights(cx)),
+                                    ),
+                            ),
+                    )
+                },
             )
             .child(
                 div()
@@ -228,6 +278,119 @@ impl Studio {
                         self.document.source.split('\n').count()
                     )),
             )
+    }
+    fn selection_toolbar(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
+        let editor = self.editor.read(cx);
+        let selection = editor.selected_range();
+        let clicked = selection.is_empty() && self.highlight_menu.is_some();
+        if selection.is_empty() && !clicked {
+            return None;
+        }
+        if !editor
+            .visible_row_range()?
+            .contains(&(editor.cursor_position().line as usize))
+        {
+            return None;
+        }
+        let viewport = editor.input_bounds();
+        let cursor = editor.cursor();
+        let anchor = if clicked {
+            self.highlight_menu.as_ref()?.anchor
+        } else {
+            editor.range_to_bounds(&(cursor..cursor))?
+        };
+        if anchor.bottom() < viewport.top()
+            || anchor.top() > viewport.bottom()
+            || viewport.size.height < px(40.)
+        {
+            return None;
+        }
+        let width = px(if clicked { 150. } else { 200. });
+        let left = anchor
+            .left()
+            .max(viewport.left() + px(4.))
+            .min(viewport.right() - width - px(4.));
+        let top = if anchor.top() - px(36.) >= viewport.top() {
+            anchor.top() - px(36.)
+        } else {
+            (anchor.bottom() + px(4.)).min(viewport.bottom() - px(32.))
+        };
+        let marked =
+            clicked || crate::selection::covers(&self.source_marks.get_ranges(cx), &selection);
+        let marked_lines = crate::selection::covers(
+            &self.line_highlights(cx),
+            &crate::selection::selected_lines(&self.document.source, selection),
+        );
+        Some(
+            deferred(
+                div()
+                    .occlude()
+                    .on_mouse_down_out(cx.listener(|this, _, _, cx| {
+                        if this.highlight_menu.take().is_some() {
+                            cx.notify();
+                        }
+                    }))
+                    .on_mouse_down(MouseButton::Left, |_, window, cx| {
+                        window.prevent_default();
+                        cx.stop_propagation();
+                    })
+                    .absolute()
+                    .left(left)
+                    .top(top)
+                    .w(width)
+                    .flex()
+                    .items_center()
+                    .gap_1()
+                    .p_1()
+                    .rounded_md()
+                    .bg(rgb(SURFACE))
+                    .border_1()
+                    .border_color(rgb(BORDER))
+                    .shadow_md()
+                    .child(
+                        Button::new("highlight-selection")
+                            .ghost()
+                            .xsmall()
+                            .flex_1()
+                            .label(if marked {
+                                "Remove highlight"
+                            } else {
+                                "Highlight"
+                            })
+                            .tooltip(if marked {
+                                "Remove highlighting from this selection"
+                            } else {
+                                "Highlight the selected text in the image"
+                            })
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                if clicked {
+                                    this.remove_clicked_highlight(cx);
+                                } else {
+                                    this.highlight_selection(false, cx);
+                                }
+                            })),
+                    )
+                    .when(!clicked, |view| {
+                        view.child(
+                            Button::new("highlight-selected-lines")
+                                .ghost()
+                                .xsmall()
+                                .label(if marked_lines { "Clear lines" } else { "Lines" })
+                                .tooltip(if marked_lines {
+                                    "Remove highlights from the selected lines"
+                                } else {
+                                    "Highlight the selected source lines"
+                                })
+                                .on_click(
+                                    cx.listener(|this, _, _, cx| {
+                                        this.highlight_selection(true, cx)
+                                    }),
+                                ),
+                        )
+                    }),
+            )
+            .with_priority(1),
+        )
     }
     fn canvas_panel(&self, window: &Window, cx: &mut Context<Self>) -> impl IntoElement {
         let theme = self
@@ -583,23 +746,6 @@ impl Studio {
                 }))))
             .child(div().text_size(px(11.)).text_color(rgb(MUTED))
                 .child("Ligatures depend on the typeface. Comments inherit the code font unless overridden."))
-            .child(rule())
-            .child(section("Highlights"))
-            .child(field("Lines", Input::new(&self.highlights).small().aria_label("Highlighted lines")))
-            .child(field("Text ranges", Input::new(&self.text_highlights).small().aria_label("Highlighted text ranges")))
-            .child(div().text_size(px(11.)).text_color(rgb(MUTED))
-                .child("Use line:column–line:column; the end is exclusive. Or select text in the source editor."))
-            .child(Button::new("highlight-selection").outline().small().w_full()
-                .label("Highlight selection")
-                .on_click(cx.listener(|this, _, window, cx| this.highlight_selection(false, window, cx))))
-            .child(Button::new("highlight-selected-lines").outline().small().w_full()
-                .label("Highlight selected lines")
-                .on_click(cx.listener(|this, _, window, cx| this.highlight_selection(true, window, cx))))
-            .child(Button::new("clear-highlights").ghost().small().w_full().label("Clear highlights")
-                .on_click(cx.listener(|this, _, window, cx| {
-                    this.highlights.update(cx, |input, cx| input.replace_all("", window, cx));
-                    this.text_highlights.update(cx, |input, cx| input.replace_all("", window, cx));
-                })))
     }
 
     fn font_control(&self, comments: bool, cx: &Context<Self>) -> impl IntoElement {

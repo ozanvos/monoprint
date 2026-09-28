@@ -4,7 +4,9 @@ use crate::{
 };
 use gpui_kit::{
     component::{
-        input::{EditorState, InputEvent, InputState},
+        input::{
+            EditorState, InputEvent, InputState, RopeExt, TextDecoration, TextDecorationCollection,
+        },
         select::{SearchableVec, SelectEvent, SelectItem, SelectState},
     },
     *,
@@ -45,12 +47,18 @@ pub enum CopyState {
     Copied,
 }
 
+pub struct HighlightMenu {
+    pub range: std::ops::Range<usize>,
+    pub caret: usize,
+    pub anchor: Bounds<Pixels>,
+}
+
 pub struct Studio {
     pub document: Document,
     pub editor: Entity<EditorState>,
     pub title: Entity<InputState>,
-    pub highlights: Entity<InputState>,
-    pub text_highlights: Entity<InputState>,
+    pub source_marks: TextDecorationCollection,
+    pub highlight_menu: Option<HighlightMenu>,
     pub advanced: bool,
     pub settings_scroll: ScrollHandle,
     pub width: Entity<InputState>,
@@ -80,6 +88,11 @@ pub struct Studio {
     worker: PreviewWorker,
     _subscriptions: Vec<Subscription>,
     _quit: Subscription,
+    last_selection: std::ops::Range<usize>,
+    last_scroll: Point<Pixels>,
+    last_selection_anchor: Option<Bounds<Pixels>>,
+    last_source_bounds: Bounds<Pixels>,
+    last_visible_rows: Option<std::ops::Range<usize>>,
 }
 
 impl Studio {
@@ -102,8 +115,9 @@ impl Studio {
             editor
         });
         let title = input(&document.title, "Optional filename", window, cx);
-        let highlights = input(&document.highlights, "e.g. 2, 4-6", window, cx);
-        let text_highlights = input(&document.text_highlights, "e.g. 2:1-2:8", window, cx);
+        let source_marks = editor.update(cx, |state, cx| {
+            state.create_decorations_collection(Vec::new(), cx)
+        });
         let width = input(&document.width, "Auto", window, cx);
         let padding = input(&document.padding, "64", window, cx);
         let mut languages = Language::all()
@@ -171,18 +185,66 @@ impl Studio {
         subscriptions.push(
             cx.subscribe_in(&editor, window, |this, entity, event, _, cx| {
                 if matches!(event, InputEvent::Change) {
+                    this.highlight_menu = None;
+                    let track = crate::selection::resolve(
+                        &this.document.source,
+                        &this.document.text_highlights,
+                    )
+                    .is_some();
                     this.document.source = entity.read(cx).value().to_string();
+                    this.document.highlights =
+                        crate::selection::format_lines(this.line_highlights(cx));
+                    if track {
+                        // GPUI's decorations already followed this edit, including Unicode,
+                        // insertions and deletions. Persist the same positions for export.
+                        this.document.text_highlights = crate::selection::format(
+                            &this.document.source,
+                            this.source_marks.get_ranges(cx),
+                        );
+                    } else {
+                        this.sync_source_marks(cx);
+                    }
                     this.changed(cx);
                 }
             }),
         );
-        for (field, kind) in [
-            (&title, 0),
-            (&highlights, 1),
-            (&width, 2),
-            (&padding, 3),
-            (&text_highlights, 4),
-        ] {
+        subscriptions.push(cx.observe(&editor, |this, editor, cx| {
+            let editor = editor.read(cx);
+            let selection = editor.selected_range();
+            let scroll = editor.scroll_offset();
+            let bounds = editor.input_bounds();
+            let visible_rows = editor.visible_row_range();
+            let cursor = editor.cursor();
+            let anchor = if selection.is_empty() {
+                None
+            } else {
+                editor.range_to_bounds(&(cursor..cursor))
+            };
+            if this.highlight_menu.as_ref().is_some_and(|menu| {
+                !selection.is_empty()
+                    || cursor != menu.caret
+                    || scroll != this.last_scroll
+                    || bounds != this.last_source_bounds
+            }) {
+                this.highlight_menu = None;
+                cx.notify();
+            }
+            if selection != this.last_selection
+                || scroll != this.last_scroll
+                || anchor != this.last_selection_anchor
+                || bounds != this.last_source_bounds
+                || visible_rows != this.last_visible_rows
+            {
+                this.last_selection = selection;
+                this.last_scroll = scroll;
+                this.last_selection_anchor = anchor;
+                this.last_source_bounds = bounds;
+                this.last_visible_rows = visible_rows;
+                // Selection/scroll changes only update the toolbar, never render an image.
+                cx.notify();
+            }
+        }));
+        for (field, kind) in [(&title, 0), (&width, 1), (&padding, 2)] {
             subscriptions.push(cx.subscribe_in(
                 field,
                 window,
@@ -193,10 +255,8 @@ impl Studio {
                     let value = entity.read(cx).value().to_string();
                     match kind {
                         0 => this.document.title = value,
-                        1 => this.document.highlights = value,
-                        2 => this.document.width = value,
-                        3 => this.document.padding = value,
-                        _ => this.document.text_highlights = value,
+                        1 => this.document.width = value,
+                        _ => this.document.padding = value,
                     }
                     this.changed(cx);
                 },
@@ -268,8 +328,8 @@ impl Studio {
             document,
             editor,
             title,
-            highlights,
-            text_highlights,
+            source_marks,
+            highlight_menu: None,
             advanced: false,
             settings_scroll: ScrollHandle::new(),
             width,
@@ -299,7 +359,13 @@ impl Studio {
             _copy_feedback_task: None,
             _subscriptions: subscriptions,
             _quit: quit,
+            last_selection: 0..0,
+            last_scroll: point(px(0.), px(0.)),
+            last_selection_anchor: None,
+            last_source_bounds: Bounds::default(),
+            last_visible_rows: None,
         };
+        this.sync_source_marks(cx);
         this.changed(cx);
         this.notice = startup_error;
         this
@@ -332,10 +398,7 @@ impl Studio {
             state.replace_all(text, window, cx);
             state.focus(window, cx);
         });
-        self.highlights
-            .update(cx, |state, cx| state.replace_all("", window, cx));
-        self.text_highlights
-            .update(cx, |state, cx| state.replace_all("", window, cx));
+        self.clear_highlights(cx);
     }
     pub fn open(&mut self, _: &OpenSource, window: &mut Window, cx: &mut Context<Self>) {
         let dialog = cx.prompt_for_paths(PathPromptOptions {
@@ -390,6 +453,8 @@ impl Studio {
         self.document.language = language.id().into();
         self.document.highlights.clear();
         self.document.text_highlights.clear();
+        self.source_marks.clear(cx);
+        self.highlight_menu = None;
         self.document.title = self.source_name.clone();
         self.language.update(cx, |state, cx| {
             state.set_selected_value(&language.id().to_owned(), window, cx)
@@ -397,10 +462,6 @@ impl Studio {
         self.title.update(cx, |state, cx| {
             state.set_value(self.source_name.clone(), window, cx)
         });
-        self.highlights
-            .update(cx, |state, cx| state.set_value("", window, cx));
-        self.text_highlights
-            .update(cx, |state, cx| state.set_value("", window, cx));
         self.editor.update(cx, |state, cx| {
             state.set_highlighter(language.id(), cx);
             state.set_value(source, window, cx);
@@ -479,12 +540,7 @@ impl Studio {
         })
         .detach();
     }
-    pub fn highlight_selection(
-        &mut self,
-        whole_lines: bool,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
+    pub fn highlight_selection(&mut self, whole_lines: bool, cx: &mut Context<Self>) {
         let range = self.editor.read(cx).selected_range();
         if range.is_empty() {
             self.notice = Some("Select text in the source editor first.".into());
@@ -492,37 +548,94 @@ impl Studio {
             return;
         }
         let source = self.editor.read(cx).value().to_string();
-        let position = |offset: usize| {
-            let prefix = source[..offset].replace("\r\n", "\n").replace('\r', "\n");
-            (
-                prefix.bytes().filter(|byte| *byte == b'\n').count() + 1,
-                prefix.rsplit('\n').next().unwrap_or("").chars().count() + 1,
-            )
-        };
-        let start = position(range.start);
-        let end = position(range.end);
-        let (field, value) = if whole_lines {
-            let last_line = if end.1 == 1 && end.0 > start.0 {
-                end.0 - 1
-            } else {
-                end.0
-            };
-            (self.highlights.clone(), format!("{}-{last_line}", start.0))
+        if !whole_lines {
+            let ranges = crate::selection::toggle(self.source_marks.get_ranges(cx), range);
+            self.document.text_highlights = crate::selection::format(&source, ranges);
+            self.sync_source_marks(cx);
+            self.changed(cx);
         } else {
-            (
-                self.text_highlights.clone(),
-                monoprint::TextRange::new(start, end).to_string(),
-            )
+            self.toggle_line_highlights(crate::selection::selected_lines(&source, range), cx);
+        }
+    }
+    pub fn line_highlights(&self, cx: &App) -> Vec<std::ops::Range<usize>> {
+        crate::selection::lines(
+            &self.document.highlights,
+            self.editor.read(cx).text().lines_len(),
+        )
+    }
+    pub fn toggle_line_highlights(
+        &mut self,
+        lines: std::ops::Range<usize>,
+        cx: &mut Context<Self>,
+    ) {
+        self.document.highlights = crate::selection::format_lines(crate::selection::toggle(
+            self.line_highlights(cx),
+            lines,
+        ));
+        self.changed(cx);
+    }
+    pub fn open_highlight_menu(&mut self, position: Point<Pixels>, cx: &mut Context<Self>) {
+        let editor = self.editor.read(cx);
+        if !editor.selected_range().is_empty() {
+            return;
+        }
+        let Some(offset) = crate::source_lines::character_at_point(editor, position) else {
+            return;
         };
-        field.update(cx, |input, cx| {
-            let previous = input.value();
-            let value = if previous.trim().is_empty() {
-                value
-            } else {
-                format!("{previous}, {value}")
-            };
-            input.replace_all(value, window, cx);
+        let Some(range) = crate::selection::containing(self.source_marks.get_ranges(cx), offset)
+        else {
+            return;
+        };
+        let height = editor.line_height().unwrap_or(px(18.));
+        self.highlight_menu = Some(HighlightMenu {
+            range,
+            caret: editor.cursor(),
+            anchor: Bounds::new(
+                point(position.x, position.y - height / 2.),
+                size(px(0.), height),
+            ),
         });
+        cx.notify();
+    }
+    pub fn remove_clicked_highlight(&mut self, cx: &mut Context<Self>) {
+        let Some(menu) = self.highlight_menu.take() else {
+            return;
+        };
+        let ranges = self.source_marks.get_ranges(cx);
+        if crate::selection::covers(&ranges, &menu.range) {
+            self.document.text_highlights = crate::selection::format(
+                &self.document.source,
+                crate::selection::toggle(ranges, menu.range),
+            );
+            self.sync_source_marks(cx);
+            self.changed(cx);
+        } else {
+            cx.notify();
+        }
+    }
+    pub fn sync_source_marks(&self, cx: &mut Context<Self>) {
+        let ranges =
+            crate::selection::resolve(&self.document.source, &self.document.text_highlights)
+                .unwrap_or_default();
+        let style = HighlightStyle {
+            background_color: Some(rgb(crate::appearance::ACCENT).opacity(0.18).into()),
+            ..Default::default()
+        };
+        self.source_marks.set(
+            ranges
+                .into_iter()
+                .map(|range| TextDecoration::new(range, style))
+                .collect(),
+            cx,
+        );
+    }
+
+    pub fn clear_highlights(&mut self, cx: &mut Context<Self>) {
+        self.highlight_menu = None;
+        self.document.highlights.clear();
+        self.document.text_highlights.clear();
+        self.source_marks.clear(cx);
+        self.changed(cx);
     }
     pub fn export_file(&mut self, _: &ExportImage, window: &mut Window, cx: &mut Context<Self>) {
         if self.exporting || self.copy_state == CopyState::Copying {

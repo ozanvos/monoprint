@@ -3,7 +3,9 @@ mod document;
 #[cfg(target_os = "macos")]
 mod material;
 mod preview;
+mod selection;
 mod source_highlight;
+mod source_lines;
 mod studio;
 mod view;
 use gpui_kit::{
@@ -41,6 +43,7 @@ fn main() {
                     .into_owned();
                 document.title = source_name.clone();
                 document.highlights.clear();
+                document.text_highlights.clear();
             }
             Err(e) => error = Some(format!("{e:#}")),
         }

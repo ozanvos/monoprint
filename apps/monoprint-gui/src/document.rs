@@ -198,7 +198,7 @@ impl Document {
     }
 }
 
-fn highlight_ranges(value: &str, lines: usize) -> Result<Vec<(usize, usize)>> {
+pub(crate) fn highlight_ranges(value: &str, lines: usize) -> Result<Vec<(usize, usize)>> {
     if value.trim().is_empty() {
         return Ok(Vec::new());
     }
