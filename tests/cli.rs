@@ -538,7 +538,7 @@ fn inference_override_and_line_numbers() {
     )))
     .unwrap();
     assert!(!plain.contains("class=\"Editor__editor Editor__showLineNumbers"));
-    let forced = String::from_utf8(success(w.run(
+    let hidden = String::from_utf8(success(w.run(
         &[
             "main.rs",
             "--theme",
@@ -552,7 +552,15 @@ fn inference_override_and_line_numbers() {
         "",
     )))
     .unwrap();
-    assert!(forced.contains("class=\"Editor__editor Editor__showLineNumbers"));
+    assert!(!hidden.contains("class=\"Editor__editor Editor__showLineNumbers"));
+    let default = String::from_utf8(success(w.run(
+        &[
+            "main.rs", "--theme", "removed-frame", "-o", "-", "--format", "html",
+        ],
+        "",
+    )))
+    .unwrap();
+    assert!(default.contains("class=\"Editor__editor Editor__showLineNumbers"));
 }
 
 #[test]

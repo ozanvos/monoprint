@@ -31,7 +31,7 @@ export interface Style {
   transparent?: boolean;
   /** Defaults to 'theme'. Mutually exclusive with transparent in one options object. */
   background?: Background;
-  /** Theme defaults and fixed partner-theme rules apply; plain text hides numbers. */
+  /** Omit or use 'auto' for theme defaults; true/false override any theme. Plain text hides numbers. */
   lineNumbers?: boolean | 'auto';
   /** Reusable TTF/OTF code font. `null` restores the theme font. */
   font?: Font | null;

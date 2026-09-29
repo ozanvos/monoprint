@@ -74,15 +74,11 @@ impl Theme {
     pub fn supports(self, appearance: Appearance) -> bool {
         self.data_for(appearance).is_some()
     }
-    /// How the frame handles line numbers. Plain text always hides numbers.
+    /// The theme's default line-number visibility. Every theme allows overrides.
+    /// Plain text always hides numbers.
     pub fn line_numbers(self) -> LineNumberPolicy {
-        let theme = self.data();
-        if theme.partner && !theme.line_numbers_toggleable {
-            LineNumberPolicy::Fixed(theme.line_numbers)
-        } else {
-            LineNumberPolicy::Toggleable {
-                default: theme.line_numbers,
-            }
+        LineNumberPolicy::Toggleable {
+            default: self.data().line_numbers,
         }
     }
     pub(crate) fn data(self) -> &'static assets::Theme {
@@ -249,7 +245,8 @@ impl fmt::Display for Language {
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum LineNumberPolicy {
-    /// The frame always shows (`true`) or hides (`false`) line numbers.
+    /// Legacy fixed policy, retained for compatibility. Bundled themes now
+    /// return `Toggleable` and explicit preferences always take precedence.
     Fixed(bool),
     /// Callers may override the theme's default.
     Toggleable {

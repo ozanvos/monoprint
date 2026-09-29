@@ -8,11 +8,7 @@ pub struct Theme {
     pub name: String,
     pub font: String,
     #[serde(default)]
-    pub partner: bool,
-    #[serde(default)]
     pub line_numbers: bool,
-    #[serde(default)]
-    pub line_numbers_toggleable: bool,
     pub syntax: BTreeMap<String, BTreeMap<String, String>>,
     pub background: Option<Gradient>,
     pub editor: Option<EditorTheme>,

@@ -96,16 +96,16 @@ impl fmt::Display for Appearance {
     }
 }
 
-/// A line-number preference, subject to the theme's fixed behavior.
+/// A line-number preference. Explicit choices override every theme's default.
 /// Plain text never displays numbers.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
 pub enum LineNumbers {
     /// Follow the theme's default.
     #[default]
     Auto,
-    /// Show numbers where the theme allows them.
+    /// Show numbers in any theme (except for plain text).
     Show,
-    /// Hide numbers where the theme allows it.
+    /// Hide numbers in any theme.
     Hide,
 }
 

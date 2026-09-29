@@ -7,6 +7,8 @@ use gpui_kit::{
         button::*,
         collapsible::Collapsible,
         input::{Editor, Input},
+        menu::{DropdownMenu, PopupMenuItem},
+        popover::Popover,
         scroll::Scrollbar,
         select::Select,
         switch::Switch,
@@ -16,7 +18,7 @@ use gpui_kit::{
     prelude::*,
     *,
 };
-use monoprint::{Appearance, Background, Language, LineNumberPolicy, Theme as ImageTheme};
+use monoprint::{Appearance, Background, Language, Theme as ImageTheme};
 
 impl Render for Studio {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -141,6 +143,8 @@ impl Studio {
     }
     fn source_panel(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let p = palette(cx);
+        let highlighted =
+            !self.document.highlights.is_empty() || !self.document.text_highlights.is_empty();
         div()
             .bg(rgb(p.canvas))
             .flex()
@@ -153,7 +157,7 @@ impl Studio {
                     .flex()
                     .items_center()
                     .justify_end()
-                    .gap(px(7.))
+                    .gap(px(if highlighted { 2. } else { 7. }))
                     .pl(px(if cfg!(target_os = "macos") { 76. } else { 13. }))
                     .pr(px(9.))
                     .border_b_1()
@@ -192,6 +196,22 @@ impl Studio {
                                 this.paste(&PasteSource, window, cx)
                             })),
                     )
+                    .when(highlighted, |view| {
+                        view.child(
+                            Button::new("clear-highlights")
+                                .outline()
+                                .xsmall()
+                                .size(px(26.))
+                                .flex_shrink_0()
+                                .p_0()
+                                .border_color(rgb(p.strong))
+                                .bg(rgb(p.control))
+                                .child(Icon::new(IconName::Eraser).size(px(13.)))
+                                .accessibility_label("Clear all highlights")
+                                .tooltip("Clear all line and text highlights")
+                                .on_click(cx.listener(|this, _, _, cx| this.clear_highlights(cx))),
+                        )
+                    })
                     .child(
                         dropdown(
                             p,
@@ -248,36 +268,6 @@ impl Studio {
                         &self.editor,
                         cx.entity().downgrade(),
                     )),
-            )
-            .when(
-                !self.document.highlights.is_empty() || !self.document.text_highlights.is_empty(),
-                |view| {
-                    view.child(
-                        div()
-                            .px_4()
-                            .py_2()
-                            .flex()
-                            .items_center()
-                            .justify_between()
-                            .border_t_1()
-                            .border_color(rgb(p.border))
-                            .child(
-                                div()
-                                    .text_size(px(11.))
-                                    .text_color(rgb(p.accent))
-                                    .child("Highlights applied"),
-                            )
-                            .child(
-                                Button::new("clear-highlights")
-                                    .ghost()
-                                    .xsmall()
-                                    .label("Clear all")
-                                    .on_click(
-                                        cx.listener(|this, _, _, cx| this.clear_highlights(cx)),
-                                    ),
-                            ),
-                    )
-                },
             )
     }
     fn selection_toolbar(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
@@ -879,45 +869,54 @@ impl Studio {
         .track_scroll(&self.theme_scroll);
         settings_section(p)
             .open(self.open_sections[InspectorSection::Theme as usize])
-            .child(self.section_header(InspectorSection::Theme, "", cx))
+            .child(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(9.))
+                    .child(div().flex_1().min_w_0().child(self.section_header(
+                        InspectorSection::Theme,
+                        "",
+                        cx,
+                    )))
+                    .when(
+                        self.open_sections[InspectorSection::Theme as usize],
+                        |view| {
+                            view.child(
+                                segments(p).children(
+                                    [
+                                        ("themes-all", "all", ThemeFilter::All),
+                                        ("themes-light", "light", ThemeFilter::Light),
+                                        ("themes-dark", "dark", ThemeFilter::Dark),
+                                    ]
+                                    .into_iter()
+                                    .map(
+                                        |(id, label, filter)| {
+                                            segment(p, id)
+                                                .label(label)
+                                                .selected(self.theme_filter == filter)
+                                                .toggled(self.theme_filter == filter)
+                                                .on_click(cx.listener(move |this, _, _, cx| {
+                                                    this.theme_filter = filter;
+                                                    this.filter_themes(cx);
+                                                }))
+                                        },
+                                    ),
+                                ),
+                            )
+                        },
+                    ),
+            )
             .content(
                 div()
                     .flex()
                     .flex_col()
                     .gap(px(9.))
                     .child(
-                        div().flex().items_center().justify_end().child(
-                            segments(p).children(
-                                [
-                                    ("themes-all", "all", ThemeFilter::All),
-                                    ("themes-light", "light", ThemeFilter::Light),
-                                    ("themes-dark", "dark", ThemeFilter::Dark),
-                                ]
-                                .into_iter()
-                                .map(|(id, label, filter)| {
-                                    segment(p, id)
-                                        .label(label)
-                                        .selected(self.theme_filter == filter)
-                                        .toggled(self.theme_filter == filter)
-                                        .on_click(cx.listener(move |this, _, _, cx| {
-                                            this.theme_filter = filter;
-                                            this.filter_themes(cx);
-                                        }))
-                                }),
-                            ),
-                        ),
-                    )
-                    .child(
                         text_input(p, &self.theme_search)
                             .cleanable(true)
                             .prefix(Icon::new(IconName::Search).size(px(13.)))
-                            .aria_label("Find a theme")
-                            .suffix(
-                                div()
-                                    .text_size(px(10.))
-                                    .text_color(rgb(p.muted))
-                                    .child(count.to_string()),
-                            ),
+                            .aria_label("Find a theme"),
                     )
                     .child(
                         div()
@@ -956,35 +955,36 @@ impl Studio {
                                 )
                             }),
                     )
-                    .child(row(
-                        p,
-                        "Appearance",
-                        segments(p).children(
-                            [
-                                ("light-appearance", "light", Appearance::Light),
-                                ("dark-appearance", "dark", Appearance::Dark),
-                            ]
-                            .into_iter()
-                            .map(|(id, label, appearance)| {
-                                let light = appearance == Appearance::Light;
-                                let supported = theme.supports(appearance);
-                                segment(p, id)
-                                    .label(label)
-                                    .selected(self.document.light == light)
-                                    .toggled(self.document.light == light)
-                                    .disabled(!supported)
-                                    .tooltip(if supported {
-                                        format!("Use the {label} variant")
-                                    } else {
-                                        format!("This theme has no {label} variant")
-                                    })
-                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.document.light = light;
-                                        this.changed(cx);
-                                    }))
-                            }),
-                        ),
-                    )),
+                    .when(
+                        theme.supports(Appearance::Light) && theme.supports(Appearance::Dark),
+                        |view| {
+                            view.child(row(
+                                p,
+                                "Appearance",
+                                segments(p).children(
+                                    [
+                                        ("light-appearance", "light", Appearance::Light),
+                                        ("dark-appearance", "dark", Appearance::Dark),
+                                    ]
+                                    .into_iter()
+                                    .map(
+                                        |(id, label, appearance)| {
+                                            let light = appearance == Appearance::Light;
+                                            segment(p, id)
+                                                .label(label)
+                                                .selected(self.document.light == light)
+                                                .toggled(self.document.light == light)
+                                                .tooltip(format!("Use the {label} variant"))
+                                                .on_click(cx.listener(move |this, _, _, cx| {
+                                                    this.document.light = light;
+                                                    this.changed(cx);
+                                                }))
+                                        },
+                                    ),
+                                ),
+                            ))
+                        },
+                    ),
             )
     }
 
@@ -1062,7 +1062,7 @@ impl Studio {
         let p = palette(cx);
         settings_section(p)
             .open(self.open_sections[InspectorSection::Typeface as usize])
-            .child(self.section_header(InspectorSection::Typeface, "10 faces", cx))
+            .child(self.section_header(InspectorSection::Typeface, "", cx))
             .content(div().flex().flex_col().gap(px(9.))
             .child(self.font_control(false, cx))
             .child(self.font_control(true, cx))
@@ -1228,21 +1228,104 @@ impl Studio {
             )
     }
 
+    fn padding_input(&self, cx: &Context<Self>) -> impl IntoElement {
+        let p = palette(cx);
+        let input = self.padding.clone();
+        text_input(p, &self.padding)
+            .aria_label("Image padding")
+            .suffix(
+                div()
+                    .flex()
+                    .items_center()
+                    .gap(px(3.))
+                    .child(
+                        div()
+                            .text_color(rgb(p.muted))
+                            .text_size(px(11.))
+                            .child("px"),
+                    )
+                    .child(
+                        Button::new("padding-presets")
+                            .ghost()
+                            .xsmall()
+                            .size(px(18.))
+                            .p_0()
+                            .child(Icon::new(IconName::ChevronDown).size(px(12.)))
+                            .accessibility_label("Padding presets")
+                            .tooltip("Choose padding or type an exact value")
+                            .dropdown_menu_with_anchor(Anchor::TopRight, move |mut menu, _, cx| {
+                                let selected = input.read(cx).value().parse::<u32>().ok();
+                                for padding in [0u32, 16, 32, 64, 96] {
+                                    let input = input.clone();
+                                    menu = menu.item(
+                                        PopupMenuItem::new(format!("{padding} px"))
+                                            .checked(selected == Some(padding))
+                                            .on_click(move |_, window, cx| {
+                                                input.update(cx, |state, cx| {
+                                                    state.replace_all(
+                                                        padding.to_string(),
+                                                        window,
+                                                        cx,
+                                                    )
+                                                });
+                                            }),
+                                    );
+                                }
+                                menu
+                            }),
+                    ),
+            )
+    }
+
+    fn advanced_export_settings(&self, cx: &Context<Self>) -> impl IntoElement {
+        let p = palette(cx);
+        Popover::new("advanced-export-popover")
+            .anchor(Anchor::BottomRight)
+            .trigger(
+                Button::new("advanced-export")
+                    .ghost()
+                    .xsmall()
+                    .size(px(24.))
+                    .p_0()
+                    .child(Icon::new(IconName::SlidersHorizontal).size(px(13.)))
+                    .accessibility_label("Advanced export settings")
+                    .tooltip("Advanced export settings"),
+            )
+            .child(
+                div()
+                    .w(px(250.))
+                    .p(px(10.))
+                    .text_color(rgb(p.ink))
+                    .child(row(
+                        p,
+                        "Compression",
+                        segments(p).children(
+                            [
+                                ("fast", "Fast", "Faster encoding. Same image quality."),
+                                (
+                                    "balanced",
+                                    "Balanced",
+                                    "Smaller PNG files. Same image quality.",
+                                ),
+                            ]
+                            .into_iter()
+                            .map(|(mode, label, help)| {
+                                segment(p, format!("png-compression-{mode}"))
+                                    .label(label)
+                                    .tooltip(help)
+                                    .selected(self.document.png_compression == mode)
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.document.png_compression = mode.into();
+                                        this.changed(cx);
+                                    }))
+                            }),
+                        ),
+                    )),
+            )
+    }
+
     fn inspector(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let p = palette(cx);
-        let theme = self
-            .document
-            .theme
-            .parse::<ImageTheme>()
-            .unwrap_or_default();
-        let numbers = if self.document.language == Language::PLAIN.id() {
-            Some(false)
-        } else {
-            match theme.line_numbers() {
-                LineNumberPolicy::Fixed(value) => Some(value),
-                _ => None,
-            }
-        };
         div()
             .w(px(pane_widths(f32::from(window.viewport_size().width)).1))
             .flex_shrink_0()
@@ -1291,42 +1374,10 @@ impl Studio {
                                                 .flex_1(),
                                             )
                                             .child(
-                                                field(
-                                                    p,
-                                                    "Padding",
-                                                    text_input(p, &self.padding)
-                                                        .aria_label("Image padding")
-                                                        .suffix(
-                                                            div()
-                                                                .text_color(rgb(p.muted))
-                                                                .text_size(px(11.))
-                                                                .child("px"),
-                                                        ),
-                                                )
-                                                .flex_1(),
+                                                field(p, "Padding", self.padding_input(cx))
+                                                    .flex_1(),
                                             ),
                                     )
-                                    .child(segments(p).children(
-                                        [0u32, 16, 32, 64, 96].into_iter().map(|padding| {
-                                            segment(p, ("padding", padding))
-                                                .flex_1()
-                                                .label(padding.to_string())
-                                                .selected(
-                                                    self.document.padding == padding.to_string(),
-                                                )
-                                                .on_click(cx.listener(
-                                                    move |this, _, window, cx| {
-                                                        this.padding.update(cx, |state, cx| {
-                                                            state.replace_all(
-                                                                padding.to_string(),
-                                                                window,
-                                                                cx,
-                                                            )
-                                                        });
-                                                    },
-                                                ))
-                                        }),
-                                    ))
                                     .child(field(
                                         p,
                                         "Backdrop",
@@ -1363,20 +1414,47 @@ impl Studio {
                                     ))
                                     .child(row(
                                         p,
-                                        if numbers.is_some() {
-                                            "Line numbers · theme"
-                                        } else {
-                                            "Line numbers"
-                                        },
-                                        Switch::new("line-numbers")
-                                            .small()
-                                            .accessibility_label("Line numbers")
-                                            .checked(numbers.unwrap_or(self.document.numbers))
-                                            .disabled(numbers.is_some())
-                                            .on_change(cx.listener(|this, value, _, cx| {
-                                                this.document.numbers = *value;
-                                                this.changed(cx);
-                                            })),
+                                        "Line numbers",
+                                        div()
+                                            .flex()
+                                            .items_center()
+                                            .gap(px(5.))
+                                            .when(self.document.line_numbers.is_some(), |view| {
+                                                view.child(
+                                                    Button::new("reset-line-numbers")
+                                                        .ghost()
+                                                        .xsmall()
+                                                        .size(px(26.))
+                                                        .flex_shrink_0()
+                                                        .p_0()
+                                                        .label("↺")
+                                                        .accessibility_label(
+                                                            "Use theme default line numbers",
+                                                        )
+                                                        .tooltip("Use theme default")
+                                                        .on_click(cx.listener(|this, _, _, cx| {
+                                                            this.document.line_numbers = None;
+                                                            this.changed(cx);
+                                                        })),
+                                                )
+                                            })
+                                            .child(
+                                                Switch::new("line-numbers")
+                                                    .small()
+                                                    .accessibility_label("Line numbers")
+                                                    .checked(self.document.numbers_visible())
+                                                    .disabled(
+                                                        self.document.language
+                                                            == Language::PLAIN.id(),
+                                                    )
+                                                    .on_change(cx.listener(
+                                                        |this, value, _, cx| {
+                                                            this.document.line_numbers =
+                                                                Some(*value);
+                                                            this.changed(cx);
+                                                        },
+                                                    )),
+                                            ),
                                     ))
                                     .child(field(
                                         p,
@@ -1398,20 +1476,31 @@ impl Studio {
                     .flex_shrink_0()
                     .gap(px(9.))
                     .child(
-                        self.section_header(
-                            InspectorSection::Export,
-                            self.preview
-                                .as_ref()
-                                .map(|preview| {
-                                    format!(
-                                        "{} × {}",
-                                        preview.width / 2 * self.document.scale,
-                                        preview.height / 2 * self.document.scale
-                                    )
-                                })
-                                .unwrap_or_else(|| "—".into()),
-                            cx,
-                        ),
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(6.))
+                            .child(
+                                div().flex_1().min_w_0().child(
+                                    self.section_header(
+                                        InspectorSection::Export,
+                                        self.preview
+                                            .as_ref()
+                                            .map(|preview| {
+                                                format!(
+                                                    "{} × {}",
+                                                    preview.width / 2 * self.document.scale,
+                                                    preview.height / 2 * self.document.scale
+                                                )
+                                            })
+                                            .unwrap_or_else(|| "—".into()),
+                                        cx,
+                                    ),
+                                ),
+                            )
+                            .when(self.document.format == Format::Png, |view| {
+                                view.child(self.advanced_export_settings(cx))
+                            }),
                     )
                     .content(
                         div()
@@ -1456,40 +1545,7 @@ impl Studio {
                                                 }))
                                         }),
                                     )),
-                            )
-                            .when(self.document.format == Format::Png, |view| {
-                                view.child(row(
-                                    p,
-                                    "Compression",
-                                    segments(p).children(
-                                        [
-                                            (
-                                                "fast",
-                                                "Fast",
-                                                "Faster encoding. Same image quality.",
-                                            ),
-                                            (
-                                                "balanced",
-                                                "Balanced",
-                                                "Smaller PNG files. Same image quality.",
-                                            ),
-                                        ]
-                                        .into_iter()
-                                        .map(
-                                            |(mode, label, help)| {
-                                                segment(p, format!("png-compression-{mode}"))
-                                                    .label(label)
-                                                    .tooltip(help)
-                                                    .selected(self.document.png_compression == mode)
-                                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                                        this.document.png_compression = mode.into();
-                                                        this.changed(cx);
-                                                    }))
-                                            },
-                                        ),
-                                    ),
-                                ))
-                            }),
+                            ),
                     )
                     .child(self.export_actions(cx))
                     .when_some(self.last_export.clone(), |view, path| {

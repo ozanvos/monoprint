@@ -57,9 +57,10 @@ pub struct Args {
     /// Language ID or alias; otherwise infer from the filename.
     #[arg(short, long)]
     pub language: Option<String>,
-    /// Show line numbers where the theme permits it.
+    /// Show line numbers in any theme (except for plain text).
     #[arg(long, conflicts_with = "no_line_numbers")]
     pub line_numbers: bool,
+    /// Hide line numbers in any theme. Without either flag, use the theme default.
     #[arg(long)]
     pub no_line_numbers: bool,
     /// Highlight source lines, e.g. 1,3-5.

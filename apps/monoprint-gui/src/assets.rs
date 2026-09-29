@@ -1,8 +1,8 @@
 use gpui_kit::{AssetSource, Result, SharedString};
 use std::borrow::Cow;
 
-// Keep the default component bundle and embed only the additional toolbar icon.
-gpui_kit::assets::icon_assets!(ToolbarIcons, [ClipboardPaste]);
+// Keep the default component bundle and embed only the additional toolbar icons.
+gpui_kit::assets::icon_assets!(ToolbarIcons, [ClipboardPaste, Eraser, SlidersHorizontal]);
 
 pub struct Assets;
 

@@ -784,6 +784,12 @@ mod macos {
             });
             cx.update_window(handle.into(), |_, window, _| {
                 assert!(window.try_find("code-typeface").is_none());
+                assert!(window.try_find("clear-highlights").is_none());
+                assert!(window.try_find("png-compression-balanced").is_none());
+                assert_eq!(
+                    window.find("section-theme").bounds().center().y,
+                    window.find("themes-all").bounds().center().y,
+                );
                 assert!(
                     window.find("section-theme").bounds().top()
                         < window.find("section-typeface").bounds().top()
@@ -816,17 +822,73 @@ mod macos {
                 );
             });
 
+            // Partner themes inherit their gutter by default, but can now be
+            // overridden just like any other theme. Reset restores inheritance.
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.select_theme("removed-frame".parse().unwrap(), window, cx);
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
             cx.read_entity(&studio, |s, _| {
-                assert_eq!(s.document.png_compression, "balanced")
+                assert_eq!(s.document.line_numbers, None);
+                assert!(s.document.numbers_visible());
             });
-            for mode in ["fast", "balanced"] {
-                inspector_click(&mut cx, handle, &studio, format!("png-compression-{mode}"));
+            capture(
+                &mut cx,
+                handle,
+                &format!("numbers-default-{}", width as u32),
+            );
+            inspector_click(&mut cx, handle, &studio, "line-numbers");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.line_numbers, Some(false));
+                assert!(!s.document.numbers_visible());
+                assert!(s.error.is_none());
+            });
+            capture(&mut cx, handle, &format!("numbers-hidden-{}", width as u32));
+            inspector_click(&mut cx, handle, &studio, "reset-line-numbers");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.line_numbers, None);
+                assert!(s.document.numbers_visible());
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                assert!(window.try_find("reset-line-numbers").is_none());
+                studio.update(cx, |s, cx| {
+                    s.select_theme("removed-frame".parse().unwrap(), window, cx);
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            inspector_click(&mut cx, handle, &studio, "line-numbers");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.line_numbers, Some(true));
+                assert!(s.document.numbers_visible());
+            });
+            inspector_click(&mut cx, handle, &studio, "reset-line-numbers");
+            cx.read_entity(&studio, |s, _| {
+                assert!(!s.document.numbers_visible());
+                assert_eq!(s.document.png_compression, "balanced");
+            });
+            click(&mut cx, handle, &studio, "advanced-export");
+            for (mode, control) in [
+                ("fast", "png-compression-fast"),
+                ("balanced", "png-compression-balanced"),
+            ] {
+                click(&mut cx, handle, &studio, control);
                 cx.read_entity(&studio, |s, _| {
                     assert_eq!(s.document.png_compression, mode);
                     assert!(s.error.is_none(), "{:?}", s.error);
                 });
             }
             capture(&mut cx, handle, &format!("compression-{}", width as u32));
+            cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, _| {
+                assert!(window.try_find("png-compression-balanced").is_none());
+            })
+            .unwrap();
 
             // The select's visible trigger and hit area must both fit the toolbar.
             // Select styles alone do not constrain its full-size outer wrapper.
@@ -1057,6 +1119,29 @@ mod macos {
                 assert_eq!(s.filtered_themes.len(), 2);
                 assert_eq!(s.revision, revision);
             });
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    let single = monoprint::Theme::all()
+                        .find(|theme| {
+                            !(theme.supports(monoprint::Appearance::Light)
+                                && theme.supports(monoprint::Appearance::Dark))
+                        })
+                        .unwrap();
+                    s.select_theme(single, window, cx);
+                });
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, _| {
+                assert!(window.try_find("light-appearance").is_none());
+                assert!(window.try_find("dark-appearance").is_none());
+            })
+            .unwrap();
+            capture(
+                &mut cx,
+                handle,
+                &format!("single-appearance-{}", width as u32),
+            );
             let ayu = cx.read_entity(&studio, |s, _| {
                 s.thumbnails
                     .iter()
@@ -1246,7 +1331,20 @@ mod macos {
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
-            inspector_click(&mut cx, handle, &studio, ("padding", 32u32));
+            inspector_click(&mut cx, handle, &studio, "padding-presets");
+            capture(
+                &mut cx,
+                handle,
+                &format!("padding-presets-{}", width as u32),
+            );
+            cx.update_window(handle.into(), |_, window, cx| {
+                for _ in 0..3 {
+                    window.press("down", cx);
+                }
+                window.press("enter", cx);
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.document.source, "const pasted = 7;");
                 assert_eq!(s.document.padding, "32");
@@ -1326,16 +1424,12 @@ mod macos {
                 assert!(!s.document.light);
                 assert_eq!(s.document.theme, "removed-frame");
             });
-            let revision = cx.read_entity(&studio, |s, _| s.revision);
-            inspector_click(&mut cx, handle, &studio, "light-appearance");
-            cx.read_entity(&studio, |s, _| {
-                assert!(
-                    !s.document.light,
-                    "an unsupported variant must stay disabled"
-                );
-                assert_eq!(s.revision, revision);
-            });
-            // Restore the inspector's top before checking the disabled appearance.
+            cx.update_window(handle.into(), |_, window, _| {
+                assert!(window.try_find("light-appearance").is_none());
+                assert!(window.try_find("dark-appearance").is_none());
+            })
+            .unwrap();
+            // Restore the inspector's top before testing export validation.
             cx.update_window(handle.into(), |_, window, cx| {
                 studio
                     .read(cx)
@@ -1709,7 +1803,21 @@ mod macos {
                 handle,
                 &format!("source-highlights-{}", width as u32),
             );
+            cx.update_window(handle.into(), |_, window, _| {
+                let clear = window.find("clear-highlights").bounds();
+                assert_eq!(
+                    clear.center().y,
+                    window.find("open-source").bounds().center().y
+                );
+                assert!(window.find("open-source").bounds().left() >= px(76.));
+                assert!(window.find("source-language").bounds().size.width >= px(40.));
+            })
+            .unwrap();
             click(&mut cx, handle, &studio, "clear-highlights");
+            cx.update_window(handle.into(), |_, window, _| {
+                assert!(window.try_find("clear-highlights").is_none());
+            })
+            .unwrap();
             cx.read_entity(&studio, |s, _| {
                 assert!(s.document.highlights.is_empty());
                 assert!(s.document.text_highlights.is_empty());

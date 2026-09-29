@@ -1,6 +1,6 @@
 use crate::{
-    Error, LineNumberPolicy, LineNumbers, Renderer, Scale, Snippet, Style, TextRole, assets,
-    background, editor_theme, effects, fallback::Fallbacks, highlight,
+    Error, LineNumbers, Renderer, Scale, Snippet, Style, TextRole, assets, background,
+    editor_theme, effects, fallback::Fallbacks, highlight,
 };
 use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::STANDARD};
@@ -247,13 +247,10 @@ pub(crate) fn render(
         fallbacks.include(font, source, TextRole::Code, true)?;
     }
     let numbers = code.language != "plain"
-        && match style.theme.line_numbers() {
-            LineNumberPolicy::Fixed(value) => value,
-            LineNumberPolicy::Toggleable { default } => match style.line_numbers {
-                LineNumbers::Auto => default,
-                LineNumbers::Show => true,
-                LineNumbers::Hide => false,
-            },
+        && match style.line_numbers {
+            LineNumbers::Auto => theme.line_numbers,
+            LineNumbers::Show => true,
+            LineNumbers::Hide => false,
         };
     let weight = if theme.editor.is_none()
         && style.font.is_none()

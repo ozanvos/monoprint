@@ -170,7 +170,7 @@ fn catalog_parsing_discovery_and_filename_inference() {
     assert_eq!("rs".parse::<Language>().unwrap().name(), "Rust");
     assert!(matches!(
         "removed-frame".parse::<Theme>().unwrap().line_numbers(),
-        LineNumberPolicy::Fixed(_)
+        LineNumberPolicy::Toggleable { default: true }
     ));
 }
 
@@ -392,8 +392,8 @@ fn fixed_width_tailwind_reports_png_budget_and_recovers() {
     let snippet = Snippet::new(source).language("rust".parse().unwrap());
     let style = Style::new("removed-frame".parse().unwrap())
         .width(896)
-        .line_numbers(LineNumbers::Hide);
-    // The frame's borders make these lines wrap into a 22 MP canvas at 4x.
+        .line_numbers(LineNumbers::Show);
+    // The frame's borders and gutter wrap these lines into a 22 MP canvas at 4x.
     // Reject before entering Takumi, whose root and SVG-source caps are 16 MP.
     for style in [
         style.clone(),
@@ -442,7 +442,7 @@ fn image_budget_is_a_typed_error_and_renderer_recovers() {
 }
 
 #[test]
-fn line_number_rules_are_discoverable_and_preserved() {
+fn every_theme_preserves_default_line_numbers_and_allows_overrides() {
     let r = Renderer::new();
     let plain = Snippet::new("a\nb");
     let code = plain.clone().language("rust".parse().unwrap());
@@ -452,20 +452,41 @@ fn line_number_rules_are_discoverable_and_preserved() {
     assert!(!editor_has_numbers(r.html(&plain, &style).unwrap()));
     assert!(editor_has_numbers(r.html(&code, &style).unwrap()));
     for theme in Theme::all() {
-        if let LineNumberPolicy::Fixed(value) = theme.line_numbers() {
-            let opposite = if value {
-                LineNumbers::Hide
-            } else {
-                LineNumbers::Show
-            };
-            assert_eq!(
-                editor_has_numbers(
-                    r.html(&code, &Style::new(theme).line_numbers(opposite))
-                        .unwrap()
-                ),
-                value,
-                "{theme}"
-            );
+        let default = matches!(
+            theme.id(),
+            "removed-frame"
+                | "removed-frame"
+                | "removed-frame"
+                | "removed-frame"
+                | "removed-frame"
+                | "removed-frame"
+                | "removed-frame"
+                | "removed-frame"
+                | "removed-frame"
+        );
+        assert_eq!(
+            theme.line_numbers(),
+            LineNumberPolicy::Toggleable { default }
+        );
+        for appearance in [Appearance::Light, Appearance::Dark] {
+            if !theme.supports(appearance) {
+                continue;
+            }
+            for (preference, expected) in [
+                (LineNumbers::Auto, default),
+                (LineNumbers::Show, true),
+                (LineNumbers::Hide, false),
+            ] {
+                let style = Style::new(theme)
+                    .appearance(appearance)
+                    .line_numbers(preference);
+                assert_eq!(
+                    editor_has_numbers(r.html(&code, &style).unwrap()),
+                    expected,
+                    "{theme} {appearance} {preference:?}"
+                );
+                assert!(!editor_has_numbers(r.html(&plain, &style).unwrap()));
+            }
         }
     }
 }

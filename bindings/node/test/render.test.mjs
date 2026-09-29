@@ -9,6 +9,18 @@ const source = 'const answer = 42;\nconsole.log(answer);\n';
 const options = { language: 'typescript', theme: 'removed-frame', padding: 16, width: 400, highlight: [1, [2, 3]] };
 const code = expected => error => error instanceof MonoprintError && error.code === expected;
 
+test('line numbers inherit theme defaults and can be overridden for every theme', () => {
+  assert.ok(getThemes().every(theme => theme.lineNumbers.toggleable));
+  const renderer = new Renderer();
+  const visible = options => renderer.htmlSync(source, { language: 'typescript', ...options }).includes('class="Editor__editor Editor__showLineNumbers');
+  for (const [theme, defaultVisible] of [['removed-frame', true], ['removed-frame', true], ['removed-frame', false], ['removed-frame', false]]) {
+    assert.equal(visible({ theme }), defaultVisible);
+    assert.equal(visible({ theme, lineNumbers: 'auto' }), defaultVisible);
+    assert.equal(visible({ theme, lineNumbers: false }), false);
+    assert.equal(visible({ theme, lineNumbers: true }), true);
+  }
+});
+
 test('font size changes layout independently of PNG scale and preserves the default', async () => {
   const source = 'const answer = 42;\n'.repeat(6);
   const renderer = new Renderer({ fontSize: 24 });
@@ -183,7 +195,7 @@ test('native failures expose stable codes and structured context, then renderer 
   const wrapped = Array.from({ length: 30 }, (_, i) =>
     `let value_${String(i).padStart(3, '0')} = "hello ${i}"; // benchmark code image `.padEnd(80, '.')
   ).join('\n');
-  await assert.rejects(renderer.png(wrapped, { language: 'rust', theme: 'removed-frame', width: 896, scale: 4, lineNumbers: false }),
+  await assert.rejects(renderer.png(wrapped, { language: 'rust', theme: 'removed-frame', width: 896, scale: 4, lineNumbers: true }),
     error => code('IMAGE_TOO_LARGE')(error) && error.details.width === 3584 && error.details.height === 6184);
   await assert.rejects(renderer.html('é'.repeat(524289)), error => code('INVALID_OPTION')(error) && error.details.option === 'source');
   assert.match(await renderer.html(source), /^<!doctype html>/);

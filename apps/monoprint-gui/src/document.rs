@@ -1,7 +1,7 @@
 use anyhow::{Context, Result, bail, ensure};
 use monoprint::{
-    Appearance, Background, Font, Language, LineNumbers, PngOptions, Renderer, Scale, Snippet,
-    Style, Theme,
+    Appearance, Background, Font, Language, LineNumberPolicy, LineNumbers, PngOptions, Renderer,
+    Scale, Snippet, Style, Theme,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -52,7 +52,8 @@ pub struct Document {
     pub light: bool,
     pub transparent: bool,
     pub background: String,
-    pub numbers: bool,
+    /// None follows each theme; Some preserves an explicit choice across themes.
+    pub line_numbers: Option<bool>,
     pub padding: String,
     pub width: String,
     pub title: String,
@@ -77,7 +78,7 @@ impl Default for Document {
             light: false,
             transparent: false,
             background: "theme".into(),
-            numbers: false,
+            line_numbers: None,
             padding: "64".into(),
             width: "720".into(),
             title: "".into(),
@@ -97,6 +98,23 @@ impl Default for Document {
 }
 
 impl Document {
+    pub fn numbers_visible(&self) -> bool {
+        self.language != Language::PLAIN.id()
+            && self.line_numbers.unwrap_or_else(|| {
+                match self
+                    .theme
+                    .parse::<Theme>()
+                    .unwrap_or_default()
+                    .line_numbers()
+                {
+                    LineNumberPolicy::Toggleable { default } | LineNumberPolicy::Fixed(default) => {
+                        default
+                    }
+                    _ => false,
+                }
+            })
+    }
+
     pub fn background(&self) -> Result<Background> {
         // Older saved documents use the transparency flag.
         Ok(if self.transparent {
@@ -172,10 +190,10 @@ impl Document {
             .background(self.background()?)
             .font_size(font_size)
             .ligatures(self.ligatures)
-            .line_numbers(if self.numbers {
-                LineNumbers::Show
-            } else {
-                LineNumbers::Hide
+            .line_numbers(match self.line_numbers {
+                None => LineNumbers::Auto,
+                Some(true) => LineNumbers::Show,
+                Some(false) => LineNumbers::Hide,
             });
         if !self.width.trim().is_empty() {
             let width: u32 = self
@@ -398,7 +416,17 @@ pub fn load_session(path: &Path) -> Result<Document> {
         bytes.len() <= 8 * 1024 * 1024,
         "Saved session is too large."
     );
-    let doc: Document = serde_json::from_slice(&bytes)?;
+    let mut saved: serde_json::Value = serde_json::from_slice(&bytes)?;
+    if let Some(fields) = saved.as_object_mut()
+        && !fields.contains_key("line_numbers")
+    {
+        // Old drafts used false for both the initial state and an explicit hide,
+        // and themes could ignore it. Inherit by default; preserve an opt-in.
+        if fields.get("numbers").and_then(|value| value.as_bool()) == Some(true) {
+            fields.insert("line_numbers".into(), true.into());
+        }
+    }
+    let doc: Document = serde_json::from_value(saved)?;
     doc.theme.parse::<Theme>()?;
     doc.language.parse::<Language>()?;
     Scale::try_from(doc.scale)?;
@@ -455,6 +483,57 @@ impl SessionStore {
 #[cfg(test)]
 mod tests {
     use super::*;
+    #[test]
+    fn line_numbers_follow_theme_defaults_until_overridden() {
+        let renderer = Renderer::new();
+        let mut doc = Document::default();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.json");
+        for preference in [None, Some(false), Some(true), None] {
+            doc.line_numbers = preference;
+            for (theme, default) in [("removed-frame", true), ("removed-frame", false), ("removed-frame", true)] {
+                doc.select_theme(theme.parse().unwrap());
+                assert_eq!(doc.line_numbers, preference);
+                assert_eq!(doc.numbers_visible(), preference.unwrap_or(default));
+                let (snippet, style) = doc.prepare(None, None).unwrap();
+                let html = renderer.html(&snippet, &style).unwrap();
+                assert_eq!(
+                    html.contains("class=\"Editor__editor Editor__showLineNumbers"),
+                    doc.numbers_visible(),
+                );
+                save_session(&path, &doc).unwrap();
+                doc = load_session(&path).unwrap();
+                assert_eq!(doc.line_numbers, preference);
+            }
+        }
+        doc.line_numbers = Some(true);
+        doc.language = "plain".into();
+        assert!(!doc.numbers_visible());
+        doc.language = "rust".into();
+        assert!(doc.numbers_visible());
+    }
+
+    #[test]
+    fn legacy_drafts_inherit_numbers_unless_explicitly_enabled() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.json");
+        for (json, preference) in [
+            (r#"{"theme":"removed-frame","numbers":false}"#, None),
+            (r#"{"theme":"removed-frame","numbers":true}"#, Some(true)),
+            (
+                r#"{"theme":"removed-frame","numbers":true,"line_numbers":null}"#,
+                None,
+            ),
+            (
+                r#"{"theme":"removed-frame","numbers":true,"line_numbers":false}"#,
+                Some(false),
+            ),
+        ] {
+            fs::write(&path, json).unwrap();
+            assert_eq!(load_session(&path).unwrap().line_numbers, preference);
+        }
+    }
+
     #[test]
     fn validates_highlights_without_expanding_unbounded_ranges() {
         assert_eq!(highlight_ranges("1, 3-5", 5).unwrap(), vec![(1, 1), (3, 5)]);
@@ -585,7 +664,7 @@ mod tests {
         let d = Document {
             title: "example.ts".into(),
             transparent: true,
-            numbers: true,
+            line_numbers: Some(true),
             highlights: "2,4-6".into(),
             text_highlights: "1:4-1:10, 2:6-2:11".into(),
             font_size: "21".into(),
