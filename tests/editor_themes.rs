@@ -285,6 +285,62 @@ fn backgrounds_keep_geometry_and_transparency_contracts() {
 }
 
 #[test]
+fn frameless_light_themes_keep_text_readable_on_custom_backgrounds() {
+    let renderer = Renderer::new();
+    let snippet = Snippet::new("const answer = 42;\nconsole.log(answer);")
+        .language("javascript".parse().unwrap());
+    // These frames paint text directly on the canvas, with no panel fill to
+    // protect light-mode text from a dark companion background.
+    for id in ["removed-frame", "removed-frame", "removed-frame", "removed-frame", "removed-frame"] {
+        let mut images = Vec::new();
+        for background in [Background::Solid, Background::Lattice, Background::Halftone] {
+            let style = Style::new(id.parse().unwrap())
+                .appearance(Appearance::Light)
+                .padding(32)
+                .width(600)
+                .line_numbers(LineNumbers::Show)
+                .background(background);
+            let png = renderer.png(&snippet, &style, Scale::X2).unwrap();
+            let image = image::load_from_memory(&png).unwrap().into_rgba8();
+            // Check both outside and inside the code area, away from glyphs
+            // and pattern dots/lines. This catches dark canvases, not just
+            // successfully parsed CSS or light syntax colors.
+            for (x, y) in [(12, 12), (900, 100)] {
+                assert_eq!(image[(x, y)].0, [255; 4], "{id} {background} at {x},{y}");
+            }
+            let dark_pixels = image
+                .enumerate_pixels()
+                .filter(|(x, y, p)| (64..700).contains(x) && (64..155).contains(y) && p[0] < 180)
+                .count();
+            assert!(dark_pixels > 100, "visible code: {id} {background}");
+
+            // Studio consumes BGRA directly; exported PNG and SVG must agree.
+            let preview = renderer.bgra(&snippet, &style, Scale::X2).unwrap();
+            for (actual, expected) in preview
+                .pixels()
+                .as_chunks::<4>()
+                .0
+                .iter()
+                .zip(image.pixels())
+            {
+                assert_eq!(
+                    *actual,
+                    [expected[2], expected[1], expected[0], expected[3]]
+                );
+            }
+            let svg = renderer.svg(&snippet, &style).unwrap();
+            let vector = rasterize_svg(svg.as_bytes(), image.width(), image.height());
+            for (x, y) in [(12, 12), (900, 100)] {
+                assert_eq!(vector[(x, y)].0, [255; 4], "SVG {id} {background}");
+            }
+            images.push(image);
+        }
+        assert_ne!(images[0], images[1], "lattice is visible: {id}");
+        assert_ne!(images[0], images[2], "halftone is visible: {id}");
+    }
+}
+
+#[test]
 fn patterned_svg_backgrounds_match_png_pixels() {
     let renderer = Renderer::new();
     for id in ["nord", "catppuccin-latte"] {

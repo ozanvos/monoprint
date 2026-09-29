@@ -57,6 +57,18 @@ pub(crate) fn css(theme: &assets::Theme, appearance: Appearance, background: Bac
         .editor
         .as_ref()
         .map(|e| e.solid.as_str())
+        // These frame presets have no separate code-panel fill. Their manifest
+        // gradient describes only the dark canvas; light mode paints white
+        // through frame CSS instead. Custom backdrops replace that frame CSS,
+        // so retain its light surface or the dark text becomes unreadable.
+        .or_else(|| {
+            (appearance == Appearance::Light
+                && matches!(
+                    theme.id.as_str(),
+                    "removed-frame" | "removed-frame" | "removed-frame" | "removed-frame" | "removed-frame"
+                ))
+            .then_some("#ffffff")
+        })
         .or_else(|| gradient.map(|g| g.from.as_str()))
         .unwrap_or("#242424");
     let ink = if appearance == Appearance::Light {
