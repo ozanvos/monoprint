@@ -63,6 +63,7 @@ mod font;
 mod highlight;
 mod options;
 mod pixels;
+mod raster;
 mod render;
 mod resample;
 
@@ -70,7 +71,11 @@ pub use background::Background;
 pub use catalog::{Language, LineNumberPolicy, Theme};
 pub use error::{Error, InvalidOption, RenderError, TextRole};
 pub use font::{BundledFont, Font};
-pub use options::{Appearance, LineNumbers, LineRange, Scale, Snippet, Style, TextRange};
+pub use options::{
+    Appearance, LineNumbers, LineRange, PngCompression, PngOptions, Scale, Snippet, Style,
+    TextRange,
+};
+pub use raster::RasterImage;
 
 use giallo::Registry;
 use std::{
@@ -117,9 +122,50 @@ impl Renderer {
     pub fn new() -> Self {
         Self::default()
     }
-    /// Render a lossless PNG. `scale` sets output pixels per CSS pixel.
-    pub fn png(&self, snippet: &Snippet, style: &Style, scale: Scale) -> Result<Vec<u8>, Error> {
-        self.export(snippet, style, render::Format::Png, scale)
+    /// Render a lossless PNG. Accepts a [`Scale`] for Fast compression, or
+    /// [`PngOptions`] to choose compression independently of the visual style.
+    ///
+    /// ```
+    /// use monoprint::{PngCompression, PngOptions, Renderer, Scale, Snippet, Style};
+    /// let options = PngOptions::new(Scale::X2).compression(PngCompression::Balanced);
+    /// let png = Renderer::new().png(&Snippet::new("hello"), &Style::default(), options)?;
+    /// # Ok::<(), monoprint::Error>(())
+    /// ```
+    pub fn png(
+        &self,
+        snippet: &Snippet,
+        style: &Style,
+        options: impl Into<PngOptions>,
+    ) -> Result<Vec<u8>, Error> {
+        let options = options.into();
+        self.rgba(snippet, style, options.scale)?
+            .encode_png(options.compression)
+            .map_err(Error::backend)
+    }
+    /// Render owned, tightly packed RGBA8 pixels without image encoding.
+    ///
+    /// Uses the same layout, effects, scale and pixel limits as [`Self::png`].
+    /// Alpha is straight (not premultiplied); pixels are row-major, top to bottom.
+    /// This is suitable for native previews and image-processing pipelines.
+    ///
+    /// ```
+    /// use monoprint::{Renderer, Scale, Snippet, Style};
+    /// let image = Renderer::new().rgba(&Snippet::new("hello"), &Style::default(), Scale::X2)?;
+    /// let (width, height) = (image.width(), image.height());
+    /// let pixels = image.into_pixels(); // Moves the allocation; no pixel copy.
+    /// assert_eq!(pixels.len(), width as usize * height as usize * 4);
+    /// # Ok::<(), monoprint::Error>(())
+    /// ```
+    pub fn rgba(
+        &self,
+        snippet: &Snippet,
+        style: &Style,
+        scale: Scale,
+    ) -> Result<RasterImage, Error> {
+        match self.render(snippet, style, render::Format::Raster, scale)? {
+            render::Output::Raster(image) => Ok(image),
+            render::Output::Text(_) => unreachable!("raster output requested"),
+        }
     }
     /// Render portable SVG with outlined text, CSS-pixel dimensions, and embedded
     /// textures where needed. No external resources, text, or `foreignObject`.
@@ -137,18 +183,20 @@ impl Renderer {
         style: &Style,
         format: render::Format,
     ) -> Result<String, Error> {
-        let bytes = self.export(snippet, style, format, Scale::X2)?;
-        String::from_utf8(bytes).map_err(|e| Error::Render(RenderError(e.to_string())))
+        match self.render(snippet, style, format, Scale::X2)? {
+            render::Output::Text(text) => Ok(text),
+            render::Output::Raster(_) => unreachable!("text output requested"),
+        }
     }
-    fn export(
+    fn render(
         &self,
         snippet: &Snippet,
         style: &Style,
         format: render::Format,
         scale: Scale,
-    ) -> Result<Vec<u8>, Error> {
+    ) -> Result<render::Output, Error> {
         let source = validate(snippet, style)?;
-        render::export(self, snippet, style, &source, format, scale).map_err(Error::backend)
+        render::render(self, snippet, style, &source, format, scale).map_err(Error::backend)
     }
     fn registry(&self) -> Result<&Registry, Error> {
         self.0

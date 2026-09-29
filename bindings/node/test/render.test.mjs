@@ -130,6 +130,32 @@ test('custom font bytes are copied and a font can be reused across renderers', a
   assert.throws(() => Font.fromBytes(new Uint8Array(16)), code('INVALID_FONT'));
 });
 
+test('PNG compression is opt-in, with async/sync parity', async () => {
+  const opts = { ...options, scale: 2 };
+  const fast = await png(source, { ...opts, compression: 'fast' });
+  assert.deepEqual(fast, pngSync(source, opts));
+  const balanced = await png(source, { ...opts, compression: 'balanced' });
+  assert.deepEqual(balanced, pngSync(source, { ...opts, compression: 'balanced' }));
+  assert.ok(balanced.length < fast.length);
+  for (const bad of ['smallest', 6, null, true]) {
+    await assert.rejects(png(source, { compression: bad }), code('INVALID_ARGUMENT'));
+    assert.throws(() => pngSync(source, { compression: bad }), code('INVALID_ARGUMENT'));
+  }
+  await assert.rejects(svg(source, { compression: 'fast' }), code('INVALID_ARGUMENT'));
+  await assert.rejects(html(source, { compression: 'balanced' }), code('INVALID_ARGUMENT'));
+  assert.throws(() => new Renderer({ compression: 'fast' }), code('INVALID_ARGUMENT'));
+});
+
+test('both PNG compression modes match the CLI', { skip: !process.env.MONOPRINT_CLI }, async () => {
+  for (const compression of ['fast', 'balanced']) {
+    const cli = spawnSync(process.env.MONOPRINT_CLI,
+      ['-l', 'tsx', '--png-compression', compression, '--scale', '2', '--format', 'png', '-o', '-'],
+      { input: source, maxBuffer: 16 * 1024 * 1024 });
+    assert.equal(cli.status, 0, cli.stderr?.toString());
+    assert.deepEqual(await png(source, { language: 'tsx', compression, scale: 2 }), cli.stdout);
+  }
+});
+
 test('validation rejects invalid JS inputs without numeric coercion or ignored options', async () => {
   for (const bad of [NaN, Infinity, -1, 1.5, 2 ** 32, '32', null]) {
     await assert.rejects(png(source, { padding: bad }), code('INVALID_ARGUMENT'));

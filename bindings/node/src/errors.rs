@@ -51,6 +51,9 @@ pub fn encode(error: Error) -> String {
                 InvalidOption::Scale(value) => {
                     json!({ "option": "scale", "value": value, "min": 1, "max": 6 })
                 }
+                InvalidOption::PngCompression(value) => {
+                    json!({ "option": "compression", "value": value })
+                }
                 InvalidOption::Background(value) => {
                     json!({ "option": "background", "value": value })
                 }

@@ -7,6 +7,8 @@ export type { ThemeId, LanguageId } from './catalog-types.js';
 
 /** PNG output pixels per CSS pixel. Defaults to 4; SVG/HTML use CSS dimensions. */
 export type Scale = 1 | 2 | 3 | 4 | 5 | 6;
+/** Lossless PNG tradeoff; both modes preserve the same pixels. */
+export type PngCompression = 'fast' | 'balanced';
 export type Appearance = 'dark' | 'light';
 /** Outer canvas treatment, independent of the code window. */
 export type Background = 'theme' | 'solid' | 'lattice' | 'halftone' | 'none';
@@ -48,7 +50,11 @@ export interface SnippetOptions {
 }
 
 export interface RenderOptions extends Style, SnippetOptions {}
-export interface PngOptions extends RenderOptions { scale?: Scale }
+export interface PngOptions extends RenderOptions {
+  scale?: Scale;
+  /** Defaults to fast. Balanced reduces file size with more encoding work. */
+  compression?: PngCompression;
+}
 
 export interface ThemeInfo {
   readonly id: ThemeId;
@@ -74,7 +80,7 @@ export type ErrorCode = 'INVALID_ARGUMENT' | 'INVALID_OPTION' | 'UNKNOWN_THEME'
 export interface ErrorDetails {
   readonly option?: string;
   readonly id?: string;
-  readonly value?: number;
+  readonly value?: number | string;
   readonly min?: number;
   readonly max?: number;
   readonly bytes?: number;

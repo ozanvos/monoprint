@@ -1,16 +1,16 @@
 use crate::{
-    Error, LineNumberPolicy, LineNumbers, Renderer, Scale, Snippet, Style, TextRole, assets,
-    background, editor_theme, effects, fallback::Fallbacks, highlight,
+    Error, LineNumberPolicy, LineNumbers, RasterImage, Renderer, Scale, Snippet, Style, TextRole,
+    assets, background, editor_theme, effects, fallback::Fallbacks, highlight,
 };
 use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::STANDARD};
-use std::{borrow::Cow, sync::Arc};
+use std::sync::Arc;
 use takumi::prelude::*;
 use takumi_raster::RenderOptions;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Format {
-    Png,
+    Raster,
     Svg,
     Html,
 }
@@ -190,14 +190,19 @@ fn typography_css(font: &[u8], font_size: u32, line_count: usize) -> Result<Stri
     ))
 }
 
-pub(crate) fn export(
+pub(crate) enum Output {
+    Raster(RasterImage),
+    Text(String),
+}
+
+pub(crate) fn render(
     renderer: &Renderer,
     snippet: &Snippet,
     style: &Style,
     source: &str,
     format: Format,
-    png_scale: Scale,
-) -> Result<Vec<u8>> {
+    scale: Scale,
+) -> Result<Output> {
     let theme = style
         .theme
         .data_for(style.appearance)
@@ -382,7 +387,7 @@ pub(crate) fn export(
     }
     let parse_css = |css: &str| -> Result<Arc<StyleSheet>> {
         Ok(Arc::new(
-            StyleSheet::parse(&effects::native_css(css, format == Format::Png)).map_err(
+            StyleSheet::parse(&effects::native_css(css, format == Format::Raster)).map_err(
                 |error| {
                     let message = error.to_string();
                     let tail: String = message
@@ -441,16 +446,17 @@ pub(crate) fn export(
             "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>{}</title><style>{fonts}{css}</style></head><body>{html}</body></html>",
             assets::escape(&snippet.title)
         );
-        return Ok(result.into_bytes());
+        return Ok(Output::Text(result));
     }
     let fonts = renderer.fonts(style, secondary_font, fallbacks)?;
     // At 2x, the upstream 22.5px line height is integral. Keep the SVG's
     // viewBox at this precision and expose its normal CSS dimensions.
-    let scale = if format == Format::Png {
-        if u32::from(png_scale).is_multiple_of(2) {
-            u32::from(png_scale)
+    let raster_scale = scale;
+    let scale = if format == Format::Raster {
+        if u32::from(scale).is_multiple_of(2) {
+            u32::from(scale)
         } else {
-            u32::from(png_scale) * 2
+            u32::from(scale) * 2
         }
     } else {
         2
@@ -470,7 +476,7 @@ pub(crate) fn export(
     // Takumi 2.14's raster canvas and SVG-source rasterizer each cap pixmaps
     // at 16 Mi pixels. Check here so callers get our actionable typed error
     // rather than an opaque backend failure. Vector output keeps its budget.
-    let pixel_budget = if format == Format::Png {
+    let pixel_budget = if format == Format::Raster {
         16 << 20
     } else {
         64_000_000
@@ -482,14 +488,14 @@ pub(crate) fn export(
         return Err(Error::ImageTooLarge {
             width: width as u32,
             height: height as u32,
-            supersampled: format == Format::Png && !u32::from(png_scale).is_multiple_of(2),
+            supersampled: format == Format::Raster && !u32::from(raster_scale).is_multiple_of(2),
         }
         .into());
     }
     viewport =
         Viewport::new((Some(width as u32), Some(height as u32))).with_device_pixel_ratio(scale);
     match format {
-        Format::Png => {
+        Format::Raster => {
             let bitmap = takumi_raster::render(
                 RenderOptions::builder()
                     .viewport(viewport)
@@ -498,34 +504,14 @@ pub(crate) fn export(
                     .stylesheet(stylesheet)
                     .build(),
             )
-            .context("rendering PNG")?;
+            .context("rendering raster image")?;
             let mut image =
                 image::RgbaImage::from_raw(bitmap.width(), bitmap.height(), bitmap.into_raw())
                     .context("invalid rendered bitmap")?;
-            if !u32::from(png_scale).is_multiple_of(2) {
+            if !u32::from(raster_scale).is_multiple_of(2) {
                 image = crate::resample::half(&image);
             }
-            let mut data = Vec::new();
-            // Fast lossless PNG compression avoids spending most of a fresh
-            // invocation in the renderer's default level-7/no-filter encoder.
-            let mut encoder = png::Encoder::new(&mut data, image.width(), image.height());
-            let opaque = crate::pixels::is_opaque(image.as_raw());
-            let pixels = if opaque {
-                Cow::Owned(crate::pixels::to_rgb(image.as_raw()))
-            } else {
-                Cow::Borrowed(image.as_raw().as_slice())
-            };
-            encoder.set_color(if opaque {
-                png::ColorType::Rgb
-            } else {
-                png::ColorType::Rgba
-            });
-            encoder.set_depth(png::BitDepth::Eight);
-            encoder.set_compression(png::Compression::Fast);
-            let mut writer = encoder.write_header()?;
-            writer.write_image_data(&pixels)?;
-            writer.finish()?;
-            Ok(data)
+            Ok(Output::Raster(RasterImage(image)))
         }
         Format::Svg => {
             let svg = takumi_svg::render(
@@ -537,8 +523,8 @@ pub(crate) fn export(
                     .build(),
             )
             .context("rendering SVG")?;
-            Ok(svg
-                .replacen(
+            Ok(Output::Text(
+                svg.replacen(
                     &format!("width=\"{width}\""),
                     &format!("width=\"{}\"", width / 2.0),
                     1,
@@ -547,8 +533,8 @@ pub(crate) fn export(
                     &format!("height=\"{height}\""),
                     &format!("height=\"{}\"", height / 2.0),
                     1,
-                )
-                .into_bytes())
+                ),
+            ))
         }
         Format::Html => unreachable!(),
     }

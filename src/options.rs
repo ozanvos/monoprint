@@ -109,7 +109,7 @@ pub enum LineNumbers {
     Hide,
 }
 
-/// PNG pixel ratio. SVG and HTML always use CSS dimensions.
+/// Raster pixel ratio, for PNG and raw images. SVG and HTML use CSS dimensions.
 ///
 /// Odd scales render at twice this ratio and downsample for accurate half-pixel
 /// line heights. Resource limits apply to that larger internal image.
@@ -147,6 +147,64 @@ impl TryFrom<u32> for Scale {
             6 => Ok(Self::X6),
             _ => Err(InvalidOption::Scale(value).into()),
         }
+    }
+}
+
+/// Lossless PNG encoding tradeoff. Both modes preserve exactly the same pixels.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub enum PngCompression {
+    /// Lowest encoding latency; the default when encoding PNG.
+    #[default]
+    Fast,
+    /// Smaller files with more encoding work; useful for final exports.
+    Balanced,
+}
+impl fmt::Display for PngCompression {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.write_str(match self {
+            Self::Fast => "fast",
+            Self::Balanced => "balanced",
+        })
+    }
+}
+impl FromStr for PngCompression {
+    type Err = Error;
+    fn from_str(value: &str) -> Result<Self, Self::Err> {
+        match value {
+            "fast" => Ok(Self::Fast),
+            "balanced" => Ok(Self::Balanced),
+            _ => Err(InvalidOption::PngCompression(value.to_owned()).into()),
+        }
+    }
+}
+
+/// PNG-specific output settings, separate from the visual [`Style`].
+///
+/// Defaults to 4× with Fast compression. Passing a [`Scale`] to
+/// [`crate::Renderer::png`] remains equivalent to `PngOptions::new(scale)`.
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Hash)]
+pub struct PngOptions {
+    pub(crate) scale: Scale,
+    pub(crate) compression: PngCompression,
+}
+impl PngOptions {
+    /// Set output pixels per CSS pixel, with Fast lossless compression.
+    pub fn new(scale: Scale) -> Self {
+        Self {
+            scale,
+            ..Self::default()
+        }
+    }
+    /// Choose the encoding speed/file-size tradeoff without changing pixels.
+    #[must_use]
+    pub fn compression(mut self, compression: PngCompression) -> Self {
+        self.compression = compression;
+        self
+    }
+}
+impl From<Scale> for PngOptions {
+    fn from(scale: Scale) -> Self {
+        Self::new(scale)
     }
 }
 

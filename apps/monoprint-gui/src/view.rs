@@ -1531,7 +1531,40 @@ impl Studio {
                                                 }))
                                         }),
                                     )),
-                            ),
+                            )
+                            .when(self.document.format == Format::Png, |view| {
+                                view.child(row(
+                                    p,
+                                    "Compression",
+                                    segments(p).children(
+                                        [
+                                            (
+                                                "fast",
+                                                "Fast",
+                                                "Faster encoding. Same image quality.",
+                                            ),
+                                            (
+                                                "balanced",
+                                                "Balanced",
+                                                "Smaller PNG files. Same image quality.",
+                                            ),
+                                        ]
+                                        .into_iter()
+                                        .map(
+                                            |(mode, label, help)| {
+                                                segment(p, format!("png-compression-{mode}"))
+                                                    .label(label)
+                                                    .tooltip(help)
+                                                    .selected(self.document.png_compression == mode)
+                                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                                        this.document.png_compression = mode.into();
+                                                        this.changed(cx);
+                                                    }))
+                                            },
+                                        ),
+                                    ),
+                                ))
+                            }),
                     )
                     .child(self.export_actions(cx))
                     .when_some(self.last_export.clone(), |view, path| {

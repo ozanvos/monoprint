@@ -1,8 +1,65 @@
 use monoprint::{
     Appearance, Error, Font, InvalidOption, Language, LineNumberPolicy, LineNumbers,
-    MAX_FONT_BYTES, MAX_SOURCE_BYTES, Renderer, Scale, Snippet, Style, Theme,
+    MAX_FONT_BYTES, MAX_SOURCE_BYTES, PngCompression, PngOptions, Renderer, Scale, Snippet, Style,
+    Theme,
 };
 use std::sync::Arc;
+
+#[test]
+fn png_compression_preserves_pixels_and_the_fast_default() {
+    let renderer = Renderer::new();
+    let snippet = Snippet::new("// Hello 👋🏽\nlet answer = 42;\nlet ok = answer != 0;")
+        .language("rust".parse().unwrap())
+        .title("example.rs")
+        .highlight(2);
+    for (theme, transparent, scale) in [
+        ("removed-frame", false, Scale::X1),
+        ("removed-frame", true, Scale::X2),
+        ("removed-frame", false, Scale::X3),
+        ("removed-frame", true, Scale::X2),
+    ] {
+        let style = Style::new(theme.parse().unwrap())
+            .width(480)
+            .padding(32)
+            .transparent(transparent);
+        let fast = renderer.png(&snippet, &style, scale).unwrap();
+        assert_eq!(
+            fast,
+            renderer
+                .png(
+                    &snippet,
+                    &style,
+                    PngOptions::new(scale).compression(PngCompression::Fast)
+                )
+                .unwrap(),
+        );
+        let balanced = renderer
+            .png(
+                &snippet,
+                &style,
+                PngOptions::new(scale).compression(PngCompression::Balanced),
+            )
+            .unwrap();
+        assert_eq!(
+            image::load_from_memory(&fast).unwrap().into_rgba8(),
+            image::load_from_memory(&balanced).unwrap().into_rgba8(),
+            "{theme}/{transparent}/{scale:?}",
+        );
+        assert_eq!(fast[25], balanced[25], "PNG color type must be preserved");
+        assert!(
+            balanced.len() < fast.len(),
+            "{theme}: Balanced should reduce this fixture"
+        );
+    }
+    assert_eq!(PngOptions::default(), PngOptions::new(Scale::X4));
+    for mode in [PngCompression::Fast, PngCompression::Balanced] {
+        assert_eq!(mode.to_string().parse::<PngCompression>().unwrap(), mode);
+    }
+    assert!(matches!(
+        "smallest".parse::<PngCompression>(),
+        Err(Error::InvalidOption(InvalidOption::PngCompression(value))) if value == "smallest"
+    ));
+}
 
 #[test]
 fn public_values_can_cross_thread_boundaries() {
@@ -12,6 +69,58 @@ fn public_values_can_cross_thread_boundaries() {
     send_sync::<Style>();
     send_sync::<Snippet>();
     send_sync::<Error>();
+    send_sync::<monoprint::RasterImage>();
+}
+
+#[test]
+fn raw_pixels_match_png_at_odd_and_even_scales_and_retain_validation() {
+    let renderer = Renderer::new();
+    let snippet = Snippet::new("// Hello 👋🏽\nlet answer = 42;").language("rust".parse().unwrap());
+    for (scale, transparent) in [(Scale::X1, false), (Scale::X2, true), (Scale::X3, true)] {
+        let style = Style::default()
+            .width(400)
+            .padding(16)
+            .transparent(transparent);
+        let raw = renderer.rgba(&snippet, &style, scale).unwrap();
+        let png = renderer.png(&snippet, &style, scale).unwrap();
+        let decoded = image::load_from_memory(&png).unwrap().into_rgba8();
+        assert_eq!((raw.width(), raw.height()), decoded.dimensions());
+        assert_eq!(raw.pixels(), decoded.as_raw());
+        let bgra = renderer.rgba(&snippet, &style, scale).unwrap();
+        let allocation = bgra.pixels().as_ptr();
+        let bgra = bgra.into_bgra_pixels();
+        assert_eq!(
+            bgra.as_ptr(),
+            allocation,
+            "BGRA conversion must reuse the allocation"
+        );
+        for (actual, expected) in bgra
+            .as_chunks::<4>()
+            .0
+            .iter()
+            .zip(decoded.as_raw().as_chunks::<4>().0)
+        {
+            assert_eq!(
+                *actual,
+                [expected[2], expected[1], expected[0], expected[3]]
+            );
+        }
+        let allocation = raw.pixels().as_ptr();
+        let pixels = raw.into_pixels();
+        assert_eq!(
+            pixels.as_ptr(),
+            allocation,
+            "ownership transfer must not copy pixels"
+        );
+    }
+    assert!(matches!(
+        renderer.rgba(&snippet, &Style::default().font_size(0), Scale::X2),
+        Err(Error::InvalidOption(InvalidOption::FontSize(0)))
+    ));
+    assert!(matches!(
+        renderer.rgba(&snippet, &Style::default().width(8192), Scale::X6),
+        Err(Error::ImageTooLarge { .. })
+    ));
 }
 
 #[test]

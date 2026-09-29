@@ -25,13 +25,13 @@ pub enum Error {
         code_font: bool,
     },
     /// The measured image exceeds its internal pixel budget (16,777,216 for
-    /// PNG, 64 million for SVG), or 32,768 pixels per edge.
+    /// PNG/raw images, 64 million for SVG), or 32,768 pixels per edge.
     ImageTooLarge {
         /// Internal width, before downsampling.
         width: u32,
         /// Internal height, before downsampling.
         height: u32,
-        /// An odd PNG scale requires rendering at twice the requested scale.
+        /// An odd raster scale requires rendering at twice the requested scale.
         supersampled: bool,
     },
     /// An embedded resource or rendering backend failed.
@@ -67,6 +67,8 @@ pub enum InvalidOption {
     },
     /// PNG scale is outside 1..=6.
     Scale(u32),
+    /// Unknown PNG compression mode.
+    PngCompression(String),
     /// A background name is not one of the five supported treatments.
     Background(String),
     /// This theme does not provide the selected appearance.
@@ -183,6 +185,9 @@ impl fmt::Display for InvalidOption {
                 "width {width} must be between {min} and {max}px and leave room for the code after padding"
             ),
             Self::Scale(value) => write!(f, "PNG scale {value} must be between 1 and 6"),
+            Self::PngCompression(value) => {
+                write!(f, "unknown PNG compression {value:?}; use fast or balanced")
+            }
             Self::Background(value) => write!(
                 f,
                 "unknown background {value:?}; use theme, solid, lattice, halftone, or none"

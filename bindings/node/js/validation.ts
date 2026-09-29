@@ -23,6 +23,7 @@ function validate(value: Record<string, unknown>, fonts: WeakMap<Font, NativeFon
   for (const key of ['language', 'title', 'subtitle', 'theme']) {
     if (key in value && typeof value[key] !== 'string') invalid(key, 'must be a string');
   }
+  if ('compression' in value && !['fast', 'balanced'].includes(value.compression as string)) invalid('compression', "must be 'fast' or 'balanced'");
   if ('appearance' in value && !['light', 'dark'].includes(value.appearance as string)) invalid('appearance', "must be 'light' or 'dark'");
   for (const key of ['padding', 'fontSize', 'scale']) if (key in value) integer(value[key], key);
   if ('width' in value && value.width !== 'auto') integer(value.width, 'width');
@@ -53,7 +54,7 @@ export function normalize(format: 'png' | 'svg' | 'html', source: string, style:
   if (typeof source !== 'string') invalid('source', 'must be a string');
   const bytes = Buffer.byteLength(source, 'utf8');
   if (bytes > limits.sourceBytes) throw new MonoprintError('INVALID_OPTION', 'source exceeds 1 MiB', { option: 'source', bytes, max: limits.sourceBytes });
-  const overrides = object(options, [...styleKeys, ...contentKeys, ...(format === 'png' ? ['scale'] : [])]);
+  const overrides = object(options, [...styleKeys, ...contentKeys, ...(format === 'png' ? ['scale', 'compression'] : [])]);
   validate(overrides, fonts);
   const value = { ...style, ...overrides };
   // The modern option and its compatibility alias describe one setting.

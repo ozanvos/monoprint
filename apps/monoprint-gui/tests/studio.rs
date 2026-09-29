@@ -11,7 +11,7 @@ mod document;
 #[allow(dead_code)] // The production raw-window adapter is unavailable on the test platform.
 #[path = "../src/material.rs"]
 mod material;
-#[allow(unused_imports)]
+#[allow(dead_code, unused_imports)] // Standard-harness preview tests are not run by this binary.
 #[path = "../src/preview.rs"]
 mod preview;
 #[allow(dead_code, unused_imports)]
@@ -813,6 +813,18 @@ mod macos {
                     "section toggles must not request renders"
                 );
             });
+
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.png_compression, "balanced")
+            });
+            for mode in ["fast", "balanced"] {
+                inspector_click(&mut cx, handle, &studio, format!("png-compression-{mode}"));
+                cx.read_entity(&studio, |s, _| {
+                    assert_eq!(s.document.png_compression, mode);
+                    assert!(s.error.is_none(), "{:?}", s.error);
+                });
+            }
+            capture(&mut cx, handle, &format!("compression-{}", width as u32));
 
             // The select's visible trigger and hit area must both fit the toolbar.
             // Select styles alone do not constrain its full-size outer wrapper.

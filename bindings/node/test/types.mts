@@ -4,7 +4,7 @@ const theme: ThemeId = 'catppuccin-latte';
 const background: Background = 'lattice';
 const style = { theme, background, width: 'auto', lineNumbers: true, fontSize: 18 } satisfies Style;
 const renderer = new Renderer(style);
-const options = { language: 'typescript', scale: 2, highlight: [1, [2, 3]] } as const satisfies PngOptions;
+const options = { language: 'typescript', scale: 2, compression: 'balanced', highlight: [1, [2, 3]] } as const satisfies PngOptions;
 const p: Promise<Buffer> = renderer.png('code', options);
 const s: Promise<string> = svg('code', { ...style, highlight: [1] });
 const h: string = renderer.htmlSync('code');
@@ -16,6 +16,12 @@ html('code', { font });
 svg('code', { scale: 2 });
 // @ts-expect-error Scale cannot exceed six.
 png('code', { scale: 7 });
+// @ts-expect-error Only the documented compression presets are accepted.
+png('code', { compression: 'smallest' });
+// @ts-expect-error Compression only applies to PNG output.
+svg('code', { compression: 'fast' });
+// @ts-expect-error Compression is an export option, not a visual style.
+new Renderer({ compression: 'balanced' });
 // @ts-expect-error Font is an opaque validated handle.
 html('code', { font: {} });
 // @ts-expect-error Unknown theme typo.

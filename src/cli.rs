@@ -46,6 +46,9 @@ pub struct Args {
     /// PNG pixel ratio (SVG and HTML retain CSS dimensions).
     #[arg(long, default_value_t = 4, value_parser = clap::value_parser!(u32).range(1..=6))]
     pub scale: u32,
+    /// Lossless PNG compression: fast (default) or balanced (smaller files).
+    #[arg(long, value_name = "MODE")]
+    pub png_compression: Option<monoprint::PngCompression>,
     #[arg(long, default_value = "")]
     pub title: String,
     /// Auth0 subtitle metadata; the pinned frame displays the language label.

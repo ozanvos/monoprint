@@ -59,6 +59,48 @@ fn failure(out: Output, message: &str) {
 }
 
 #[test]
+fn png_compression_is_tunable_without_changing_defaults() {
+    let w = Workspace::new();
+    let source = "// Hello 👋\nlet answer = 42;";
+    let args = ["-o", "-", "--format", "png", "--scale", "2", "-l", "rust"];
+    let default = success(w.run(&args, source));
+    let renderer = monoprint::Renderer::new();
+    let snippet = monoprint::Snippet::new(source).language("rust".parse().unwrap());
+    for mode in ["fast", "balanced"] {
+        let mut args = args.to_vec();
+        args.extend(["--png-compression", mode]);
+        let actual = success(w.run(&args, source));
+        assert_eq!(
+            actual,
+            renderer
+                .png(
+                    &snippet,
+                    &monoprint::Style::default(),
+                    monoprint::PngOptions::new(monoprint::Scale::X2)
+                        .compression(mode.parse().unwrap()),
+                )
+                .unwrap(),
+        );
+        if mode == "fast" {
+            assert_eq!(actual, default);
+        }
+    }
+    failure(
+        w.run(&["-o", "out.png", "--png-compression", "smallest"], ""),
+        "use fast or balanced",
+    );
+    assert!(!w.0.join("out.png").exists());
+    for format in ["svg", "html"] {
+        let path = format!("out.{format}");
+        failure(
+            w.run(&["-o", &path, "--png-compression", "fast"], ""),
+            "only valid for PNG",
+        );
+        assert!(!w.0.join(path).exists());
+    }
+}
+
+#[test]
 fn output_contract_and_overwrite_protection() {
     let w = Workspace::new();
     failure(w.run(&[], "hi"), "output is required");

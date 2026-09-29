@@ -1,5 +1,5 @@
 use crate::{Output, errors};
-use monoprint::{Appearance, Font, LineNumbers, Renderer, Scale, Snippet, Style};
+use monoprint::{Appearance, Font, LineNumbers, PngOptions, Renderer, Scale, Snippet, Style};
 use serde::Deserialize;
 
 #[derive(Deserialize)]
@@ -19,6 +19,7 @@ struct Options {
     background: Option<String>,
     line_numbers: Option<Numbers>,
     scale: Option<u32>,
+    compression: Option<String>,
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -115,7 +116,17 @@ pub fn render(
             .png(
                 &snippet,
                 &style,
-                Scale::try_from(options.scale.unwrap_or(4)).map_err(errors::encode)?,
+                PngOptions::new(
+                    Scale::try_from(options.scale.unwrap_or(4)).map_err(errors::encode)?,
+                )
+                .compression(
+                    options
+                        .compression
+                        .as_deref()
+                        .unwrap_or("fast")
+                        .parse()
+                        .map_err(errors::encode)?,
+                ),
             )
             .map(Output::Png),
         Format::Svg => renderer.svg(&snippet, &style).map(Output::Text),

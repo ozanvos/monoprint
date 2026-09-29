@@ -4,7 +4,7 @@ use anyhow::{Context, Result, bail};
 use clap::Parser;
 use monoprint::{
     Appearance, BundledFont, Font, Language, LineNumbers, MAX_FONT_BYTES, MAX_SOURCE_BYTES,
-    Renderer, Scale, Snippet, Style, Theme,
+    PngOptions, Renderer, Scale, Snippet, Style, Theme,
 };
 use std::{
     fs,
@@ -58,6 +58,9 @@ fn run() -> Result<()> {
         .as_ref()
         .context("an output is required: use -o image.png, image.svg, or image.html")?;
     let format = args.output_format()?;
+    if args.png_compression.is_some() && format != cli::Format::Png {
+        bail!("--png-compression is only valid for PNG output");
+    }
     if output.as_os_str() == "-" && format == cli::Format::Png && io::stdout().is_terminal() {
         bail!("PNG output needs a file or pipe; stdout is a terminal");
     }
@@ -147,7 +150,12 @@ fn run() -> Result<()> {
     }
     let renderer = Renderer::new();
     let rendered = match format {
-        cli::Format::Png => renderer.png(&snippet, &style, Scale::try_from(args.scale)?)?,
+        cli::Format::Png => renderer.png(
+            &snippet,
+            &style,
+            PngOptions::new(Scale::try_from(args.scale)?)
+                .compression(args.png_compression.unwrap_or_default()),
+        )?,
         cli::Format::Svg => renderer.svg(&snippet, &style)?.into_bytes(),
         cli::Format::Html => renderer.html(&snippet, &style)?.into_bytes(),
     };

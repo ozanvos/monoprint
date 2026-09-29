@@ -1,6 +1,7 @@
 use anyhow::{Context, Result, bail, ensure};
 use monoprint::{
-    Appearance, Background, Font, Language, LineNumbers, Renderer, Scale, Snippet, Style, Theme,
+    Appearance, Background, Font, Language, LineNumbers, PngOptions, Renderer, Scale, Snippet,
+    Style, Theme,
 };
 use serde::{Deserialize, Serialize};
 use std::{
@@ -60,6 +61,7 @@ pub struct Document {
     pub font_size: String,
     pub ligatures: bool,
     pub scale: u32,
+    pub png_compression: String,
     pub format: Format,
     pub font_path: Option<PathBuf>,
     pub comment_font_path: Option<PathBuf>,
@@ -84,6 +86,7 @@ impl Default for Document {
             font_size: "15".into(),
             ligatures: false,
             scale: 2,
+            png_compression: "balanced".into(),
             format: Format::Png,
             font_path: None,
             comment_font_path: None,
@@ -324,7 +327,12 @@ pub fn export(renderer: &Renderer, document: &Document, format: Format) -> Resul
     )?;
     let (snippet, style) = document.prepare(font, comments)?;
     Ok(match format {
-        Format::Png => renderer.png(&snippet, &style, Scale::try_from(document.scale)?)?,
+        Format::Png => renderer.png(
+            &snippet,
+            &style,
+            PngOptions::new(Scale::try_from(document.scale)?)
+                .compression(document.png_compression.parse()?),
+        )?,
         Format::Svg => renderer.svg(&snippet, &style)?.into_bytes(),
         Format::Html => renderer.html(&snippet, &style)?.into_bytes(),
     })
@@ -598,12 +606,20 @@ mod tests {
                     .unwrap(),
             )
             .unwrap();
-        assert_eq!(
-            export(&renderer, &d, Format::Png).unwrap(),
-            renderer
-                .png(&snippet, &style.clone().font_size(21), Scale::X2)
-                .unwrap()
-        );
+        for mode in ["balanced", "fast"] {
+            let mut png_document = d.clone();
+            png_document.png_compression = mode.into();
+            assert_eq!(
+                export(&renderer, &png_document, Format::Png).unwrap(),
+                renderer
+                    .png(
+                        &snippet,
+                        &style,
+                        PngOptions::new(Scale::X2).compression(mode.parse().unwrap()),
+                    )
+                    .unwrap()
+            );
+        }
         assert_eq!(
             export(&renderer, &d, Format::Svg).unwrap(),
             renderer
@@ -659,6 +675,7 @@ mod tests {
             highlights: "1-2".into(),
             text_highlights: "1:2-1:4".into(),
             font_size: "23".into(),
+            png_compression: "fast".into(),
             ligatures: true,
             font_path: Some("code.ttf".into()),
             comment_font_path: Some("comments.otf".into()),
@@ -671,11 +688,13 @@ mod tests {
         assert_eq!(restored.highlights, "1-2");
         assert_eq!(restored.text_highlights, d.text_highlights);
         assert_eq!(restored.font_size, d.font_size);
+        assert_eq!(restored.png_compression, "fast");
         assert!(restored.ligatures);
         assert_eq!(restored.font_path, d.font_path);
         assert_eq!(restored.comment_font_path, d.comment_font_path);
         let old: Document = serde_json::from_str(r#"{"source":"old draft"}"#).unwrap();
         assert_eq!(old.font_size, "15");
+        assert_eq!(old.png_compression, "balanced");
         assert!(!old.ligatures);
         assert!(old.comment_font_path.is_none());
         assert!(old.text_highlights.is_empty());
