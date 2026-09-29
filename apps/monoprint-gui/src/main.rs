@@ -63,6 +63,7 @@ fn main() {
                 KeyBinding::new("secondary-s", ExportImage, Some("Monoprint")),
                 KeyBinding::new("secondary-shift-c", CopyImage, Some("Monoprint")),
                 KeyBinding::new("secondary-shift-l", ToggleUiAppearance, Some("Monoprint")),
+                KeyBinding::new("escape", input::Escape, Some("ThemeBrowser")),
             ]);
             cx.set_menus(vec![
                 Menu {

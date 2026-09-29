@@ -29,7 +29,11 @@ impl Render for Studio {
         let source_max = (window_width - inspector_width - 360.).clamp(240., 560.);
         div()
             .id("monoprint-studio")
-            .key_context("Monoprint")
+            .key_context(if self.browsing_themes {
+                "Monoprint ThemeBrowser"
+            } else {
+                "Monoprint"
+            })
             .track_focus(&self.focus)
             .relative()
             .size_full()
@@ -43,6 +47,13 @@ impl Render for Studio {
             .on_action(cx.listener(Self::copy_image))
             .on_action(cx.listener(Self::paste))
             .on_action(cx.listener(Self::toggle_ui_appearance))
+            .on_action(cx.listener(|this, _: &input::Escape, window, cx| {
+                if this.browsing_themes {
+                    this.close_theme_browser(window, cx);
+                } else {
+                    cx.propagate();
+                }
+            }))
             .child(
                 div()
                     .flex()
@@ -837,13 +848,127 @@ impl Studio {
             .on_change(move |open, _, window, cx| on_change(&open, window, cx))
     }
 
-    fn theme_gallery(&self, cx: &Context<Self>) -> impl IntoElement {
+    fn theme_settings(&self, cx: &Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         let theme = self
             .document
             .theme
             .parse::<ImageTheme>()
             .unwrap_or_default();
+        let image = self
+            .thumbnails
+            .iter()
+            .find(|(item, _)| *item == theme)
+            .map(|(_, image)| {
+                if self.document.light {
+                    self.light_thumbnails.get(&theme).unwrap_or(image)
+                } else {
+                    image
+                }
+            });
+        settings_section(p)
+            .open(self.open_sections[InspectorSection::Theme as usize])
+            .child(self.section_header(InspectorSection::Theme, "", cx))
+            .content(
+                div()
+                    .flex()
+                    .flex_col()
+                    .gap(px(12.))
+                    .child(
+                        Button::new("browse-themes")
+                            .ghost()
+                            .w_full()
+                            .h(px(58.))
+                            .p(px(8.))
+                            .rounded(px(5.))
+                            .border_1()
+                            .border_color(rgb(p.strong))
+                            .bg(rgb(p.control))
+                            .child(
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(12.))
+                                    .w_full()
+                                    .min_w_0()
+                                    .when_some(image, |view, image| {
+                                        view.child(
+                                            div()
+                                                .w(px(66.))
+                                                .h(px(38.))
+                                                .flex_shrink_0()
+                                                .rounded(px(3.))
+                                                .overflow_hidden()
+                                                .child(
+                                                    img(image.clone())
+                                                        .size_full()
+                                                        .object_fit(ObjectFit::Cover),
+                                                ),
+                                        )
+                                    })
+                                    .child(
+                                        div()
+                                            .flex_1()
+                                            .min_w_0()
+                                            .text_size(px(12.))
+                                            .truncate()
+                                            .child(theme.name()),
+                                    )
+                                    .child(
+                                        Icon::new(IconName::ChevronRight)
+                                            .size(px(14.))
+                                            .text_color(rgb(p.muted)),
+                                    ),
+                            )
+                            .accessibility_label(format!(
+                                "Browse themes, selected: {}",
+                                theme.name()
+                            ))
+                            .tooltip("Browse themes")
+                            .on_click(
+                                cx.listener(|this, _, window, cx| this.browse_themes(window, cx)),
+                            ),
+                    )
+                    .children(self.theme_appearance(cx)),
+            )
+    }
+
+    fn theme_appearance(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
+        let p = palette(cx);
+        let theme = self
+            .document
+            .theme
+            .parse::<ImageTheme>()
+            .unwrap_or_default();
+        (theme.supports(Appearance::Light) && theme.supports(Appearance::Dark)).then(|| {
+            row(
+                p,
+                "Appearance",
+                segments(p).children(
+                    [
+                        ("light-appearance", "light", Appearance::Light),
+                        ("dark-appearance", "dark", Appearance::Dark),
+                    ]
+                    .into_iter()
+                    .map(|(id, label, appearance)| {
+                        let light = appearance == Appearance::Light;
+                        segment(p, id)
+                            .label(label)
+                            .selected(self.document.light == light)
+                            .toggled(self.document.light == light)
+                            .tooltip(format!("Use the {label} variant"))
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.document.light = light;
+                                this.changed(cx);
+                            }))
+                    }),
+                ),
+            )
+        })
+    }
+
+    fn theme_browser(&self, cx: &Context<Self>) -> impl IntoElement {
+        let p = palette(cx);
         let count = self.filtered_themes.len();
         let gallery = uniform_list(
             "theme-gallery",
@@ -867,22 +992,40 @@ impl Studio {
         )
         .size_full()
         .track_scroll(&self.theme_scroll);
-        settings_section(p)
-            .open(self.open_sections[InspectorSection::Theme as usize])
+        div()
+            .id("theme-browser")
+            .flex_1()
+            .min_h_0()
+            .flex()
+            .flex_col()
+            .overflow_hidden()
             .child(
                 div()
                     .flex()
-                    .items_center()
-                    .gap(px(9.))
-                    .child(div().flex_1().min_w_0().child(self.section_header(
-                        InspectorSection::Theme,
-                        "",
-                        cx,
-                    )))
-                    .when(
-                        self.open_sections[InspectorSection::Theme as usize],
-                        |view| {
-                            view.child(
+                    .flex_col()
+                    .flex_shrink_0()
+                    .gap(px(10.))
+                    .p(px(13.))
+                    .child(
+                        div()
+                            .flex()
+                            .items_center()
+                            .justify_between()
+                            .gap(px(6.))
+                            .child(
+                                Button::new("close-theme-browser")
+                                    .ghost()
+                                    .small()
+                                    .px(px(3.))
+                                    .icon(Icon::new(IconName::ArrowLeft).size(px(14.)))
+                                    .label("Back")
+                                    .accessibility_label("Back to settings")
+                                    .tooltip("Back to settings (Esc)")
+                                    .on_click(cx.listener(|this, _, window, cx| {
+                                        this.close_theme_browser(window, cx)
+                                    })),
+                            )
+                            .child(
                                 segments(p).children(
                                     [
                                         ("themes-all", "all", ThemeFilter::All),
@@ -903,89 +1046,62 @@ impl Studio {
                                         },
                                     ),
                                 ),
-                            )
-                        },
-                    ),
-            )
-            .content(
-                div()
-                    .flex()
-                    .flex_col()
-                    .gap(px(9.))
+                            ),
+                    )
                     .child(
                         text_input(p, &self.theme_search)
                             .cleanable(true)
                             .prefix(Icon::new(IconName::Search).size(px(13.)))
                             .aria_label("Find a theme"),
-                    )
-                    .child(
-                        div()
-                            .id("theme-gallery-viewport")
-                            .relative()
-                            .h(px(212.))
-                            .w_full()
-                            .overflow_hidden()
-                            .when(count > 0, |view| {
-                                view.child(gallery)
-                                    .child(Scrollbar::vertical(&self.theme_scroll))
-                            })
-                            .when(count == 0, |view| {
-                                view.child(
-                                    div()
-                                        .size_full()
-                                        .flex()
-                                        .flex_col()
-                                        .items_center()
-                                        .justify_center()
-                                        .gap_2()
-                                        .text_size(px(12.))
-                                        .text_color(rgb(p.muted))
-                                        .child("No matching themes")
-                                        .child(
-                                            Button::new("clear-theme-search")
-                                                .ghost()
-                                                .small()
-                                                .label("Clear search")
-                                                .on_click(cx.listener(|this, _, window, cx| {
-                                                    this.theme_search.update(cx, |input, cx| {
-                                                        input.replace_all("", window, cx)
-                                                    });
-                                                })),
-                                        ),
-                                )
-                            }),
-                    )
-                    .when(
-                        theme.supports(Appearance::Light) && theme.supports(Appearance::Dark),
-                        |view| {
-                            view.child(row(
-                                p,
-                                "Appearance",
-                                segments(p).children(
-                                    [
-                                        ("light-appearance", "light", Appearance::Light),
-                                        ("dark-appearance", "dark", Appearance::Dark),
-                                    ]
-                                    .into_iter()
-                                    .map(
-                                        |(id, label, appearance)| {
-                                            let light = appearance == Appearance::Light;
-                                            segment(p, id)
-                                                .label(label)
-                                                .selected(self.document.light == light)
-                                                .toggled(self.document.light == light)
-                                                .tooltip(format!("Use the {label} variant"))
-                                                .on_click(cx.listener(move |this, _, _, cx| {
-                                                    this.document.light = light;
-                                                    this.changed(cx);
-                                                }))
-                                        },
-                                    ),
-                                ),
-                            ))
-                        },
                     ),
             )
+            .child(
+                div().flex_1().min_h_0().px(px(13.)).pb(px(6.)).child(
+                    div()
+                        .id("theme-gallery-viewport")
+                        .relative()
+                        .size_full()
+                        .overflow_hidden()
+                        .when(count > 0, |view| {
+                            view.child(gallery)
+                                .child(Scrollbar::vertical(&self.theme_scroll))
+                        })
+                        .when(count == 0, |view| {
+                            view.child(
+                                div()
+                                    .size_full()
+                                    .flex()
+                                    .flex_col()
+                                    .items_center()
+                                    .justify_center()
+                                    .gap_2()
+                                    .text_size(px(12.))
+                                    .text_color(rgb(p.muted))
+                                    .child("No matching themes")
+                                    .child(
+                                        Button::new("clear-theme-search")
+                                            .ghost()
+                                            .small()
+                                            .label("Clear search")
+                                            .on_click(cx.listener(|this, _, window, cx| {
+                                                this.theme_search.update(cx, |input, cx| {
+                                                    input.replace_all("", window, cx)
+                                                });
+                                            })),
+                                    ),
+                            )
+                        }),
+                ),
+            )
+            .children(self.theme_appearance(cx).map(|control| {
+                div()
+                    .flex_shrink_0()
+                    .px(px(13.))
+                    .py(px(12.))
+                    .border_t_1()
+                    .border_color(rgb(p.border))
+                    .child(control)
+            }))
     }
 
     fn theme_tile(&self, index: usize, cx: &Context<Self>) -> impl IntoElement {
@@ -1324,6 +1440,130 @@ impl Studio {
             )
     }
 
+    fn inspector_settings(&self, cx: &Context<Self>) -> impl IntoElement {
+        let p = palette(cx);
+        div()
+            .id("style-inspector")
+            .track_scroll(&self.settings_scroll)
+            .flex_1()
+            .min_h_0()
+            .overflow_y_scroll()
+            .flex()
+            .flex_col()
+            .child(self.theme_settings(cx))
+            .child(self.typography_settings(cx))
+            .child(
+                settings_section(p)
+                    .open(self.open_sections[InspectorSection::Frame as usize])
+                    .child(self.section_header(InspectorSection::Frame, "", cx))
+                    .content(
+                        div()
+                            .flex()
+                            .flex_col()
+                            .gap(px(9.))
+                            .child(
+                                div()
+                                    .flex()
+                                    .gap(px(9.))
+                                    .child(
+                                        field(
+                                            p,
+                                            "Width",
+                                            text_input(p, &self.width)
+                                                .aria_label("Image width")
+                                                .suffix(
+                                                    div()
+                                                        .text_color(rgb(p.muted))
+                                                        .text_size(px(11.))
+                                                        .child("px"),
+                                                ),
+                                        )
+                                        .flex_1(),
+                                    )
+                                    .child(field(p, "Padding", self.padding_input(cx)).flex_1()),
+                            )
+                            .child(field(
+                                p,
+                                "Backdrop",
+                                segments(p).children(Background::ALL.into_iter().map(
+                                    |background| {
+                                        let label = match background {
+                                            Background::Theme => "Theme",
+                                            Background::Solid => "Solid",
+                                            Background::Lattice => "Lattice",
+                                            Background::Halftone => "Halftone",
+                                            Background::None => "None",
+                                        };
+                                        segment(p, format!("background-{background}"))
+                                            .flex_1()
+                                            .px(px(2.))
+                                            .text_size(px(10.))
+                                            .min_w_0()
+                                            .label(label)
+                                            .selected(
+                                                self.document.background().ok() == Some(background),
+                                            )
+                                            .tooltip(if background == Background::None {
+                                                "Transparent canvas; keep the code window"
+                                            } else {
+                                                label
+                                            })
+                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                this.document.select_background(background);
+                                                this.changed(cx);
+                                            }))
+                                    },
+                                )),
+                            ))
+                            .child(row(
+                                p,
+                                "Line numbers",
+                                div()
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(5.))
+                                    .when(self.document.line_numbers.is_some(), |view| {
+                                        view.child(
+                                            Button::new("reset-line-numbers")
+                                                .ghost()
+                                                .xsmall()
+                                                .size(px(26.))
+                                                .flex_shrink_0()
+                                                .p_0()
+                                                .label("↺")
+                                                .accessibility_label(
+                                                    "Use theme default line numbers",
+                                                )
+                                                .tooltip("Use theme default")
+                                                .on_click(cx.listener(|this, _, _, cx| {
+                                                    this.document.line_numbers = None;
+                                                    this.changed(cx);
+                                                })),
+                                        )
+                                    })
+                                    .child(
+                                        Switch::new("line-numbers")
+                                            .small()
+                                            .accessibility_label("Line numbers")
+                                            .checked(self.document.numbers_visible())
+                                            .disabled(
+                                                self.document.language == Language::PLAIN.id(),
+                                            )
+                                            .on_change(cx.listener(|this, value, _, cx| {
+                                                this.document.line_numbers = Some(*value);
+                                                this.changed(cx);
+                                            })),
+                                    ),
+                            ))
+                            .child(field(
+                                p,
+                                "Window title",
+                                text_input(p, &self.title).aria_label("Window title"),
+                            )),
+                    ),
+            )
+    }
+
     fn inspector(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         div()
@@ -1334,136 +1574,11 @@ impl Studio {
             .border_l_1()
             .border_color(rgb(p.strong))
             .bg(p.inspector_background())
-            .child(
-                div()
-                    .id("style-inspector")
-                    .track_scroll(&self.settings_scroll)
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_y_scroll()
-                    .flex()
-                    .flex_col()
-                    .child(self.theme_gallery(cx))
-                    .child(self.typography_settings(cx))
-                    .child(
-                        settings_section(p)
-                            .open(self.open_sections[InspectorSection::Frame as usize])
-                            .child(self.section_header(InspectorSection::Frame, "", cx))
-                            .content(
-                                div()
-                                    .flex()
-                                    .flex_col()
-                                    .gap(px(9.))
-                                    .child(
-                                        div()
-                                            .flex()
-                                            .gap(px(9.))
-                                            .child(
-                                                field(
-                                                    p,
-                                                    "Width",
-                                                    text_input(p, &self.width)
-                                                        .aria_label("Image width")
-                                                        .suffix(
-                                                            div()
-                                                                .text_color(rgb(p.muted))
-                                                                .text_size(px(11.))
-                                                                .child("px"),
-                                                        ),
-                                                )
-                                                .flex_1(),
-                                            )
-                                            .child(
-                                                field(p, "Padding", self.padding_input(cx))
-                                                    .flex_1(),
-                                            ),
-                                    )
-                                    .child(field(
-                                        p,
-                                        "Backdrop",
-                                        segments(p).children(Background::ALL.into_iter().map(
-                                            |background| {
-                                                let label = match background {
-                                                    Background::Theme => "Theme",
-                                                    Background::Solid => "Solid",
-                                                    Background::Lattice => "Lattice",
-                                                    Background::Halftone => "Halftone",
-                                                    Background::None => "None",
-                                                };
-                                                segment(p, format!("background-{background}"))
-                                                    .flex_1()
-                                                    .px(px(2.))
-                                                    .text_size(px(10.))
-                                                    .min_w_0()
-                                                    .label(label)
-                                                    .selected(
-                                                        self.document.background().ok()
-                                                            == Some(background),
-                                                    )
-                                                    .tooltip(if background == Background::None {
-                                                        "Transparent canvas; keep the code window"
-                                                    } else {
-                                                        label
-                                                    })
-                                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                                        this.document.select_background(background);
-                                                        this.changed(cx);
-                                                    }))
-                                            },
-                                        )),
-                                    ))
-                                    .child(row(
-                                        p,
-                                        "Line numbers",
-                                        div()
-                                            .flex()
-                                            .items_center()
-                                            .gap(px(5.))
-                                            .when(self.document.line_numbers.is_some(), |view| {
-                                                view.child(
-                                                    Button::new("reset-line-numbers")
-                                                        .ghost()
-                                                        .xsmall()
-                                                        .size(px(26.))
-                                                        .flex_shrink_0()
-                                                        .p_0()
-                                                        .label("↺")
-                                                        .accessibility_label(
-                                                            "Use theme default line numbers",
-                                                        )
-                                                        .tooltip("Use theme default")
-                                                        .on_click(cx.listener(|this, _, _, cx| {
-                                                            this.document.line_numbers = None;
-                                                            this.changed(cx);
-                                                        })),
-                                                )
-                                            })
-                                            .child(
-                                                Switch::new("line-numbers")
-                                                    .small()
-                                                    .accessibility_label("Line numbers")
-                                                    .checked(self.document.numbers_visible())
-                                                    .disabled(
-                                                        self.document.language
-                                                            == Language::PLAIN.id(),
-                                                    )
-                                                    .on_change(cx.listener(
-                                                        |this, value, _, cx| {
-                                                            this.document.line_numbers =
-                                                                Some(*value);
-                                                            this.changed(cx);
-                                                        },
-                                                    )),
-                                            ),
-                                    ))
-                                    .child(field(
-                                        p,
-                                        "Window title",
-                                        text_input(p, &self.title).aria_label("Window title"),
-                                    )),
-                            ),
-                    ),
-            )
+            .child(if self.browsing_themes {
+                self.theme_browser(cx).into_any_element()
+            } else {
+                self.inspector_settings(cx).into_any_element()
+            })
             .child(
                 Collapsible::new()
                     .open(self.open_sections[InspectorSection::Export as usize])

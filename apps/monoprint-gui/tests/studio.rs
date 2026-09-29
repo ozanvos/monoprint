@@ -615,10 +615,12 @@ mod macos {
         cx.update_window(handle.into(), |_, window, cx| {
             window.render_frame(cx);
             let target = window.find(id.clone()).bounds();
-            let scroll = &studio.read(cx).settings_scroll;
-            scroll.set_offset(
-                scroll.offset() + point(px(0.), scroll.bounds().center().y - target.center().y),
-            );
+            if !studio.read(cx).browsing_themes {
+                let scroll = &studio.read(cx).settings_scroll;
+                scroll.set_offset(
+                    scroll.offset() + point(px(0.), scroll.bounds().center().y - target.center().y),
+                );
+            }
             window.render_frame(cx);
             window.click(id, cx);
         })
@@ -631,16 +633,9 @@ mod macos {
         handle: WindowHandle<Root>,
         studio: &Entity<studio::Studio>,
     ) {
-        cx.update_window(handle.into(), |_, window, cx| {
-            window.render_frame(cx);
-            let target = studio.read(cx).theme_scroll.0.borrow().base_handle.bounds();
-            let scroll = &studio.read(cx).settings_scroll;
-            scroll.set_offset(
-                scroll.offset() + point(px(0.), scroll.bounds().center().y - target.center().y),
-            );
-            window.render_frame(cx);
-        })
-        .unwrap();
+        if !cx.read_entity(studio, |s, _| s.browsing_themes) {
+            inspector_click(cx, handle, studio, "browse-themes");
+        }
         settle(cx, handle, studio);
     }
 
@@ -750,6 +745,11 @@ mod macos {
             cx.update(|cx| {
                 gpui_kit::init(cx);
                 appearance::init(cx);
+                cx.bind_keys([KeyBinding::new(
+                    "escape",
+                    gpui_kit::component::input::Escape,
+                    Some("ThemeBrowser"),
+                )]);
             });
             let mut studio = None;
             let handle = cx
@@ -786,10 +786,9 @@ mod macos {
                 assert!(window.try_find("code-typeface").is_none());
                 assert!(window.try_find("clear-highlights").is_none());
                 assert!(window.try_find("png-compression-balanced").is_none());
-                assert_eq!(
-                    window.find("section-theme").bounds().center().y,
-                    window.find("themes-all").bounds().center().y,
-                );
+                assert!(window.find("browse-themes").visible());
+                assert!(window.try_find("close-theme-browser").is_none());
+                assert!(window.try_find("themes-all").is_none());
                 assert!(
                     window.find("section-theme").bounds().top()
                         < window.find("section-typeface").bounds().top()
@@ -801,7 +800,7 @@ mod macos {
             })
             .unwrap();
             for (section, control) in [
-                ("section-theme", "themes-all"),
+                ("section-theme", "browse-themes"),
                 ("section-frame", "line-numbers"),
                 ("section-export", "png"),
             ] {
@@ -1054,7 +1053,38 @@ mod macos {
             inspector_click(&mut cx, handle, &studio, "theme-font");
             cx.read_entity(&studio, |s, _| assert!(s.document.font_id.is_none()));
             reveal_theme_gallery(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, _| {
+                assert!(window.try_find("style-inspector").is_none());
+                assert!(window.try_find("section-typeface").is_none());
+                assert!(window.find("close-theme-browser").visible());
+                assert!(window.find("export-image").visible());
+                assert!(window.find("copy-image").visible());
+            })
+            .unwrap();
+            cx.read_entity(&studio, |s, _| {
+                assert!(s.theme_scroll.0.borrow().base_handle.bounds().size.height > px(212.));
+            });
+            capture(&mut cx, handle, &format!("theme-browser-{}", width as u32));
             let revision = cx.read_entity(&studio, |s, _| s.revision);
+            click(&mut cx, handle, &studio, "ui-appearance");
+            capture(
+                &mut cx,
+                handle,
+                &format!("theme-browser-light-{}", width as u32),
+            );
+            click(&mut cx, handle, &studio, "ui-appearance");
+            click(&mut cx, handle, &studio, "advanced-export");
+            cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, cx| {
+                assert!(
+                    studio.read(cx).browsing_themes,
+                    "Escape dismisses the popover first"
+                );
+                assert!(window.try_find("png-compression-balanced").is_none());
+            })
+            .unwrap();
             inspector_click(&mut cx, handle, &studio, "themes-light");
             cx.read_entity(&studio, |s, _| {
                 let expected = monoprint::Theme::all()
@@ -1118,6 +1148,22 @@ mod macos {
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.filtered_themes.len(), 2);
                 assert_eq!(s.revision, revision);
+            });
+            cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, cx| {
+                assert!(!studio.read(cx).browsing_themes);
+                assert!(window.try_find("close-theme-browser").is_none());
+                assert!(window.find("browse-themes").visible());
+            })
+            .unwrap();
+            reveal_theme_gallery(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, cx| {
+                assert_eq!(s.theme_search.read(cx).value().as_str(), "Ayu");
+                assert_eq!(s.theme_filter, studio::ThemeFilter::Dark);
+                assert_eq!(s.filtered_themes.len(), 2);
+                assert_eq!(s.revision, revision, "opening/closing must not render");
             });
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
@@ -1198,6 +1244,15 @@ mod macos {
                     s.revision,
                 )
             });
+            let settings_offset = cx.read_entity(&studio, |s, _| s.settings_scroll.offset());
+            let pinned_bounds = cx
+                .update_window(handle.into(), |_, window, _| {
+                    (
+                        window.find("close-theme-browser").bounds(),
+                        window.find("export-image").bounds(),
+                    )
+                })
+                .unwrap();
             cx.update_window(handle.into(), |_, window, cx| {
                 assert!(window.find(("theme-swatch", candy)).visible());
                 assert!(window.find(("theme-swatch", candy)).bounds().size.width <= px(128.));
@@ -1213,14 +1268,34 @@ mod macos {
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
-            // The oversized wheel delta can also scroll the outer inspector.
-            // Keep the gallery visible while asserting its virtualized contents.
-            reveal_theme_gallery(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.settings_scroll.offset(), settings_offset)
+            });
             cx.update_window(handle.into(), |_, window, _| {
                 assert!(window.find(("theme-swatch", last)).visible());
                 assert!(window.try_find(("theme-swatch", candy)).is_none());
+                assert_eq!(window.find("close-theme-browser").bounds(), pinned_bounds.0);
+                assert_eq!(window.find("export-image").bounds(), pinned_bounds.1);
             })
             .unwrap();
+            let gallery_offset = cx.read_entity(&studio, |s, _| {
+                s.theme_scroll.0.borrow().base_handle.offset()
+            });
+            click(&mut cx, handle, &studio, "close-theme-browser");
+            assert_eq!(
+                cx.read_entity(&studio, |s, _| s.settings_scroll.offset()),
+                settings_offset
+            );
+            reveal_theme_gallery(&mut cx, handle, &studio);
+            assert_eq!(
+                cx.read_entity(&studio, |s, _| s
+                    .theme_scroll
+                    .0
+                    .borrow()
+                    .base_handle
+                    .offset()),
+                gallery_offset
+            );
             capture(
                 &mut cx,
                 handle,
@@ -1324,6 +1399,7 @@ mod macos {
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.copy_state, studio::CopyState::Idle)
             });
+            click(&mut cx, handle, &studio, "close-theme-browser");
 
             cx.update_window(handle.into(), |_, window, cx| {
                 cx.write_to_clipboard(ClipboardItem::new_string("const pasted = 7;".into()));

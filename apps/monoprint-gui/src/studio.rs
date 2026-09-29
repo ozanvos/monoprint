@@ -125,6 +125,7 @@ pub struct Studio {
     pub source_marks: TextDecorationCollection,
     pub highlight_menu: Option<HighlightMenu>,
     pub settings_scroll: ScrollHandle,
+    pub browsing_themes: bool,
     pub open_sections: [bool; 4],
     pub source_split: Entity<ResizableState>,
     pub width: Entity<InputState>,
@@ -408,6 +409,7 @@ impl Studio {
             source_marks,
             highlight_menu: None,
             settings_scroll: ScrollHandle::new(),
+            browsing_themes: false,
             open_sections: [true, false, true, true],
             source_split: cx.new(|_| ResizableState::default()),
             width,
@@ -556,6 +558,19 @@ impl Studio {
             self.canvas_resize = None;
         }
     }
+    pub fn browse_themes(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.browsing_themes = true;
+        self.theme_search
+            .update(cx, |input, cx| input.focus(window, cx));
+        cx.notify();
+    }
+
+    pub fn close_theme_browser(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.browsing_themes = false;
+        self.focus.focus(window, cx);
+        cx.notify();
+    }
+
     pub fn filter_themes(&mut self, cx: &mut Context<Self>) {
         let query = self.theme_search.read(cx).value().trim().to_lowercase();
         self.filtered_themes = self
