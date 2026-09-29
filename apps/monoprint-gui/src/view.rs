@@ -184,7 +184,7 @@ impl Studio {
                             .p_0()
                             .border_color(rgb(p.strong))
                             .bg(rgb(p.control))
-                            .child(Icon::new(IconName::FolderOpen).size(px(13.)))
+                            .child(Icon::new(IconName::FolderOpen).size(px(16.)))
                             .accessibility_label("Open source file")
                             .tooltip("Open source file · ⌘O")
                             .on_click(cx.listener(|this, _, window, cx| {
@@ -200,7 +200,7 @@ impl Studio {
                             .p_0()
                             .border_color(rgb(p.strong))
                             .bg(rgb(p.control))
-                            .child(Icon::new(IconName::ClipboardPaste).size(px(13.)))
+                            .child(Icon::new(IconName::ClipboardPaste).size(px(16.)))
                             .accessibility_label("Paste source code")
                             .tooltip("Replace code with clipboard text")
                             .on_click(cx.listener(|this, _, window, cx| {
@@ -217,7 +217,7 @@ impl Studio {
                                 .p_0()
                                 .border_color(rgb(p.strong))
                                 .bg(rgb(p.control))
-                                .child(Icon::new(IconName::Eraser).size(px(13.)))
+                                .child(Icon::new(IconName::Eraser).size(px(16.)))
                                 .accessibility_label("Clear all highlights")
                                 .tooltip("Clear all line and text highlights")
                                 .on_click(cx.listener(|this, _, _, cx| this.clear_highlights(cx))),
@@ -231,7 +231,7 @@ impl Studio {
                             "Code language",
                             "Find a language…",
                         )
-                        .w(px(80.)),
+                        .w(px(160.)),
                     )
                     .child(
                         Button::new("wrap-source")
@@ -243,7 +243,8 @@ impl Studio {
                             .border_color(rgb(p.strong))
                             .bg(rgb(p.control))
                             .text_color(rgb(if self.wrap { p.ink } else { p.muted }))
-                            .label("↩")
+                            .child(Icon::new(IconName::TextWrap).size(px(16.)))
+                            .accessibility_label("Toggle soft wrap")
                             .toggled(self.wrap)
                             .tooltip(if self.wrap {
                                 "Soft wrap: on"
@@ -753,7 +754,7 @@ impl Studio {
                                 } else {
                                     IconName::Sun
                                 })
-                                .size(px(13.)),
+                                .size(px(16.)),
                             )
                             .accessibility_label(if p.light {
                                 "Use dark interface"
@@ -1230,11 +1231,21 @@ impl Studio {
                     )
                     .children(
                         [
-                            ("decrease-font-size", "−", "Decrease font size", -1),
-                            ("increase-font-size", "+", "Increase font size", 1),
+                            (
+                                "decrease-font-size",
+                                IconName::Minus,
+                                "Decrease font size",
+                                -1,
+                            ),
+                            (
+                                "increase-font-size",
+                                IconName::Plus,
+                                "Increase font size",
+                                1,
+                            ),
                         ]
                         .into_iter()
-                        .map(|(id, label, description, delta)| {
+                        .map(|(id, icon, description, delta)| {
                             Button::new(id)
                                 .outline()
                                 .xsmall()
@@ -1244,7 +1255,7 @@ impl Studio {
                                 .border_color(rgb(p.strong))
                                 .bg(rgb(p.control))
                                 .text_color(rgb(p.ink))
-                                .label(label)
+                                .child(Icon::new(icon).size(px(16.)))
                                 .accessibility_label(description)
                                 .tooltip(description)
                                 .disabled(value == Some(if delta < 0 { 8 } else { 72 }))
@@ -1320,7 +1331,7 @@ impl Studio {
                                 .size(px(26.))
                                 .flex_shrink_0()
                                 .p_0()
-                                .label("↺")
+                                .child(Icon::new(IconName::RotateCcw).size(px(16.)))
                                 .accessibility_label(if comments {
                                     "Reset comment typeface"
                                 } else {
@@ -1366,7 +1377,7 @@ impl Studio {
                             .xsmall()
                             .size(px(18.))
                             .p_0()
-                            .child(Icon::new(IconName::ChevronDown).size(px(12.)))
+                            .child(Icon::new(IconName::ChevronDown).size(px(14.)))
                             .accessibility_label("Padding presets")
                             .tooltip("Choose padding or type an exact value")
                             .dropdown_menu_with_anchor(Anchor::TopRight, move |mut menu, _, cx| {
@@ -1403,7 +1414,7 @@ impl Studio {
                     .xsmall()
                     .size(px(24.))
                     .p_0()
-                    .child(Icon::new(IconName::SlidersHorizontal).size(px(13.)))
+                    .child(Icon::new(IconName::SlidersHorizontal).size(px(16.)))
                     .accessibility_label("Advanced export settings")
                     .tooltip("Advanced export settings"),
             )
@@ -1530,7 +1541,7 @@ impl Studio {
                                                 .size(px(26.))
                                                 .flex_shrink_0()
                                                 .p_0()
-                                                .label("↺")
+                                                .child(Icon::new(IconName::RotateCcw).size(px(16.)))
                                                 .accessibility_label(
                                                     "Use theme default line numbers",
                                                 )

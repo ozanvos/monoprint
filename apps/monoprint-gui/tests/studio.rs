@@ -899,7 +899,7 @@ mod macos {
                 assert_eq!(open.size, size(px(26.), px(26.)));
                 assert_eq!(paste.size, open.size);
                 assert_eq!(language.size.height, px(26.));
-                assert!(language.size.width <= px(80.));
+                assert!(language.size.width <= px(160.));
                 assert!(language.size.width >= px(40.));
                 assert_eq!(language.center().y, open.center().y);
                 assert_eq!(language.center().y, paste.center().y);
@@ -962,6 +962,12 @@ mod macos {
                     assert!(open.right() < paste.left());
                     assert!(paste.right() < language.left());
                     assert!(language.size.width >= px(40.));
+                    if expected >= 320. {
+                        assert!(
+                            language.size.width >= px(120.),
+                            "{label}: leave enough text space for JavaScript and TypeScript"
+                        );
+                    }
                     assert!(
                         (f32::from(source_right) - expected).abs() < 1.,
                         "{label}: {source_right:?}"

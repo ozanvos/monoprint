@@ -896,12 +896,20 @@ impl Studio {
             .map(PathBuf::from)
             .or_else(|| std::env::var_os("HOME").map(PathBuf::from))
             .unwrap_or_else(|| PathBuf::from("."));
-        let dialog = cx.prompt_for_new_path(&directory, Some(&document.suggested_name()));
         let renderer = self.renderer.clone();
         self.exporting = true;
         cx.notify();
         cx.spawn_in(window, async move |this, cx| {
             let result = async {
+                let (document, directory, name) = cx
+                    .background_executor()
+                    .spawn(async move {
+                        let name = document.suggested_name(&directory)?;
+                        Ok::<_, anyhow::Error>((document, directory, name))
+                    })
+                    .await?;
+                let dialog =
+                    this.update(cx, |_, cx| cx.prompt_for_new_path(&directory, Some(&name)))?;
                 let Some(path) = dialog.await?? else {
                     return Ok(None);
                 };

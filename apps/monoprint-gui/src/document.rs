@@ -248,13 +248,37 @@ impl Document {
             self.light = theme.default_appearance() == Appearance::Light;
         }
     }
-    pub fn suggested_name(&self) -> String {
+    /// Suggest a free filename without creating or changing anything on disk.
+    pub fn suggested_name(&self, directory: &Path) -> Result<String> {
         let name = Path::new(&self.title)
             .file_stem()
             .and_then(|s| s.to_str())
             .filter(|s| !s.is_empty())
             .unwrap_or("monoprint");
-        format!("{name}.{}", self.format.extension())
+        let extension = self.format.extension();
+        let mut number = 1_u64;
+        loop {
+            let candidate = if number == 1 {
+                format!("{name}.{extension}")
+            } else {
+                format!("{name}-{number}.{extension}")
+            };
+            // A directory or dangling symlink also occupies the name.
+            match fs::symlink_metadata(directory.join(&candidate)) {
+                Err(error) if error.kind() == std::io::ErrorKind::NotFound => {
+                    return Ok(candidate);
+                }
+                Err(error) => {
+                    return Err(error).with_context(|| {
+                        format!(
+                            "Could not check export filenames in {}",
+                            directory.display()
+                        )
+                    });
+                }
+                Ok(_) => number += 1,
+            }
+        }
     }
 }
 
@@ -619,6 +643,51 @@ mod tests {
             }
         }
     }
+    #[test]
+    fn export_suggestions_keep_previous_files_and_follow_title_and_format() {
+        let dir = tempfile::tempdir().unwrap();
+        for (title, stem) in [("", "monoprint"), ("src/example.test.ts", "example.test")] {
+            for format in [Format::Png, Format::Svg, Format::Html] {
+                let doc = Document {
+                    title: title.into(),
+                    format,
+                    ..Default::default()
+                };
+                let extension = format.extension();
+                for suffix in ["", "-2", "-3"] {
+                    let expected = format!("{stem}{suffix}.{extension}");
+                    assert_eq!(doc.suggested_name(dir.path()).unwrap(), expected);
+                    // Cancelling the panel doesn't reserve or consume a name.
+                    assert_eq!(doc.suggested_name(dir.path()).unwrap(), expected);
+                    assert!(!dir.path().join(&expected).exists());
+                    write_atomic(&dir.path().join(expected), b"previous export").unwrap();
+                }
+                assert_eq!(
+                    fs::read(dir.path().join(format!("{stem}.{extension}"))).unwrap(),
+                    b"previous export"
+                );
+                let other = tempfile::tempdir().unwrap();
+                assert_eq!(
+                    doc.suggested_name(other.path()).unwrap(),
+                    format!("{stem}.{extension}")
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn export_suggestions_skip_directories_and_dangling_symlinks() {
+        let dir = tempfile::tempdir().unwrap();
+        fs::create_dir(dir.path().join("monoprint.png")).unwrap();
+        let doc = Document::default();
+        assert_eq!(doc.suggested_name(dir.path()).unwrap(), "monoprint-2.png");
+        #[cfg(unix)]
+        {
+            std::os::unix::fs::symlink("missing", dir.path().join("monoprint-2.png")).unwrap();
+            assert_eq!(doc.suggested_name(dir.path()).unwrap(), "monoprint-3.png");
+        }
+    }
+
     #[test]
     fn output_extension_never_redirects_an_approved_overwrite() {
         let dir = tempfile::tempdir().unwrap();
