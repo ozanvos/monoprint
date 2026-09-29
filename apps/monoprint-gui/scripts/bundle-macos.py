@@ -45,6 +45,13 @@ fonts = resources / 'licenses/fonts'
 fonts.mkdir(exist_ok=True)
 for path in (root / 'assets/fonts').glob('*-OFL.txt'):
     shutil.copy2(path, fonts / path.name)
+# Fallback fonts are embedded in the executable; ship their provenance and
+# license texts without duplicating the large font binaries in Resources.
+fallback = root / 'assets/fonts/fallback'
+for path in [fallback / 'manifest.json', fallback / 'NOTICE.txt', *fallback.rglob('*-OFL.txt')]:
+    destination = fonts / 'fallback' / path.relative_to(fallback)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(path, destination)
 # Additional native UI dependencies have their own lockfile and provenance.
 inventory = []
 notices = []

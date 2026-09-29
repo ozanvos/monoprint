@@ -238,7 +238,7 @@ impl Snippet {
 /// A reusable visual style. Clone it to derive variations for other images.
 ///
 /// Defaults: Candy, dark, opaque background, 64px padding, automatic width with
-/// a 520px minimum, theme-default line numbers, and the theme's bundled font.
+/// a 520px minimum, theme-default line numbers, and the theme's bundled font at 15px.
 /// Setters are infallible; rendering validates the complete configuration.
 #[derive(Clone)]
 pub struct Style {
@@ -247,6 +247,7 @@ pub struct Style {
     pub(crate) background: Background,
     pub(crate) padding: u32,
     pub(crate) width: Option<u32>,
+    pub(crate) font_size: u32,
     pub(crate) line_numbers: LineNumbers,
     pub(crate) font: Option<Font>,
     pub(crate) comment_font: Option<Font>,
@@ -261,6 +262,7 @@ impl fmt::Debug for Style {
             .field("background", &self.background)
             .field("padding", &self.padding)
             .field("width", &self.width)
+            .field("font_size", &self.font_size)
             .field("line_numbers", &self.line_numbers)
             .field("font", &self.font)
             .field("comment_font", &self.comment_font)
@@ -276,6 +278,7 @@ impl Default for Style {
             background: Background::Theme,
             padding: 64,
             width: None,
+            font_size: 15,
             line_numbers: LineNumbers::Auto,
             font: None,
             comment_font: None,
@@ -294,10 +297,11 @@ impl Style {
         }
     }
     /// Change the theme, retaining the appearance if supported and other settings.
+    /// Explicit legacy palette IDs select their original preferred appearance.
     #[must_use]
     pub fn theme(mut self, theme: Theme) -> Self {
         self.theme = theme;
-        if !theme.supports(self.appearance) {
+        if theme != theme.canonical() || !theme.supports(self.appearance) {
             self.appearance = theme.default_appearance();
         }
         self.reset_mixed_fonts();
@@ -349,6 +353,14 @@ impl Style {
     #[must_use]
     pub fn line_numbers(mut self, numbers: LineNumbers) -> Self {
         self.line_numbers = numbers;
+        self
+    }
+    /// Code and comment size in CSS pixels, from 8 through 72 (default 15).
+    /// Line numbers and line height scale with it; frame labels stay unchanged.
+    /// PNG [`Scale`] controls output resolution independently of this setting.
+    #[must_use]
+    pub fn font_size(mut self, pixels: u32) -> Self {
+        self.font_size = pixels;
         self
     }
     /// Override only the code font. Theme label fonts remain embedded.

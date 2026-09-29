@@ -1,0 +1,43 @@
+MONOPRINT FALLBACK FONT NOTICES
+Fonts are unmodified and remain under SIL OFL-1.1. See the referenced full license files.
+Original font metadata, including copyright and license statements, remains embedded.
+
+Noto Color Emoji — noto-color-emoji.ttf
+Copyright 2022 Google Inc.
+License: noto-emoji-OFL.txt
+Source: https://raw.githubusercontent.com/googlefonts/noto-emoji/e20cbc2bbec1926686be9f9bee7d1d2cfa1fea0e/2D/fonts/NotoColorEmoji.ttf
+
+Noto Sans CJK SC — noto-sans-cjk-sc.otf
+© 2014-2021 Adobe (http://www.adobe.com/).
+License: noto-cjk-OFL.txt
+Source: https://raw.githubusercontent.com/notofonts/noto-cjk/f8d157532fbfaeda587e826d4cd5b21a49186f7c/Sans/OTF/SimplifiedChinese/NotoSansCJKsc-Regular.otf
+
+Noto Sans — noto-sans.ttf
+Copyright 2015-2021 Google LLC. All Rights Reserved.
+License: noto-fonts-OFL.txt
+Source: https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSans/NotoSans-Regular.ttf
+
+Noto Sans Symbols2 — noto-sans-symbols2.ttf
+Copyright 2017 Google Inc. All Rights Reserved.
+License: noto-fonts-OFL.txt
+Source: https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSansSymbols2/NotoSansSymbols2-Regular.ttf
+
+Noto Sans Arabic — noto-sans-arabic.ttf
+Copyright 2015-2021 Google LLC. All Rights Reserved.
+License: noto-fonts-OFL.txt
+Source: https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSansArabic/NotoSansArabic-Regular.ttf
+
+Noto Sans Devanagari — noto-sans-devanagari.ttf
+Copyright 2015-2022 Google Inc. All Rights Reserved.
+License: noto-fonts-OFL.txt
+Source: https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSansDevanagari/NotoSansDevanagari-Regular.ttf
+
+Noto Sans Hebrew — noto-sans-hebrew.ttf
+Copyright 2019 Google Inc. All Rights Reserved.
+License: noto-fonts-OFL.txt
+Source: https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSansHebrew/NotoSansHebrew-Regular.ttf
+
+Noto Sans Thai — noto-sans-thai.ttf
+Copyright 2016 Google Inc. All Rights Reserved.
+License: noto-fonts-OFL.txt
+Source: https://raw.githubusercontent.com/notofonts/noto-fonts/ffebf8c1ee449e544955a7e813c54f9b73848eac/hinted/ttf/NotoSansThai/NotoSansThai-Regular.ttf

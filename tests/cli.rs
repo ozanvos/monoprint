@@ -94,7 +94,7 @@ fn errors_are_clear_and_leave_no_output() {
         failure(w.run(&args, "hello"), message);
         assert!(!w.0.join("out.png").exists());
     }
-    failure(w.run(&["-o", "out.png"], "Hello 🦀"), "U+1F980");
+    failure(w.run(&["-o", "out.png"], "Hello \u{10ffff}"), "U+10FFFF");
 }
 
 #[test]
@@ -150,8 +150,7 @@ fn custom_fonts_are_bounded_and_titles_use_their_actual_font() {
 
     let space = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/fonts/space-mono.ttf");
     let inter = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/fonts/inter.ttf");
-    // Space Mono lacks Cyrillic while Inter has it. These titles follow CodeMono,
-    // including a user override; Candy's title stays Inter when code uses Space Mono.
+    // Missing characters fail only after fallback; Cyrillic title text is supported.
     for theme in ["removed-frame", "removed-frame"] {
         for format in ["png", "svg", "html"] {
             failure(
@@ -162,7 +161,7 @@ fn custom_fonts_are_bounded_and_titles_use_their_actual_font() {
                         "--font-file",
                         space.to_str().unwrap(),
                         "--title",
-                        "Привет.rs",
+                        "\u{10ffff}.rs",
                         "-o",
                         "-",
                         "--format",
@@ -170,7 +169,7 @@ fn custom_fonts_are_bounded_and_titles_use_their_actual_font() {
                     ],
                     "x",
                 ),
-                "title font cannot display 'П' (U+041F)",
+                "U+10FFFF",
             );
         }
         success(w.run(
@@ -282,7 +281,7 @@ fn advanced_typography_and_text_highlights_reach_every_export() {
         assert!(!bytes.is_empty());
         if format == "html" {
             let html = String::from_utf8(bytes).unwrap();
-            assert!(html.contains("font-family:CommentFont;"));
+            assert!(html.contains("font-family:var(--monoprint-comment-font,CommentFont);"));
             assert!(html.contains("class=\"highlighted-text\""));
         }
     }

@@ -6,7 +6,7 @@ Original code in this project is licensed under Apache-2.0; see `LICENSE`. This 
 | --- | --- |
 | legacy frames theme definitions, CSS, frame templates, images | MIT; `licenses/legacy-frames-MIT.txt`, pinned source and modifications in `licenses/legacy-frames-provenance.json` |
 | Curated editor themes and SynthWave '84 token glow | MIT; exact input revisions and hashes in `assets/editor/sources.json` and `licenses/editor-themes-provenance.json`; preserved notices in `licenses/editor-themes-NOTICE.txt`. Companion backgrounds are original Monoprint designs; no upstream wallpapers or logos are included. |
-| Bundled font files | SIL OFL-1.1; individual `assets/fonts/*-OFL.txt` files and font source/checksum manifest |
+| Bundled font files | SIL OFL-1.1; individual `assets/fonts/*-OFL.txt` files and font source/checksum manifest. The separate automatic fallback set retains exact OFL texts, original copyright notices and immutable source/checksum records in `assets/fonts/fallback/`; see `docs/font-fallback.md`. |
 | Giallo 0.5.2 | EUPL-1.2; `licenses/giallo-EUPL-1.2.txt`, unchanged dependency source available from the exact crate URL in the dependency inventory |
 | TextMate grammar collection | Reviewed license records in `licenses/grammar-policy.json`; full texts in `licenses/grammars-NOTICE.txt`; pinned sources and input checksums in the policy and `assets/grammar-provenance.json` |
 | Optional desktop GUI | GPUI Kit 0.6.6 and its component/base crates are Apache-2.0; native UI dependencies retain their own licenses. The macOS bundle script preserves an additional locked inventory and packaged notices in `Contents/Resources/licenses/gui-*`. GUI dependencies are isolated from the renderer workspace. |
@@ -20,4 +20,4 @@ The embedded Giallo registry is generated data built from the pinned grammar and
 
 Keep these notices, the font licenses, and access to the exact corresponding dependency/grammar sources with release artifacts. No public binary release has been made from this workspace.
 
-Monoprint keeps legacy frames attribution in the project, source provenance and distribution notices. It does not add a legacy frames watermark, caption, or attribution notice to generated PNG, SVG or HTML exports.
+Noto fallback fonts remain unmodified under SIL OFL-1.1. Preserve `assets/fonts/fallback/NOTICE.txt`, its three `*-OFL.txt` files and `manifest.json` with distributions. The OFL does not place generated documents under the font license or require visible attribution on exported images. Original copyright and license metadata inside the font files is retained.

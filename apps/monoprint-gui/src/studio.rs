@@ -90,6 +90,34 @@ pub struct HighlightMenu {
     pub anchor: Bounds<Pixels>,
 }
 
+#[derive(Clone, Copy)]
+pub enum InspectorSection {
+    Theme,
+    Typeface,
+    Frame,
+    Export,
+}
+
+impl InspectorSection {
+    pub fn title(self) -> &'static str {
+        match self {
+            Self::Theme => "Theme",
+            Self::Typeface => "Typeface",
+            Self::Frame => "Frame",
+            Self::Export => "Export",
+        }
+    }
+
+    pub fn id(self) -> &'static str {
+        match self {
+            Self::Theme => "section-theme",
+            Self::Typeface => "section-typeface",
+            Self::Frame => "section-frame",
+            Self::Export => "section-export",
+        }
+    }
+}
+
 pub struct Studio {
     pub document: Document,
     pub editor: Entity<EditorState>,
@@ -97,9 +125,11 @@ pub struct Studio {
     pub source_marks: TextDecorationCollection,
     pub highlight_menu: Option<HighlightMenu>,
     pub settings_scroll: ScrollHandle,
+    pub open_sections: [bool; 4],
     pub source_split: Entity<ResizableState>,
     pub width: Entity<InputState>,
     pub padding: Entity<InputState>,
+    pub font_size: Entity<InputState>,
     pub language: Entity<Choices>,
     pub code_typeface: Entity<Choices>,
     pub comment_typeface: Entity<Choices>,
@@ -107,7 +137,7 @@ pub struct Studio {
     pub theme_scroll: UniformListScrollHandle,
     pub filtered_themes: Vec<usize>,
     pub focus: FocusHandle,
-    pub preview: Option<(Arc<Image>, Preview)>,
+    pub preview: Option<Preview>,
     pub revision: u64,
     pub preview_revision: u64,
     pub error: Option<String>,
@@ -164,6 +194,7 @@ impl Studio {
         });
         let width = input(&document.width, "Auto", window, cx);
         let padding = input(&document.padding, "64", window, cx);
+        let font_size = input(&document.font_size, "15", window, cx);
         let mut languages = Language::all()
             .map(|l| Choice {
                 id: l.id().into(),
@@ -210,11 +241,9 @@ impl Studio {
                         this.preview_revision = completion.revision;
                         match completion.result {
                             Ok(preview) => {
-                                let image = Arc::new(Image::from_bytes(
-                                    ImageFormat::Png,
-                                    preview.png.clone(),
-                                ));
-                                this.preview = Some((image, preview));
+                                if let Some(previous) = this.preview.replace(preview) {
+                                    cx.drop_image(previous.image, None);
+                                }
                                 this.error = None;
                             }
                             Err(error) => {
@@ -237,6 +266,11 @@ impl Studio {
             }
         });
         let mut subscriptions = Vec::new();
+        subscriptions.push(cx.on_release(|this, cx| {
+            if let Some(preview) = this.preview.take() {
+                cx.drop_image(preview.image, None);
+            }
+        }));
         subscriptions.push(
             cx.subscribe_in(&editor, window, |this, entity, event, _, cx| {
                 if matches!(event, InputEvent::Change) {
@@ -299,7 +333,7 @@ impl Studio {
                 cx.notify();
             }
         }));
-        for (field, kind) in [(&title, 0), (&width, 1), (&padding, 2)] {
+        for (field, kind) in [(&title, 0), (&width, 1), (&padding, 2), (&font_size, 3)] {
             subscriptions.push(cx.subscribe_in(
                 field,
                 window,
@@ -311,7 +345,8 @@ impl Studio {
                     match kind {
                         0 => this.document.title = value,
                         1 => this.document.width = value,
-                        _ => this.document.padding = value,
+                        2 => this.document.padding = value,
+                        _ => this.document.font_size = value,
                     }
                     this.changed(cx);
                 },
@@ -373,9 +408,11 @@ impl Studio {
             source_marks,
             highlight_menu: None,
             settings_scroll: ScrollHandle::new(),
+            open_sections: [true, false, true, true],
             source_split: cx.new(|_| ResizableState::default()),
             width,
             padding,
+            font_size,
             language,
             code_typeface,
             comment_typeface,
@@ -433,7 +470,7 @@ impl Studio {
         position: Point<Pixels>,
         cx: &mut Context<Self>,
     ) {
-        let Some((_, preview)) = &self.preview else {
+        let Some(preview) = &self.preview else {
             return;
         };
         if self.canvas_resize.is_some() {
@@ -493,6 +530,7 @@ impl Studio {
     pub fn end_canvas_resize(&mut self, cx: &mut Context<Self>) {
         if let Some(resize) = &mut self.canvas_resize {
             resize.dragging = false;
+            self.worker.finish_live();
         }
         self.sync_canvas_resize();
         cx.notify();
@@ -503,7 +541,7 @@ impl Studio {
             return;
         };
         if resize.changed
-            && let Some((_, preview)) = &self.preview
+            && let Some(preview) = &self.preview
         {
             let width = px(preview.width as f32 / 2.);
             let height = px(preview.height as f32 / 2.);
@@ -530,7 +568,16 @@ impl Studio {
                     .is_none_or(|appearance| theme.supports(appearance))
                     && (theme.name().to_lowercase().contains(&query)
                         || theme.id().contains(&query)
-                        || theme.family().to_lowercase().contains(&query))
+                        || theme.family().to_lowercase().contains(&query)
+                        || theme.aliases().any(|alias| {
+                            alias.contains(&query)
+                                || alias
+                                    .parse::<Theme>()
+                                    .unwrap()
+                                    .name()
+                                    .to_lowercase()
+                                    .contains(&query)
+                        }))
             })
             .map(|(index, _)| index)
             .collect();

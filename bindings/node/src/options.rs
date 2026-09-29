@@ -13,6 +13,7 @@ struct Options {
     theme: Option<String>,
     appearance: Option<ColorMode>,
     padding: Option<u32>,
+    font_size: Option<u32>,
     width: Option<u32>,
     transparent: Option<bool>,
     background: Option<String>,
@@ -86,6 +87,9 @@ pub fn render(
     }
     if let Some(padding) = options.padding {
         style = style.padding(padding);
+    }
+    if let Some(font_size) = options.font_size {
+        style = style.font_size(font_size);
     }
     if let Some(width) = options.width {
         style = style.width(width);

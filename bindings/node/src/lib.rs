@@ -180,6 +180,7 @@ pub fn catalog() -> String {
                 .collect();
             serde_json::json!({ "id": theme.id(), "name": theme.name(), "family": theme.family(),
             "defaultAppearance": theme.default_appearance().to_string(), "appearances": appearances,
+            "aliases": theme.aliases().collect::<Vec<_>>(),
             "lineNumbers": { "toggleable": toggleable, "default": default } })
         })
         .collect();

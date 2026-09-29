@@ -35,6 +35,23 @@ pub struct EditorTheme {
     pub solid: String,
 }
 
+/// Curated preset identities, separate from the unchanged imported palettes.
+#[derive(Debug, Deserialize)]
+pub struct ThemePair {
+    pub id: String,
+    pub name: String,
+    pub dark: String,
+    pub light: String,
+}
+
+pub fn theme_pairs() -> &'static [ThemePair] {
+    static DATA: LazyLock<Vec<ThemePair>> = LazyLock::new(|| {
+        serde_json::from_str(include_str!("../assets/editor/pairs.json"))
+            .expect("bundled editor theme pairs")
+    });
+    &DATA
+}
+
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct Grammar {

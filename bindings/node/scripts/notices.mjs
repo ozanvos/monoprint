@@ -7,7 +7,9 @@ export async function prepareNotices(destination, targets) {
   for (const name of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) await fs.copyFile(path.join(root, name), path.join(destination, name));
   await fs.cp(path.join(root, 'licenses'), path.join(destination, 'licenses'), { recursive: true });
   await fs.cp(path.join(directory, 'licenses'), path.join(destination, 'licenses/node'), { recursive: true });
-  for (const file of ['docs/grammar-licenses.md', 'docs/grammar-license-validation.json', 'assets/fonts/manifest.json',
+  for (const file of ['docs/grammar-licenses.md', 'docs/grammar-license-validation.json', 'docs/font-fallback.md', 'assets/fonts/manifest.json',
+    'assets/fonts/fallback/manifest.json', 'assets/fonts/fallback/NOTICE.txt',
+    ...(await fs.readdir(path.join(root, 'assets/fonts/fallback'))).filter(n => n.endsWith('-OFL.txt')).map(n => `assets/fonts/fallback/${n}`),
     'assets/removed-frames/provenance.json', 'assets/editor/sources.json', 'assets/grammar-provenance.json', 'vendor/takumi-svg/PATCHES.md',
     'vendor/takumi-svg/LICENSE-MIT', 'vendor/takumi-svg/LICENSE-APACHE',
     'vendor/takumi-raster/PATCHES.md', 'vendor/takumi-raster/LICENSE-MIT', 'vendor/takumi-raster/LICENSE-APACHE',

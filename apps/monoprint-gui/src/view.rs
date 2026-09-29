@@ -5,6 +5,7 @@ use gpui_kit::assets::IconName;
 use gpui_kit::{
     component::{
         button::*,
+        collapsible::Collapsible,
         input::{Editor, Input},
         scroll::Scrollbar,
         select::Select,
@@ -437,7 +438,7 @@ impl Studio {
         )
     }
     fn preview_size(&self) -> Option<gpui_kit::Size<Pixels>> {
-        self.preview.as_ref().map(|(_, preview)| {
+        self.preview.as_ref().map(|preview| {
             size(
                 px(preview.width as f32 / 2.),
                 px(preview.height as f32 / 2.),
@@ -491,7 +492,7 @@ impl Studio {
                     }
                 }),
             );
-        if let Some((image, preview)) = &self.preview {
+        if let Some(preview) = &self.preview {
             let image_size = self.preview_size().unwrap();
             if self.canvas_resize.is_none() {
                 self.viewport.constrain_pan(image_size);
@@ -522,28 +523,26 @@ impl Studio {
                 .child(
                     div()
                         .absolute()
+                        .left(image_origin.x)
+                        .top(image_origin.y)
+                        .w(displayed.width)
+                        .h(displayed.height)
+                        .child(canvas_checker(p))
+                        // Keep the entire stale image visible. Only the outline
+                        // follows the pointer until decoded replacement pixels arrive.
+                        .child(
+                            img(preview.image.clone())
+                                .size_full()
+                                .object_fit(ObjectFit::Contain),
+                        ),
+                )
+                .child(
+                    div()
+                        .absolute()
                         .left(origin.x)
                         .top(origin.y)
                         .w(width)
                         .h(displayed.height)
-                        .child(
-                            div()
-                                .relative()
-                                .size_full()
-                                .overflow_hidden()
-                                .child(canvas_checker(p))
-                                // Keep the cached pixels at their natural scale until
-                                // the worker returns reflowed code for the new width.
-                                .child(
-                                    img(image.clone())
-                                        .absolute()
-                                        .left(image_origin.x - origin.x)
-                                        .top_0()
-                                        .w(displayed.width)
-                                        .h(displayed.height)
-                                        .object_fit(ObjectFit::Contain),
-                                ),
-                        )
                         .child(div().absolute().inset_0().border_1().border_color(
                             rgb(if active { p.accent } else { p.strong }).opacity(if active {
                                 1.
@@ -558,8 +557,8 @@ impl Studio {
                                 .w_full()
                                 .text_size(px(10.))
                                 .text_color(rgb(p.muted))
-                                .child(if active && self.revision != self.preview_revision {
-                                    format!("{} px wide · Updating…", self.document.width)
+                                .child(if active {
+                                    format!("{} px wide", self.document.width)
                                 } else {
                                     format!("{} × {}", preview.width / 2, preview.height / 2)
                                 }),
@@ -569,40 +568,56 @@ impl Studio {
                 ("resize-image-left", ResizeEdge::Left, origin.x),
                 ("resize-image-right", ResizeEdge::Right, origin.x + width),
             ] {
+                let dragging = self
+                    .canvas_resize
+                    .as_ref()
+                    .is_some_and(|resize| resize.is_dragging_edge(edge));
                 stage = stage.child(
                     div()
-                        .id(id)
+                        .group(id)
                         .absolute()
-                        .left(x - px(12.))
-                        .top(origin.y + handle_y - px(22.))
-                        .w(px(24.))
-                        .h(px(44.))
+                        .left(x - px(24.))
+                        .top(origin.y + handle_y - px(36.))
+                        .w(px(48.))
+                        .h(px(72.))
                         .flex()
                         .items_center()
                         .justify_center()
-                        .cursor(CursorStyle::ResizeLeftRight)
-                        .aria_label("Resize image width")
-                        .tooltip(|window, cx| {
-                            Tooltip::new("Drag to resize image width · height follows code")
-                                .build(window, cx)
-                        })
                         .child(
                             div()
-                                .w(px(7.))
-                                .h(px(28.))
-                                .rounded(px(4.))
-                                .bg(rgb(p.control))
-                                .border_1()
-                                .border_color(rgb(p.accent)),
-                        )
-                        .on_mouse_down(
-                            MouseButton::Left,
-                            cx.listener(move |this, event: &MouseDownEvent, _, cx| {
-                                this.begin_canvas_resize(edge, event.position, cx);
-                                cx.stop_propagation();
-                            }),
-                        )
-                        .test_support(),
+                                .id(id)
+                                .w(px(24.))
+                                .h(px(44.))
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .cursor(CursorStyle::ResizeLeftRight)
+                                .aria_label("Resize image width")
+                                .tooltip(|window, cx| {
+                                    Tooltip::new("Drag to resize image width · height follows code")
+                                        .build(window, cx)
+                                })
+                                .child(
+                                    div()
+                                        .w(px(7.))
+                                        .h(px(28.))
+                                        .rounded(px(4.))
+                                        .bg(rgb(p.control))
+                                        .border_1()
+                                        .border_color(rgb(p.accent))
+                                        .when(!dragging, |grip| {
+                                            grip.invisible().group_hover(id, |grip| grip.visible())
+                                        }),
+                                )
+                                .on_mouse_down(
+                                    MouseButton::Left,
+                                    cx.listener(move |this, event: &MouseDownEvent, _, cx| {
+                                        this.begin_canvas_resize(edge, event.position, cx);
+                                        cx.stop_propagation();
+                                    }),
+                                )
+                                .test_support(),
+                        ),
                 );
             }
         } else {
@@ -692,11 +707,11 @@ impl Studio {
             .theme
             .parse::<ImageTheme>()
             .unwrap_or_default();
-        let busy = self.revision != self.preview_revision;
+        let busy = self.canvas_resize.is_some() || self.revision != self.preview_revision;
         let dimensions = self
             .preview
             .as_ref()
-            .map(|(_, p)| {
+            .map(|p| {
                 format!(
                     "{} × {} px",
                     p.width / 2 * self.document.scale,
@@ -711,7 +726,7 @@ impl Studio {
         } else {
             self.preview
                 .as_ref()
-                .map(|(_, p)| format!("Ready · {:.0} ms", p.elapsed.as_secs_f64() * 1000.))
+                .map(|p| format!("Ready · {:.0} ms", p.elapsed.as_secs_f64() * 1000.))
                 .unwrap_or_else(|| "Ready".into())
         };
         div()
@@ -866,6 +881,47 @@ impl Studio {
                     }),
             )
     }
+    fn section_header(
+        &self,
+        section: InspectorSection,
+        detail: impl Into<SharedString>,
+        cx: &Context<Self>,
+    ) -> impl IntoElement {
+        let p = palette(cx);
+        let open = self.open_sections[section as usize];
+        let on_change = cx.listener(move |this, open: &bool, _, cx| {
+            this.open_sections[section as usize] = *open;
+            cx.notify();
+        });
+        gpui_kit::base::AccordionTrigger::new(section.id())
+            .open(open)
+            .aria_label(format!("{} settings", section.title()))
+            .cursor_pointer()
+            .h(px(24.))
+            .w_full()
+            .flex()
+            .items_center()
+            .gap(px(6.))
+            .text_color(rgb(p.muted))
+            .hover(|style| style.text_color(rgb(p.ink)))
+            .child(
+                Icon::new(if open {
+                    IconName::ChevronDown
+                } else {
+                    IconName::ChevronRight
+                })
+                .size(px(12.)),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .text_size(px(10.))
+                    .child(section.title().to_uppercase()),
+            )
+            .child(div().text_size(px(11.)).truncate().child(detail.into()))
+            .on_change(move |open, _, window, cx| on_change(&open, window, cx))
+    }
+
     fn theme_gallery(&self, cx: &Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         let theme = self
@@ -896,121 +952,115 @@ impl Studio {
         )
         .size_full()
         .track_scroll(&self.theme_scroll);
-        div()
-            .flex()
-            .flex_col()
-            .flex_shrink_0()
-            .gap(px(9.))
-            .px(px(13.))
-            .pt(px(13.))
-            .pb(px(17.))
-            .border_b_1()
-            .border_color(rgb(p.border))
-            .child(
+        settings_section(p)
+            .open(self.open_sections[InspectorSection::Theme as usize])
+            .child(self.section_header(InspectorSection::Theme, theme.name(), cx))
+            .content(
                 div()
                     .flex()
-                    .items_center()
-                    .justify_between()
-                    .child(section(p, "Theme"))
+                    .flex_col()
+                    .gap(px(9.))
                     .child(
+                        div().flex().items_center().justify_end().child(
+                            segments(p).children(
+                                [
+                                    ("themes-all", "all", ThemeFilter::All),
+                                    ("themes-light", "light", ThemeFilter::Light),
+                                    ("themes-dark", "dark", ThemeFilter::Dark),
+                                ]
+                                .into_iter()
+                                .map(|(id, label, filter)| {
+                                    segment(p, id)
+                                        .label(label)
+                                        .selected(self.theme_filter == filter)
+                                        .toggled(self.theme_filter == filter)
+                                        .on_click(cx.listener(move |this, _, _, cx| {
+                                            this.theme_filter = filter;
+                                            this.filter_themes(cx);
+                                        }))
+                                }),
+                            ),
+                        ),
+                    )
+                    .child(
+                        text_input(p, &self.theme_search)
+                            .cleanable(true)
+                            .prefix(Icon::new(IconName::Search).size(px(13.)))
+                            .aria_label("Find a theme")
+                            .suffix(
+                                div()
+                                    .text_size(px(10.))
+                                    .text_color(rgb(p.muted))
+                                    .child(count.to_string()),
+                            ),
+                    )
+                    .child(
+                        div()
+                            .id("theme-gallery-viewport")
+                            .relative()
+                            .h(px(212.))
+                            .w_full()
+                            .overflow_hidden()
+                            .when(count > 0, |view| {
+                                view.child(gallery)
+                                    .child(Scrollbar::vertical(&self.theme_scroll))
+                            })
+                            .when(count == 0, |view| {
+                                view.child(
+                                    div()
+                                        .size_full()
+                                        .flex()
+                                        .flex_col()
+                                        .items_center()
+                                        .justify_center()
+                                        .gap_2()
+                                        .text_size(px(12.))
+                                        .text_color(rgb(p.muted))
+                                        .child("No matching themes")
+                                        .child(
+                                            Button::new("clear-theme-search")
+                                                .ghost()
+                                                .small()
+                                                .label("Clear search")
+                                                .on_click(cx.listener(|this, _, window, cx| {
+                                                    this.theme_search.update(cx, |input, cx| {
+                                                        input.replace_all("", window, cx)
+                                                    });
+                                                })),
+                                        ),
+                                )
+                            }),
+                    )
+                    .child(row(
+                        p,
+                        "Appearance",
                         segments(p).children(
                             [
-                                ("themes-all", "all", ThemeFilter::All),
-                                ("themes-light", "light", ThemeFilter::Light),
-                                ("themes-dark", "dark", ThemeFilter::Dark),
+                                ("light-appearance", "light", Appearance::Light),
+                                ("dark-appearance", "dark", Appearance::Dark),
                             ]
                             .into_iter()
-                            .map(|(id, label, filter)| {
+                            .map(|(id, label, appearance)| {
+                                let light = appearance == Appearance::Light;
+                                let supported = theme.supports(appearance);
                                 segment(p, id)
                                     .label(label)
-                                    .selected(self.theme_filter == filter)
-                                    .toggled(self.theme_filter == filter)
+                                    .selected(self.document.light == light)
+                                    .toggled(self.document.light == light)
+                                    .disabled(!supported)
+                                    .tooltip(if supported {
+                                        format!("Use the {label} variant")
+                                    } else {
+                                        format!("This theme has no {label} variant")
+                                    })
                                     .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.theme_filter = filter;
-                                        this.filter_themes(cx);
+                                        this.document.light = light;
+                                        this.changed(cx);
                                     }))
                             }),
                         ),
-                    ),
+                    )),
             )
-            .child(
-                text_input(p, &self.theme_search)
-                    .cleanable(true)
-                    .prefix(Icon::new(IconName::Search).size(px(13.)))
-                    .aria_label("Find a theme")
-                    .suffix(
-                        div()
-                            .text_size(px(10.))
-                            .text_color(rgb(p.muted))
-                            .child(count.to_string()),
-                    ),
-            )
-            .child(
-                div()
-                    .id("theme-gallery-viewport")
-                    .relative()
-                    .h(px(212.))
-                    .w_full()
-                    .overflow_hidden()
-                    .when(count > 0, |view| {
-                        view.child(gallery)
-                            .child(Scrollbar::vertical(&self.theme_scroll))
-                    })
-                    .when(count == 0, |view| {
-                        view.child(
-                            div()
-                                .size_full()
-                                .flex()
-                                .flex_col()
-                                .items_center()
-                                .justify_center()
-                                .gap_2()
-                                .text_size(px(12.))
-                                .text_color(rgb(p.muted))
-                                .child("No matching themes")
-                                .child(
-                                    Button::new("clear-theme-search")
-                                        .ghost()
-                                        .small()
-                                        .label("Clear search")
-                                        .on_click(cx.listener(|this, _, window, cx| {
-                                            this.theme_search.update(cx, |input, cx| {
-                                                input.replace_all("", window, cx)
-                                            });
-                                        })),
-                                ),
-                        )
-                    }),
-            )
-            .child(row(
-                p,
-                "Appearance",
-                segments(p).children(
-                    [
-                        ("light-appearance", "light", Appearance::Light),
-                        ("dark-appearance", "dark", Appearance::Dark),
-                    ]
-                    .into_iter()
-                    .map(|(id, label, appearance)| {
-                        let light = appearance == Appearance::Light;
-                        let supported = theme.supports(appearance);
-                        segment(p, id)
-                            .label(label)
-                            .selected(self.document.light == light)
-                            .toggled(self.document.light == light)
-                            .disabled(!supported)
-                            .tooltip(if supported {
-                                format!("Use the {label} variant")
-                            } else {
-                                format!("This theme has no {label} variant")
-                            })
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.document.light = light;
-                                this.changed(cx);
-                            }))
-                    }),
-                ),
-            ))
     }
 
     fn theme_tile(&self, index: usize, cx: &Context<Self>) -> impl IntoElement {
@@ -1086,11 +1136,12 @@ impl Studio {
     fn typography_settings(&self, cx: &Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         settings_section(p)
-            .child(div().flex().items_center().justify_between()
-                .child(section(p, "Typeface"))
-                .child(div().text_size(px(11.)).text_color(rgb(p.muted)).child("10 faces")))
+            .open(self.open_sections[InspectorSection::Typeface as usize])
+            .child(self.section_header(InspectorSection::Typeface, "10 faces", cx))
+            .content(div().flex().flex_col().gap(px(9.))
             .child(self.font_control(false, cx))
             .child(self.font_control(true, cx))
+            .child(self.font_size_control(cx))
             .child(row(p, "Coding ligatures", Switch::new("coding-ligatures").small()
                 .accessibility_label("Coding ligatures")
                 .tooltip("Combine supported code symbols, such as => and !=. Depends on the selected typeface.")
@@ -1098,7 +1149,80 @@ impl Studio {
                 .on_change(cx.listener(|this, value, _, cx| {
                     this.document.ligatures = *value;
                     this.changed(cx);
-                }))))
+                })))))
+    }
+
+    fn font_size_control(&self, cx: &Context<Self>) -> impl IntoElement {
+        let p = palette(cx);
+        let value = self.document.font_size.trim().parse::<i32>().ok();
+        div()
+            .flex()
+            .items_center()
+            .gap(px(9.))
+            .child(
+                div()
+                    .flex_shrink_0()
+                    .w(px(64.))
+                    .text_size(px(11.))
+                    .text_color(rgb(p.ink2))
+                    .child("Size"),
+            )
+            .child(
+                div()
+                    .flex_1()
+                    .min_w_0()
+                    .flex()
+                    .items_center()
+                    .gap(px(5.))
+                    .child(
+                        text_input(p, &self.font_size)
+                            .id("font-size")
+                            .flex_1()
+                            .min_w_0()
+                            .aria_label("Font size")
+                            .suffix(
+                                div()
+                                    .text_color(rgb(p.muted))
+                                    .text_size(px(11.))
+                                    .child("px"),
+                            ),
+                    )
+                    .children(
+                        [
+                            ("decrease-font-size", "−", "Decrease font size", -1),
+                            ("increase-font-size", "+", "Increase font size", 1),
+                        ]
+                        .into_iter()
+                        .map(|(id, label, description, delta)| {
+                            Button::new(id)
+                                .outline()
+                                .xsmall()
+                                .size(px(26.))
+                                .flex_shrink_0()
+                                .p_0()
+                                .border_color(rgb(p.strong))
+                                .bg(rgb(p.control))
+                                .text_color(rgb(p.ink))
+                                .label(label)
+                                .accessibility_label(description)
+                                .tooltip(description)
+                                .disabled(value == Some(if delta < 0 { 8 } else { 72 }))
+                                .on_click(cx.listener(move |this, _, window, cx| {
+                                    let next = this
+                                        .document
+                                        .font_size
+                                        .trim()
+                                        .parse::<i32>()
+                                        .unwrap_or(15)
+                                        .saturating_add(delta)
+                                        .clamp(8, 72);
+                                    this.font_size.update(cx, |state, cx| {
+                                        state.replace_all(next.to_string(), window, cx);
+                                    });
+                                }))
+                        }),
+                    ),
+            )
     }
 
     fn font_control(&self, comments: bool, cx: &Context<Self>) -> impl IntoElement {
@@ -1211,188 +1335,203 @@ impl Studio {
                     .overflow_y_scroll()
                     .flex()
                     .flex_col()
-                    .child(self.typography_settings(cx))
                     .child(self.theme_gallery(cx))
+                    .child(self.typography_settings(cx))
                     .child(
                         settings_section(p)
-                            .child(section(p, "Frame"))
-                            .child(
+                            .open(self.open_sections[InspectorSection::Frame as usize])
+                            .child(self.section_header(InspectorSection::Frame, "", cx))
+                            .content(
                                 div()
                                     .flex()
+                                    .flex_col()
                                     .gap(px(9.))
                                     .child(
-                                        field(
-                                            p,
-                                            "Width",
-                                            text_input(p, &self.width)
-                                                .aria_label("Image width")
-                                                .suffix(
-                                                    div()
-                                                        .text_color(rgb(p.muted))
-                                                        .text_size(px(11.))
-                                                        .child("px"),
-                                                ),
-                                        )
-                                        .flex_1(),
-                                    )
-                                    .child(
-                                        field(
-                                            p,
-                                            "Padding",
-                                            text_input(p, &self.padding)
-                                                .aria_label("Image padding")
-                                                .suffix(
-                                                    div()
-                                                        .text_color(rgb(p.muted))
-                                                        .text_size(px(11.))
-                                                        .child("px"),
-                                                ),
-                                        )
-                                        .flex_1(),
-                                    ),
-                            )
-                            .child(segments(p).children([0u32, 16, 32, 64, 96].into_iter().map(
-                                |padding| {
-                                    segment(p, ("padding", padding))
-                                        .flex_1()
-                                        .label(padding.to_string())
-                                        .selected(self.document.padding == padding.to_string())
-                                        .on_click(cx.listener(move |this, _, window, cx| {
-                                            this.padding.update(cx, |state, cx| {
-                                                state.replace_all(padding.to_string(), window, cx)
-                                            });
-                                        }))
-                                },
-                            )))
-                            .child(field(
-                                p,
-                                "Backdrop",
-                                segments(p).children(Background::ALL.into_iter().map(
-                                    |background| {
-                                        let label = match background {
-                                            Background::Theme => "Theme",
-                                            Background::Solid => "Solid",
-                                            Background::Lattice => "Lattice",
-                                            Background::Halftone => "Halftone",
-                                            Background::None => "None",
-                                        };
-                                        segment(p, format!("background-{background}"))
-                                            .flex_1()
-                                            .px(px(2.))
-                                            .text_size(px(10.))
-                                            .min_w_0()
-                                            .label(label)
-                                            .selected(
-                                                self.document.background().ok() == Some(background),
+                                        div()
+                                            .flex()
+                                            .gap(px(9.))
+                                            .child(
+                                                field(
+                                                    p,
+                                                    "Width",
+                                                    text_input(p, &self.width)
+                                                        .aria_label("Image width")
+                                                        .suffix(
+                                                            div()
+                                                                .text_color(rgb(p.muted))
+                                                                .text_size(px(11.))
+                                                                .child("px"),
+                                                        ),
+                                                )
+                                                .flex_1(),
                                             )
-                                            .tooltip(if background == Background::None {
-                                                "Transparent canvas; keep the code window"
-                                            } else {
-                                                label
-                                            })
-                                            .on_click(cx.listener(move |this, _, _, cx| {
-                                                this.document.select_background(background);
+                                            .child(
+                                                field(
+                                                    p,
+                                                    "Padding",
+                                                    text_input(p, &self.padding)
+                                                        .aria_label("Image padding")
+                                                        .suffix(
+                                                            div()
+                                                                .text_color(rgb(p.muted))
+                                                                .text_size(px(11.))
+                                                                .child("px"),
+                                                        ),
+                                                )
+                                                .flex_1(),
+                                            ),
+                                    )
+                                    .child(segments(p).children(
+                                        [0u32, 16, 32, 64, 96].into_iter().map(|padding| {
+                                            segment(p, ("padding", padding))
+                                                .flex_1()
+                                                .label(padding.to_string())
+                                                .selected(
+                                                    self.document.padding == padding.to_string(),
+                                                )
+                                                .on_click(cx.listener(
+                                                    move |this, _, window, cx| {
+                                                        this.padding.update(cx, |state, cx| {
+                                                            state.replace_all(
+                                                                padding.to_string(),
+                                                                window,
+                                                                cx,
+                                                            )
+                                                        });
+                                                    },
+                                                ))
+                                        }),
+                                    ))
+                                    .child(field(
+                                        p,
+                                        "Backdrop",
+                                        segments(p).children(Background::ALL.into_iter().map(
+                                            |background| {
+                                                let label = match background {
+                                                    Background::Theme => "Theme",
+                                                    Background::Solid => "Solid",
+                                                    Background::Lattice => "Lattice",
+                                                    Background::Halftone => "Halftone",
+                                                    Background::None => "None",
+                                                };
+                                                segment(p, format!("background-{background}"))
+                                                    .flex_1()
+                                                    .px(px(2.))
+                                                    .text_size(px(10.))
+                                                    .min_w_0()
+                                                    .label(label)
+                                                    .selected(
+                                                        self.document.background().ok()
+                                                            == Some(background),
+                                                    )
+                                                    .tooltip(if background == Background::None {
+                                                        "Transparent canvas; keep the code window"
+                                                    } else {
+                                                        label
+                                                    })
+                                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                                        this.document.select_background(background);
+                                                        this.changed(cx);
+                                                    }))
+                                            },
+                                        )),
+                                    ))
+                                    .child(row(
+                                        p,
+                                        if numbers.is_some() {
+                                            "Line numbers · theme"
+                                        } else {
+                                            "Line numbers"
+                                        },
+                                        Switch::new("line-numbers")
+                                            .small()
+                                            .accessibility_label("Line numbers")
+                                            .checked(numbers.unwrap_or(self.document.numbers))
+                                            .disabled(numbers.is_some())
+                                            .on_change(cx.listener(|this, value, _, cx| {
+                                                this.document.numbers = *value;
                                                 this.changed(cx);
-                                            }))
-                                    },
-                                )),
-                            ))
-                            .child(row(
-                                p,
-                                if numbers.is_some() {
-                                    "Line numbers · theme"
-                                } else {
-                                    "Line numbers"
-                                },
-                                Switch::new("line-numbers")
-                                    .small()
-                                    .accessibility_label("Line numbers")
-                                    .checked(numbers.unwrap_or(self.document.numbers))
-                                    .disabled(numbers.is_some())
-                                    .on_change(cx.listener(|this, value, _, cx| {
-                                        this.document.numbers = *value;
-                                        this.changed(cx);
-                                    })),
-                            ))
-                            .child(field(
-                                p,
-                                "Window title",
-                                text_input(p, &self.title).aria_label("Window title"),
-                            )),
+                                            })),
+                                    ))
+                                    .child(field(
+                                        p,
+                                        "Window title",
+                                        text_input(p, &self.title).aria_label("Window title"),
+                                    )),
+                            ),
                     ),
             )
             .child(
-                div()
+                Collapsible::new()
+                    .open(self.open_sections[InspectorSection::Export as usize])
                     .px(px(13.))
                     .pt(px(12.))
                     .pb(px(13.))
                     .bg(p.chrome())
                     .border_t_1()
                     .border_color(rgb(p.border))
-                    .flex()
-                    .flex_col()
+                    .flex_shrink_0()
                     .gap(px(9.))
                     .child(
-                        div()
-                            .flex()
-                            .justify_between()
-                            .items_center()
-                            .child(section(p, "Export"))
-                            .child(
-                                div().text_size(px(11.)).text_color(rgb(p.muted)).child(
-                                    self.preview
-                                        .as_ref()
-                                        .map(|(_, preview)| {
-                                            format!(
-                                                "{} × {}",
-                                                preview.width / 2 * self.document.scale,
-                                                preview.height / 2 * self.document.scale
-                                            )
-                                        })
-                                        .unwrap_or_else(|| "—".into()),
-                                ),
-                            ),
-                    )
-                    .child(
-                        segments(p).children(
-                            [Format::Png, Format::Svg, Format::Html]
-                                .into_iter()
-                                .map(|format| {
-                                    segment(p, format.extension())
-                                        .flex_1()
-                                        .label(format.label())
-                                        .selected(self.document.format == format)
-                                        .on_click(cx.listener(move |this, _, _, cx| {
-                                            this.document.format = format;
-                                            this.changed(cx);
-                                        }))
-                                }),
+                        self.section_header(
+                            InspectorSection::Export,
+                            self.preview
+                                .as_ref()
+                                .map(|preview| {
+                                    format!(
+                                        "{} × {}",
+                                        preview.width / 2 * self.document.scale,
+                                        preview.height / 2 * self.document.scale
+                                    )
+                                })
+                                .unwrap_or_else(|| "—".into()),
+                            cx,
                         ),
                     )
-                    .child(
+                    .content(
                         div()
                             .flex()
-                            .items_center()
+                            .flex_col()
                             .gap(px(9.))
+                            .child(segments(p).children(
+                                [Format::Png, Format::Svg, Format::Html].into_iter().map(
+                                    |format| {
+                                        segment(p, format.extension())
+                                            .flex_1()
+                                            .label(format.label())
+                                            .selected(self.document.format == format)
+                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                this.document.format = format;
+                                                this.changed(cx);
+                                            }))
+                                    },
+                                ),
+                            ))
                             .child(
                                 div()
-                                    .text_size(px(12.))
-                                    .text_color(rgb(p.muted))
-                                    .child("Scale"),
-                            )
-                            .child(segments(p).flex_1().children(
-                                [1, 2, 3, 4, 5, 6].into_iter().map(|scale| {
-                                    segment(p, ("scale", scale))
-                                        .px(px(3.))
-                                        .flex_1()
-                                        .label(format!("{scale}×"))
-                                        .selected(self.document.scale == scale)
-                                        .on_click(cx.listener(move |this, _, _, cx| {
-                                            this.document.scale = scale;
-                                            this.changed(cx);
-                                        }))
-                                }),
-                            )),
+                                    .flex()
+                                    .items_center()
+                                    .gap(px(9.))
+                                    .child(
+                                        div()
+                                            .text_size(px(12.))
+                                            .text_color(rgb(p.muted))
+                                            .child("Scale"),
+                                    )
+                                    .child(segments(p).flex_1().children(
+                                        [1, 2, 3, 4, 5, 6].into_iter().map(|scale| {
+                                            segment(p, ("scale", scale))
+                                                .px(px(3.))
+                                                .flex_1()
+                                                .label(format!("{scale}×"))
+                                                .selected(self.document.scale == scale)
+                                                .on_click(cx.listener(move |this, _, _, cx| {
+                                                    this.document.scale = scale;
+                                                    this.changed(cx);
+                                                }))
+                                        }),
+                                    )),
+                            ),
                     )
                     .child(self.export_actions(cx))
                     .when_some(self.last_export.clone(), |view, path| {
@@ -1463,8 +1602,8 @@ impl Choice {
     }
 }
 
-fn settings_section(p: Palette) -> Div {
-    div()
+fn settings_section(p: Palette) -> Collapsible {
+    Collapsible::new()
         .flex()
         .flex_col()
         .flex_shrink_0()
@@ -1476,13 +1615,6 @@ fn settings_section(p: Palette) -> Div {
         .border_color(rgb(p.border))
 }
 
-fn section(p: Palette, title: &'static str) -> impl IntoElement {
-    div()
-        .font_weight(FontWeight::NORMAL)
-        .text_size(px(10.))
-        .text_color(rgb(p.muted))
-        .child(title.to_uppercase())
-}
 fn segments(p: Palette) -> Div {
     div()
         .flex()

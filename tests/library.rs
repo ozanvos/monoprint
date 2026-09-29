@@ -1,6 +1,6 @@
 use monoprint::{
     Appearance, Error, Font, InvalidOption, Language, LineNumberPolicy, LineNumbers,
-    MAX_FONT_BYTES, MAX_SOURCE_BYTES, Renderer, Scale, Snippet, Style, TextRole, Theme,
+    MAX_FONT_BYTES, MAX_SOURCE_BYTES, Renderer, Scale, Snippet, Style, Theme,
 };
 use std::sync::Arc;
 
@@ -16,7 +16,7 @@ fn public_values_can_cross_thread_boundaries() {
 
 #[test]
 fn catalog_parsing_discovery_and_filename_inference() {
-    assert_eq!(Theme::all().len(), 64);
+    assert_eq!(Theme::all().len(), 54);
     assert_eq!(
         Theme::all()
             .filter(|t| t.supports(Appearance::Light))
@@ -208,34 +208,20 @@ fn custom_fonts_are_reused_without_leaking_between_renders() {
         r.png(&snippet, &custom.clone().theme_font(), Scale::X2)
             .unwrap()
     );
-    let unsupported = Snippet::new("Ж");
-    assert!(matches!(
-        r.html(&unsupported, &custom),
-        Err(Error::UnsupportedGlyph {
-            text: TextRole::Code,
-            character: 'Ж',
-            code_font: true
-        })
-    ));
-    assert!(r.html(&unsupported, &style).is_ok());
+    let additional = Snippet::new("Ж");
+    assert!(
+        r.html(&additional, &custom)
+            .unwrap()
+            .contains("MonoprintSans")
+    );
+    assert!(r.html(&additional, &style).is_ok());
     let title = Snippet::new("x").title("Ж");
-    assert!(matches!(
-        r.html(&title, &custom.clone().theme("removed-frame".parse().unwrap())),
-        Err(Error::UnsupportedGlyph {
-            text: TextRole::Title,
-            code_font: true,
-            ..
-        })
-    ));
-    assert!(r.html(&title, &custom).is_ok()); // Candy uses Inter for its title.
-    assert!(matches!(
-        r.html(&Snippet::new("x").title("🦀"), &style),
-        Err(Error::UnsupportedGlyph {
-            text: TextRole::Title,
-            character: '🦀',
-            code_font: false
-        })
-    ));
+    assert!(
+        r.html(&title, &custom.clone().theme("removed-frame".parse().unwrap()))
+            .is_ok()
+    );
+    assert!(r.html(&title, &custom).is_ok());
+    assert!(r.html(&Snippet::new("x").title("🦀"), &style).is_ok());
 }
 
 #[test]

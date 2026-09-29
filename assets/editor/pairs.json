@@ -1,0 +1,12 @@
+[
+  { "id": "ayu", "name": "Ayu", "dark": "ayu-dark", "light": "ayu-light" },
+  { "id": "catppuccin", "name": "Catppuccin", "dark": "catppuccin-mocha", "light": "catppuccin-latte" },
+  { "id": "github-default", "name": "GitHub Default", "dark": "github-dark-default", "light": "github-light-default" },
+  { "id": "gruvbox-hard", "name": "Gruvbox Hard", "dark": "gruvbox-dark-hard", "light": "gruvbox-light-hard" },
+  { "id": "gruvbox-medium", "name": "Gruvbox Medium", "dark": "gruvbox-dark-medium", "light": "gruvbox-light-medium" },
+  { "id": "gruvbox-soft", "name": "Gruvbox Soft", "dark": "gruvbox-dark-soft", "light": "gruvbox-light-soft" },
+  { "id": "night-owl", "name": "Night Owl", "dark": "night-owl", "light": "night-owl-light" },
+  { "id": "rose-pine", "name": "Rosé Pine", "dark": "rose-pine", "light": "rose-pine-dawn" },
+  { "id": "solarized", "name": "Solarized", "dark": "solarized-dark", "light": "solarized-light" },
+  { "id": "tokyo-night", "name": "Tokyo Night", "dark": "tokyo-night", "light": "tokyo-night-light" }
+]

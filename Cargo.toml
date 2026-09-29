@@ -32,6 +32,9 @@ takumi-svg = { path = "vendor/takumi-svg" }
 ttf-parser = "0.25"
 png = "0.18"
 image = { version = "0.25", default-features = false }
+icu_properties = { version = "2.3", default-features = false, features = ["compiled_data"] }
+# Enable the existing shaper's dictionary segmentation for CJK and Thai text.
+parley = { version = "0.11.1", default-features = false, features = ["complex-scripts"] }
 rayon = "1.12"
 
 [profile.release]

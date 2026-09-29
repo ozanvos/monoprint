@@ -57,6 +57,7 @@ pub struct Document {
     pub title: String,
     pub highlights: String,
     pub text_highlights: String,
+    pub font_size: String,
     pub ligatures: bool,
     pub scale: u32,
     pub format: Format,
@@ -80,6 +81,7 @@ impl Default for Document {
             title: "".into(),
             highlights: "".into(),
             text_highlights: "".into(),
+            font_size: "15".into(),
             ligatures: false,
             scale: 2,
             format: Format::Png,
@@ -152,10 +154,20 @@ impl Document {
             .parse()
             .context("Padding must be a whole number from 0 to 512.")?;
         ensure!(padding <= 512, "Padding must be between 0 and 512.");
+        let font_size: u32 = self
+            .font_size
+            .trim()
+            .parse()
+            .context("Font size must be a whole number from 8 to 72 px.")?;
+        ensure!(
+            (8..=72).contains(&font_size),
+            "Font size must be between 8 and 72 px."
+        );
         let mut style = Style::new(theme)
             .appearance(appearance)
             .padding(padding)
             .background(self.background()?)
+            .font_size(font_size)
             .ligatures(self.ligatures)
             .line_numbers(if self.numbers {
                 LineNumbers::Show
@@ -204,12 +216,14 @@ impl Document {
         Ok((snippet, style))
     }
     pub fn select_theme(&mut self, theme: Theme) {
-        self.theme = theme.id().into();
-        if !theme.supports(if self.light {
-            Appearance::Light
-        } else {
-            Appearance::Dark
-        }) {
+        self.theme = theme.canonical().id().into();
+        if theme != theme.canonical()
+            || !theme.supports(if self.light {
+                Appearance::Light
+            } else {
+                Appearance::Dark
+            })
+        {
             self.light = theme.default_appearance() == Appearance::Light;
         }
     }
@@ -455,6 +469,23 @@ mod tests {
     }
 
     #[test]
+    fn font_size_accepts_exact_pixels_and_retains_incomplete_input() {
+        let mut doc = Document::default();
+        for value in ["8", "15", "24", "72", " 18 "] {
+            doc.font_size = value.into();
+            assert!(doc.prepare(None, None).is_ok(), "{value}");
+        }
+        for value in ["", "7", "73", "-1", "15.5", "large"] {
+            doc.font_size = value.into();
+            let error = doc.prepare(None, None).err().unwrap();
+            assert!(error.to_string().contains("Font size"), "{value}: {error}");
+            let restored: Document =
+                serde_json::from_str(&serde_json::to_string(&doc).unwrap()).unwrap();
+            assert_eq!(restored.font_size, value);
+        }
+    }
+
+    #[test]
     fn editor_palettes_backgrounds_and_legacy_sessions() {
         let mut doc = Document {
             transparent: true,
@@ -462,6 +493,7 @@ mod tests {
         };
         assert_eq!(doc.background().unwrap(), Background::None);
         doc.select_theme("catppuccin-latte".parse().unwrap());
+        assert_eq!(doc.theme, "catppuccin");
         assert!(doc.light);
         for background in Background::ALL {
             doc.select_background(background);
@@ -473,6 +505,32 @@ mod tests {
         }
         doc.select_theme("nord".parse().unwrap());
         assert!(!doc.light);
+    }
+    #[test]
+    fn paired_theme_selection_preserves_appearance_and_legacy_drafts() {
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.json");
+        for (id, light) in [("ayu-light", true), ("ayu-dark", false)] {
+            let mut doc = Document {
+                theme: id.into(),
+                light,
+                ..Default::default()
+            };
+            save_session(&path, &doc).unwrap();
+            doc = load_session(&path).unwrap();
+            doc.select_theme(doc.theme.parse().unwrap());
+            assert_eq!(doc.theme, "ayu");
+            assert_eq!(doc.light, light);
+            for light in [false, true, false] {
+                doc.light = light;
+                assert!(doc.prepare(None, None).is_ok());
+                save_session(&path, &doc).unwrap();
+                let mut restored = load_session(&path).unwrap();
+                restored.select_theme(restored.theme.parse().unwrap());
+                assert_eq!(restored.theme, "ayu");
+                assert_eq!(restored.light, light);
+            }
+        }
     }
     #[test]
     fn output_extension_never_redirects_an_approved_overwrite() {
@@ -522,6 +580,7 @@ mod tests {
             numbers: true,
             highlights: "2,4-6".into(),
             text_highlights: "1:4-1:10, 2:6-2:11".into(),
+            font_size: "21".into(),
             ligatures: true,
             font_path: Some(
                 Path::new(env!("CARGO_MANIFEST_DIR")).join("../../assets/fonts/fira-code.ttf"),
@@ -541,17 +600,55 @@ mod tests {
             .unwrap();
         assert_eq!(
             export(&renderer, &d, Format::Png).unwrap(),
-            renderer.png(&snippet, &style, Scale::X2).unwrap()
+            renderer
+                .png(&snippet, &style.clone().font_size(21), Scale::X2)
+                .unwrap()
         );
         assert_eq!(
             export(&renderer, &d, Format::Svg).unwrap(),
-            renderer.svg(&snippet, &style).unwrap().as_bytes()
+            renderer
+                .svg(&snippet, &style.clone().font_size(21))
+                .unwrap()
+                .as_bytes()
         );
         assert_eq!(
             export(&renderer, &d, Format::Html).unwrap(),
-            renderer.html(&snippet, &style).unwrap().as_bytes()
+            renderer
+                .html(&snippet, &style.font_size(21))
+                .unwrap()
+                .as_bytes()
         );
     }
+
+    #[test]
+    fn automatic_glyph_fallback_exports_emoji_and_cjk_without_changing_the_document() {
+        let renderer = Renderer::new();
+        let doc = Document {
+            source: "// 中文 日本語 한국어 — 👩🏽‍💻 👨‍👩‍👧‍👦 🇳🇱 ❤️\nlet greeting = \"你好 👋🏽 ☀️\";".into(),
+            title: "示例・예제 🇯🇵.rs".into(),
+            language: "rust".into(),
+            font_id: Some("fira-code".into()),
+            comment_font_id: Some("space-mono".into()),
+            font_size: "24".into(),
+            text_highlights: "1:4-1:6".into(),
+            ..Default::default()
+        };
+        let before = serde_json::to_string(&doc).unwrap();
+        for format in [Format::Png, Format::Svg, Format::Html] {
+            let output = export(&renderer, &doc, format)
+                .unwrap_or_else(|error| panic!("{} fallback export: {error:#}", format.label()));
+            assert!(!output.is_empty());
+            assert_eq!(serde_json::to_string(&doc).unwrap(), before);
+        }
+        let directory = tempfile::tempdir().unwrap();
+        let path = directory.path().join("studio.json");
+        save_session(&path, &doc).unwrap();
+        assert_eq!(
+            serde_json::to_string(&load_session(&path).unwrap()).unwrap(),
+            before
+        );
+    }
+
     #[test]
     fn session_round_trip_preserves_source_and_options() {
         let dir = tempfile::tempdir().unwrap();
@@ -561,6 +658,7 @@ mod tests {
             transparent: true,
             highlights: "1-2".into(),
             text_highlights: "1:2-1:4".into(),
+            font_size: "23".into(),
             ligatures: true,
             font_path: Some("code.ttf".into()),
             comment_font_path: Some("comments.otf".into()),
@@ -572,10 +670,12 @@ mod tests {
         assert!(restored.transparent);
         assert_eq!(restored.highlights, "1-2");
         assert_eq!(restored.text_highlights, d.text_highlights);
+        assert_eq!(restored.font_size, d.font_size);
         assert!(restored.ligatures);
         assert_eq!(restored.font_path, d.font_path);
         assert_eq!(restored.comment_font_path, d.comment_font_path);
         let old: Document = serde_json::from_str(r#"{"source":"old draft"}"#).unwrap();
+        assert_eq!(old.font_size, "15");
         assert!(!old.ligatures);
         assert!(old.comment_font_path.is_none());
         assert!(old.text_highlights.is_empty());

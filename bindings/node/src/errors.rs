@@ -42,6 +42,9 @@ pub fn encode(error: Error) -> String {
                 InvalidOption::Padding(value) => {
                     json!({ "option": "padding", "value": value, "min": 0, "max": 512 })
                 }
+                InvalidOption::FontSize(value) => {
+                    json!({ "option": "fontSize", "value": value, "min": 8, "max": 72 })
+                }
                 InvalidOption::Width { width, min, max } => {
                     json!({ "option": "width", "value": width, "min": min, "max": max })
                 }

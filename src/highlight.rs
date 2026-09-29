@@ -92,7 +92,9 @@ pub fn code(
                 }
             }
             if comment {
-                css.push_str("font-family:CommentFont;font-weight:400;");
+                css.push_str(
+                    "font-family:var(--monoprint-comment-font,CommentFont);font-weight:400;",
+                );
             }
             if style.font_style.contains(FontStyle::BOLD) {
                 css.push_str("font-weight:bold;");

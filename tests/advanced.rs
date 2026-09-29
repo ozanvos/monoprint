@@ -1,4 +1,4 @@
-use monoprint::{BundledFont, Error, Font, Renderer, Scale, Snippet, Style, TextRange, TextRole};
+use monoprint::{BundledFont, Error, Font, Renderer, Scale, Snippet, Style, TextRange};
 
 #[test]
 fn bundled_typefaces_cover_the_shipped_manifest_and_render_in_both_roles() {
@@ -79,7 +79,9 @@ fn comment_typeface_follows_grammar_not_comment_like_strings() {
             .unwrap();
         assert!(html.contains("font-family:'CommentFont'"));
         assert!(
-            html.matches("font-family:CommentFont;").count() >= comments,
+            html.matches("font-family:var(--monoprint-comment-font,CommentFont);")
+                .count()
+                >= comments,
             "{lang}"
         );
         for span in html.split("<span style=\"").skip(1) {
@@ -92,7 +94,7 @@ fn comment_typeface_follows_grammar_not_comment_like_strings() {
                         .split("</span>")
                         .next()
                         .unwrap()
-                        .contains("font-family:CommentFont;"),
+                        .contains("font-family:var(--monoprint-comment-font,CommentFont);"),
                     "{lang}: {span}"
                 );
             }
@@ -105,29 +107,19 @@ fn comment_glyphs_use_the_comment_font_and_caches_do_not_leak() {
     let r = Renderer::new();
     let snippet = Snippet::new("let x = 1; // Привет").language("rust".parse().unwrap());
     let code = Style::default().font(font("space-mono"));
-    assert!(matches!(
-        r.png(&snippet, &code, Scale::X1),
-        Err(Error::UnsupportedGlyph {
-            text: TextRole::Code,
-            ..
-        })
-    ));
+    let fallback = r.png(&snippet, &code, Scale::X1).unwrap();
     let mixed = code.clone().comment_font(font("jetbrains-mono"));
-    assert!(r.png(&snippet, &mixed, Scale::X1).is_ok());
+    let different = r.png(&snippet, &mixed, Scale::X1).unwrap();
+    assert_ne!(fallback, different);
     assert!(r.svg(&snippet, &mixed).is_ok());
-    assert!(
+    assert_eq!(
+        fallback,
         r.png(&snippet, &mixed.clone().comments_use_code_font(), Scale::X1)
-            .is_err()
+            .unwrap()
     );
-    let wrong = mixed.clone().comment_font(font("space-mono"));
-    assert!(matches!(
-        r.png(&snippet, &wrong, Scale::X1),
-        Err(Error::UnsupportedGlyph {
-            text: TextRole::Comment,
-            ..
-        })
-    ));
-    assert!(r.png(&snippet, &mixed, Scale::X1).is_ok());
+    let same = mixed.clone().comment_font(font("space-mono"));
+    assert_eq!(fallback, r.png(&snippet, &same, Scale::X1).unwrap());
+    assert_eq!(different, r.png(&snippet, &mixed, Scale::X1).unwrap());
 }
 
 #[test]

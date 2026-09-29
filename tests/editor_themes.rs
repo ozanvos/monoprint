@@ -24,20 +24,111 @@ fn light_palettes_and_explicit_appearance_are_unambiguous() {
             .contains("data-theme=\"light\"")
     );
     assert!(matches!(
-        renderer.html(&snippet(), &style.appearance(Appearance::Dark)),
+        renderer.html(
+            &snippet(),
+            &Style::new("nord".parse().unwrap()).appearance(Appearance::Light)
+        ),
         Err(Error::InvalidOption(InvalidOption::Appearance { .. }))
     ));
     let style = Style::default().theme(theme);
-    assert!(renderer.html(&snippet(), &style).is_ok());
+    assert!(
+        renderer
+            .html(&snippet(), &style)
+            .unwrap()
+            .contains("data-theme=\"light\"")
+    );
+    assert!(
+        renderer
+            .html(&snippet(), &style.appearance(Appearance::Dark))
+            .unwrap()
+            .contains("data-theme=\"dark\"")
+    );
+}
+
+#[test]
+fn curated_pairs_keep_legacy_palettes_and_switch_the_entire_frame() {
+    let renderer = Renderer::new();
+    let pairs = [
+        ("ayu", "ayu-dark", "ayu-light"),
+        ("catppuccin", "catppuccin-mocha", "catppuccin-latte"),
+        (
+            "github-default",
+            "github-dark-default",
+            "github-light-default",
+        ),
+        ("gruvbox-hard", "gruvbox-dark-hard", "gruvbox-light-hard"),
+        (
+            "gruvbox-medium",
+            "gruvbox-dark-medium",
+            "gruvbox-light-medium",
+        ),
+        ("gruvbox-soft", "gruvbox-dark-soft", "gruvbox-light-soft"),
+        ("night-owl", "night-owl", "night-owl-light"),
+        ("rose-pine", "rose-pine", "rose-pine-dawn"),
+        ("solarized", "solarized-dark", "solarized-light"),
+        ("tokyo-night", "tokyo-night", "tokyo-night-light"),
+    ];
+    for (id, dark, light) in pairs {
+        let preset: Theme = id.parse().unwrap();
+        assert_eq!(preset.canonical(), preset);
+        assert!(Theme::all().any(|t| t == preset));
+        for (mode, alias) in [(Appearance::Dark, dark), (Appearance::Light, light)] {
+            let legacy: Theme = alias.parse().unwrap();
+            assert_eq!(legacy.canonical(), preset);
+            assert_eq!(legacy.default_appearance(), mode);
+            assert!(legacy.supports(Appearance::Light));
+            assert!(legacy.supports(Appearance::Dark));
+            if alias != id {
+                assert!(preset.aliases().any(|a| a == alias));
+                assert!(!Theme::all().any(|t| t == legacy));
+            }
+            for background in Background::ALL {
+                let paired = Style::new(preset).appearance(mode).background(background);
+                let original = Style::new(legacy).background(background);
+                // Compare syntax, frame, gutter, selection and companion backdrop.
+                assert_eq!(
+                    renderer.html(&snippet(), &paired).unwrap(),
+                    renderer.html(&snippet(), &original).unwrap(),
+                    "{id} {mode} {background}"
+                );
+            }
+        }
+    }
+    for id in [
+        "ayu-mirage",
+        "catppuccin-frappe",
+        "catppuccin-macchiato",
+        "github-dark-dimmed",
+        "rose-pine-moon",
+        "tokyo-night-storm",
+    ] {
+        let theme: Theme = id.parse().unwrap();
+        assert_eq!(theme.canonical(), theme);
+        assert!(
+            !theme.supports(Appearance::Light),
+            "do not invent a palette for {id}"
+        );
+    }
 }
 
 #[test]
 fn every_editor_palette_renders_in_all_formats() {
     let renderer = Renderer::new();
     let themes: Vec<_> = Theme::all().filter(|t| t.family() != "Monoprint").collect();
-    assert_eq!(themes.len(), 31);
-    for theme in themes {
+    assert_eq!(themes.len(), 21);
+    let variants: Vec<_> = themes
+        .into_iter()
+        .flat_map(|theme| {
+            [Appearance::Dark, Appearance::Light]
+                .into_iter()
+                .filter(move |&mode| theme.supports(mode))
+                .map(move |mode| (theme, mode))
+        })
+        .collect();
+    assert_eq!(variants.len(), 31);
+    for (theme, appearance) in variants {
         let style = Style::new(theme)
+            .appearance(appearance)
             .padding(24)
             .width(400)
             .line_numbers(LineNumbers::Show);

@@ -40,6 +40,9 @@ pub struct Args {
     /// Outer image width in CSS pixels; code wraps to fit.
     #[arg(long, value_parser = clap::value_parser!(u32).range(80..=8192))]
     pub width: Option<u32>,
+    /// Code font size in CSS pixels; line height and line numbers scale with it.
+    #[arg(long, default_value_t = 15, value_parser = clap::value_parser!(u32).range(8..=72))]
+    pub font_size: u32,
     /// PNG pixel ratio (SVG and HTML retain CSS dimensions).
     #[arg(long, default_value_t = 4, value_parser = clap::value_parser!(u32).range(1..=6))]
     pub scale: u32,

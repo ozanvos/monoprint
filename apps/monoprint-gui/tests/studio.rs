@@ -62,7 +62,7 @@ mod macos {
             assert!(Instant::now() < deadline, "preview worker did not complete");
             std::thread::sleep(Duration::from_millis(10));
         }
-        // Image decode and editor parsing finish on GPUI's executor after layout.
+        // Editor parsing and theme thumbnail loading finish after layout.
         cx.advance_clock(Duration::from_millis(100));
         for _ in 0..3 {
             cx.run_until_parked();
@@ -83,13 +83,82 @@ mod macos {
         }
     }
 
+    fn assert_fallback_glyphs(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+        window_width: u32,
+    ) {
+        let source = "// 中文 日本語 한국어\n// 👩🏽‍💻 👨‍👩‍👧‍👦 🇳🇱 ❤️\nlet greeting = \"你好 👋🏽 ☀️\";";
+        let title = "示例・예제 🇯🇵.rs";
+        cx.update_window(handle.into(), |_, window, cx| {
+            studio.update(cx, |s, cx| {
+                s.document.select_typeface(false, "fira-code");
+                s.document.select_typeface(true, "space-mono");
+                s.sync_typeface(false, window, cx);
+                s.sync_typeface(true, window, cx);
+                s.document.select_background(monoprint::Background::Theme);
+                s.select_theme("removed-frame".parse().unwrap(), window, cx);
+                s.font_size
+                    .update(cx, |input, cx| input.replace_all("23", window, cx));
+                s.install_source(title.into(), source.into(), window, cx);
+            });
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |s, _| {
+            assert!(s.error.is_none(), "fallback preview: {:?}", s.error);
+            assert!(s.preview.is_some());
+            assert_eq!(s.document.title, title);
+        });
+        let start = source.find("👩🏽‍💻").unwrap();
+        let selection = start..start + "👩🏽‍💻".len();
+        cx.update_window(handle.into(), |_, window, cx| {
+            studio.read(cx).editor.clone().update(cx, |editor, cx| {
+                editor.set_selected_range(selection.clone(), cx);
+                editor.focus(window, cx);
+            });
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        // A render-triggering control must preserve the original Unicode source
+        // and byte-based selection, including the complete emoji sequence.
+        inspector_click(cx, handle, studio, "increase-font-size");
+        let document = cx.read_entity(studio, |s, cx| {
+            assert!(s.error.is_none(), "fallback resize: {:?}", s.error);
+            assert_eq!(s.document.font_size, "24");
+            assert_eq!(s.document.source, source);
+            assert_eq!(s.editor.read(cx).value().as_ref(), source);
+            assert_eq!(s.editor.read(cx).selected_range(), selection);
+            assert_eq!(s.editor.read(cx).selected_text().to_string(), "👩🏽‍💻");
+            assert_eq!(s.document.font_id.as_deref(), Some("fira-code"));
+            assert_eq!(s.document.comment_font_id.as_deref(), Some("space-mono"));
+            s.document.clone()
+        });
+        let renderer = monoprint::Renderer::new();
+        for format in [
+            document::Format::Png,
+            document::Format::Svg,
+            document::Format::Html,
+        ] {
+            let output = document::export(&renderer, &document, format)
+                .unwrap_or_else(|error| panic!("{} fallback export: {error:#}", format.label()));
+            assert!(!output.is_empty());
+        }
+        cx.read_entity(studio, |s, cx| {
+            assert_eq!(s.document.source, source);
+            assert_eq!(s.editor.read(cx).selected_range(), selection);
+        });
+        capture(cx, handle, &format!("fallback-glyphs-{window_width}"));
+    }
+
     fn assert_canvas_gestures(
         cx: &mut HeadlessAppContext,
         handle: WindowHandle<Root>,
         studio: &Entity<studio::Studio>,
     ) {
         let (bounds, image, revision, document, cached_image) = cx.read_entity(studio, |s, _| {
-            let (cached, preview) = s.preview.as_ref().unwrap();
+            let preview = s.preview.as_ref().unwrap();
             (
                 s.viewport.bounds,
                 size(
@@ -98,7 +167,7 @@ mod macos {
                 ),
                 s.revision,
                 serde_json::to_string(&s.document).unwrap(),
-                cached.clone(),
+                preview.image.clone(),
             )
         });
         let anchor = bounds.center() + point(px(70.), px(-40.));
@@ -213,7 +282,10 @@ mod macos {
             assert_eq!(s.viewport.pan, Point::default());
             assert_eq!(s.revision, revision, "navigation must not request a render");
             assert_eq!(serde_json::to_string(&s.document).unwrap(), document);
-            assert!(Arc::ptr_eq(&s.preview.as_ref().unwrap().0, &cached_image));
+            assert!(Arc::ptr_eq(
+                &s.preview.as_ref().unwrap().image,
+                &cached_image
+            ));
         });
     }
 
@@ -229,7 +301,7 @@ mod macos {
                 (
                     s.document.source.clone(),
                     s.document.width.clone(),
-                    s.preview.as_ref().unwrap().1.height,
+                    s.preview.as_ref().unwrap().height,
                     s.revision,
                 )
             });
@@ -268,9 +340,9 @@ mod macos {
                 "110 screen px at 50% is 220 export px"
             );
             assert_eq!(s.width.read(cx).value().as_ref(), "500");
-            assert_eq!(s.preview.as_ref().unwrap().1.width, 1000);
+            assert_eq!(s.preview.as_ref().unwrap().width, 1000);
             assert!(
-                s.preview.as_ref().unwrap().1.height > initial_height,
+                s.preview.as_ref().unwrap().height > initial_height,
                 "code must reflow rather than stretch"
             );
             assert!(s.canvas_resize.is_none());
@@ -305,7 +377,7 @@ mod macos {
         cx.update_window(handle.into(), |_, window, cx| {
             let s = studio.read(cx);
             assert_eq!(s.document.width, "580");
-            assert_eq!(s.preview.as_ref().unwrap().1.width, 1160);
+            assert_eq!(s.preview.as_ref().unwrap().width, 1160);
             assert!(
                 (window.find("resize-image-right").bounds().center().x - fixed_right).abs()
                     < px(1.)
@@ -313,9 +385,11 @@ mod macos {
         })
         .unwrap();
 
-        // Keep moving without the typing debounce's 90 ms pause. A completed
-        // intermediate frame must arrive before mouse-up, even with newer sizes queued.
-        let revision = cx.read_entity(studio, |s, _| s.revision);
+        // Inspect the first painted frame of every replacement, without a decode
+        // settling delay. Keep moving so updates must arrive before mouse-up.
+        let mut previous_image =
+            cx.read_entity(studio, |s, _| s.preview.as_ref().unwrap().image.clone());
+        let mut replacements = 0;
         let start = cx
             .update_window(handle.into(), |_, window, cx| {
                 let start = window.find("resize-image-right").bounds().center();
@@ -344,7 +418,7 @@ mod macos {
         let deadline = Instant::now() + Duration::from_secs(5);
         let mut step = 0;
         let end = loop {
-            let position = start + point(px(10. + (step % 15) as f32), px(0.));
+            let position = start - point(px(10. + (step % 15) as f32), px(0.));
             cx.update_window(handle.into(), |_, window, cx| {
                 window.render_frame(cx);
                 window.dispatch_event(
@@ -360,11 +434,59 @@ mod macos {
             })
             .unwrap();
             cx.run_until_parked();
-            let arrived = cx.read_entity(studio, |s, _| {
-                assert!(s.canvas_resize.as_ref().unwrap().dragging);
-                s.preview_revision > revision
-            });
-            if arrived {
+            let (sample, expected, viewport_width) = cx
+                .update_window(handle.into(), |_, window, cx| {
+                    window.render_frame(cx);
+                    let s = studio.read(cx);
+                    assert!(s.canvas_resize.as_ref().unwrap().dragging);
+                    let preview = s.preview.as_ref().unwrap();
+                    if !Arc::ptr_eq(&preview.image, &previous_image) {
+                        previous_image = preview.image.clone();
+                        replacements += 1;
+                    }
+                    let image_size = size(
+                        px(preview.width as f32 / 2.),
+                        px(preview.height as f32 / 2.),
+                    );
+                    // Sample near the stale image's right edge: it must remain
+                    // visible even when the requested outline is narrower.
+                    let zoom = s.viewport.scale(image_size);
+                    let origin = s.viewport.origin(image_size);
+                    let resize = s.canvas_resize.as_ref().unwrap();
+                    let outline_right =
+                        resize.origin(px(resize.width as f32)).x + px(resize.width as f32) * zoom;
+                    let mut x = preview.width - 24;
+                    if (origin.x + px(x as f32 / 2.) * zoom - outline_right).abs() < px(3.) {
+                        x -= 32; // Avoid sampling the moving blue guide itself.
+                    }
+                    let y = 24;
+                    let offset = ((y * preview.width + x) * 4) as usize;
+                    let bgra = &preview.image.as_bytes(0).unwrap()[offset..offset + 4];
+                    let sample = s.viewport.bounds.origin
+                        + origin
+                        + point(px(x as f32 / 2.), px(y as f32 / 2.)) * zoom;
+                    (
+                        sample,
+                        [bgra[2], bgra[1], bgra[0]],
+                        window.viewport_size().width,
+                    )
+                })
+                .unwrap();
+            let pixels = cx.capture_screenshot(handle.into()).unwrap();
+            let scale = pixels.width() as f32 / f32::from(viewport_width);
+            let actual = pixels
+                .get_pixel(
+                    (f32::from(sample.x) * scale) as u32,
+                    (f32::from(sample.y) * scale) as u32,
+                )
+                .0;
+            for channel in 0..3 {
+                assert!(
+                    actual[channel].abs_diff(expected[channel]) <= 5,
+                    "preview must remain painted during resize: {actual:?} vs {expected:?}"
+                );
+            }
+            if replacements >= 2 {
                 break position;
             }
             assert!(
@@ -391,7 +513,7 @@ mod macos {
         cx.read_entity(studio, |s, _| {
             assert!(s.canvas_resize.is_none());
             assert_eq!(
-                s.preview.as_ref().unwrap().1.width,
+                s.preview.as_ref().unwrap().width,
                 s.document.width.parse::<u32>().unwrap() * 2
             );
             assert_eq!(s.document.source, source);
@@ -654,6 +776,44 @@ mod macos {
             capture(&mut cx, handle, &format!("studio-{}", width as u32));
             assert_material_visible(&mut cx, handle, &studio);
 
+            let revision = cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.open_sections, [true, false, true, true]);
+                s.revision
+            });
+            cx.update_window(handle.into(), |_, window, _| {
+                assert!(window.try_find("code-typeface").is_none());
+                assert!(
+                    window.find("section-theme").bounds().top()
+                        < window.find("section-typeface").bounds().top()
+                );
+                assert!(
+                    window.find("section-typeface").bounds().top()
+                        < window.find("section-frame").bounds().top()
+                );
+            })
+            .unwrap();
+            for (section, control) in [
+                ("section-theme", "themes-all"),
+                ("section-frame", "line-numbers"),
+                ("section-export", "png"),
+            ] {
+                inspector_click(&mut cx, handle, &studio, section);
+                cx.update_window(handle.into(), |_, window, _| {
+                    assert!(window.try_find(control).is_none());
+                    assert!(window.find("export-image").visible());
+                    assert!(window.find("copy-image").visible());
+                })
+                .unwrap();
+                inspector_click(&mut cx, handle, &studio, section);
+            }
+            inspector_click(&mut cx, handle, &studio, "section-typeface");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(
+                    s.revision, revision,
+                    "section toggles must not request renders"
+                );
+            });
+
             // The select's visible trigger and hit area must both fit the toolbar.
             // Select styles alone do not constrain its full-size outer wrapper.
             cx.update_window(handle.into(), |_, window, _| {
@@ -685,7 +845,7 @@ mod macos {
                         s.source_split.read(cx).sizes()[0],
                         serde_json::to_string(&s.document).unwrap(),
                         s.revision,
-                        s.preview.as_ref().unwrap().0.clone(),
+                        s.preview.as_ref().unwrap().image.clone(),
                     )
                 });
             let maximum = if width == 1440. { 560. } else { 480. };
@@ -729,7 +889,10 @@ mod macos {
                         serde_json::to_string(&s.document).unwrap(),
                         original_document
                     );
-                    assert!(Arc::ptr_eq(&s.preview.as_ref().unwrap().0, &original_image));
+                    assert!(Arc::ptr_eq(
+                        &s.preview.as_ref().unwrap().image,
+                        &original_image
+                    ));
                 })
                 .unwrap();
                 if matches!(label, "wide" | "max" | "min") {
@@ -861,13 +1024,36 @@ mod macos {
             settle(&mut cx, handle, &studio);
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.filtered_themes.len(), 1);
-                assert_eq!(s.thumbnails[s.filtered_themes[0]].0.id(), "ayu-light");
+                assert_eq!(s.thumbnails[s.filtered_themes[0]].0.id(), "ayu");
             });
             inspector_click(&mut cx, handle, &studio, "themes-dark");
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.filtered_themes.len(), 2);
                 assert_eq!(s.revision, revision);
             });
+            let ayu = cx.read_entity(&studio, |s, _| {
+                s.thumbnails
+                    .iter()
+                    .position(|(theme, _)| theme.id() == "ayu")
+                    .unwrap()
+            });
+            reveal_theme_gallery(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.click(("theme-swatch", ayu), cx)
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            for (control, light) in [("light-appearance", true), ("dark-appearance", false)] {
+                inspector_click(&mut cx, handle, &studio, control);
+                settle(&mut cx, handle, &studio);
+                cx.read_entity(&studio, |s, _| {
+                    assert_eq!(s.document.theme, "ayu");
+                    assert_eq!(s.document.light, light);
+                    assert!(s.error.is_none(), "paired appearance must render");
+                    assert_eq!(s.preview_revision, s.revision);
+                });
+                capture(&mut cx, handle, &format!("ayu-{control}-{}", width as u32));
+            }
             inspector_click(&mut cx, handle, &studio, "themes-all");
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
@@ -916,6 +1102,9 @@ mod macos {
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
+            // The oversized wheel delta can also scroll the outer inspector.
+            // Keep the gallery visible while asserting its virtualized contents.
+            reveal_theme_gallery(&mut cx, handle, &studio);
             cx.update_window(handle.into(), |_, window, _| {
                 assert!(window.find(("theme-swatch", last)).visible());
                 assert!(window.try_find(("theme-swatch", candy)).is_none());
@@ -940,6 +1129,7 @@ mod macos {
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
+            reveal_theme_gallery(&mut cx, handle, &studio);
             let rabbit = cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.filtered_themes.len(), 1);
                 let index = s.filtered_themes[0];
@@ -1213,6 +1403,60 @@ mod macos {
             cx.read_entity(&studio, |s, _| {
                 assert!(s.document.ligatures);
                 assert!(s.error.is_none(), "{:?}", s.error);
+            });
+            let (original_height, editor_line_height) = cx.read_entity(&studio, |s, cx| {
+                (
+                    s.preview.as_ref().unwrap().height,
+                    s.editor.read(cx).line_height(),
+                )
+            });
+            inspector_click(&mut cx, handle, &studio, "font-size");
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.press("cmd-a", cx);
+                window.input("24", cx);
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            let resized = cx.read_entity(&studio, |s, cx| {
+                assert_eq!(s.document.font_size, "24");
+                assert!(s.error.is_none(), "{:?}", s.error);
+                assert!(s.preview.as_ref().unwrap().height > original_height);
+                assert_eq!(s.editor.read(cx).line_height(), editor_line_height);
+                s.preview.as_ref().unwrap().image.clone()
+            });
+            capture(&mut cx, handle, &format!("font-size-24-{}", width as u32));
+            // Incomplete edits keep the last rendered image until a valid size arrives.
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.press("cmd-a", cx);
+                window.press("backspace", cx);
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert!(s.document.font_size.is_empty());
+                assert!(s.error.as_ref().unwrap().contains("Font size"));
+                assert!(Arc::ptr_eq(&resized, &s.preview.as_ref().unwrap().image));
+            });
+            cx.update_window(handle.into(), |_, window, cx| window.input("18", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
+            inspector_click(&mut cx, handle, &studio, "increase-font-size");
+            cx.read_entity(&studio, |s, _| assert_eq!(s.document.font_size, "19"));
+            inspector_click(&mut cx, handle, &studio, "decrease-font-size");
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.font_size, "18");
+                assert!(s.error.is_none(), "{:?}", s.error);
+            });
+            inspector_click(&mut cx, handle, &studio, "font-size");
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.press("cmd-a", cx);
+                window.input("15", cx);
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.font_size, "15");
+                assert_eq!(s.preview.as_ref().unwrap().height, original_height);
             });
             capture(&mut cx, handle, &format!("advanced-fonts-{}", width as u32));
             let revision = cx.read_entity(&studio, |s, _| s.revision);
@@ -1582,8 +1826,9 @@ mod macos {
             settle(&mut cx, handle, &studio);
             gutter_click(&mut cx, handle, &studio, 1);
             cx.read_entity(&studio, |s, _| assert!(s.document.highlights.is_empty()));
+            assert_fallback_glyphs(&mut cx, handle, &studio, width as u32);
             println!(
-                "Studio {}×{}: render, sidebar resizing, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, typography, interface appearance, canvas pan/pinch/drag/live resize, source selections, validation and recovery passed",
+                "Studio {}×{}: render, sidebar resizing, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, typography, automatic emoji/CJK fallback, interface appearance, canvas pan/pinch/drag/live resize, source selections, validation and recovery passed",
                 width, height
             );
         }

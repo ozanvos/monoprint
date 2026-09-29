@@ -100,6 +100,7 @@ fn run() -> Result<()> {
     let mut style = Style::new(args.theme.parse()?)
         .transparent(args.transparent)
         .padding(args.padding)
+        .font_size(args.font_size)
         .ligatures(args.ligatures)
         .line_numbers(if args.no_line_numbers {
             LineNumbers::Hide

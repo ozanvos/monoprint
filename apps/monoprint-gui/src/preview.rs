@@ -1,4 +1,5 @@
 use crate::document::{Document, FontCache, SessionStore};
+use gpui_kit::{Image, ImageFormat, RenderImage, SvgRenderer};
 use monoprint::{Renderer, Scale};
 use std::{
     sync::{Arc, Condvar, Mutex},
@@ -7,10 +8,18 @@ use std::{
 };
 
 pub struct Preview {
-    pub png: Vec<u8>,
+    pub image: Arc<RenderImage>,
     pub width: u32,
     pub height: u32,
     pub elapsed: Duration,
+}
+const LIVE_REFRESH_INTERVAL: Duration = Duration::from_millis(100);
+
+#[derive(Clone, Copy)]
+enum Refresh {
+    Debounced,
+    Live,
+    Immediate,
 }
 pub struct Completion {
     pub revision: u64,
@@ -19,7 +28,7 @@ pub struct Completion {
 }
 #[derive(Default)]
 struct Pending {
-    latest: Option<(u64, Document, bool)>,
+    latest: Option<(u64, Document, Refresh)>,
     closed: bool,
 }
 
@@ -40,6 +49,8 @@ impl PreviewWorker {
             .spawn(move || {
                 let mut fonts = FontCache::default();
                 let mut comment_fonts = FontCache::default();
+                let decoder = SvgRenderer::new(Arc::new(()));
+                let mut last_completed: Option<Instant> = None;
                 loop {
                     let (lock, wake) = &*shared;
                     let mut state = lock.lock().unwrap();
@@ -49,11 +60,21 @@ impl PreviewWorker {
                     if state.closed {
                         break;
                     }
-                    // Typing waits for a pause; direct manipulation renders as
-                    // soon as the worker is free, replacing any pending size.
-                    while state.latest.as_ref().is_some_and(|request| request.2) {
-                        let (next, timeout) =
-                            wake.wait_timeout(state, Duration::from_millis(90)).unwrap();
+                    // Keep the displayed frame a little longer during a drag.
+                    // New sizes replace the pending one without resetting the
+                    // refresh deadline, so continuous dragging still reflows.
+                    loop {
+                        let delay = match state.latest.as_ref().unwrap().2 {
+                            Refresh::Debounced => Duration::from_millis(90),
+                            Refresh::Live => last_completed
+                                .map(|last| LIVE_REFRESH_INTERVAL.saturating_sub(last.elapsed()))
+                                .unwrap_or_default(),
+                            Refresh::Immediate => Duration::ZERO,
+                        };
+                        if delay.is_zero() {
+                            break;
+                        }
+                        let (next, timeout) = wake.wait_timeout(state, delay).unwrap();
                         state = next;
                         if state.closed {
                             return;
@@ -80,16 +101,20 @@ impl PreviewWorker {
                         )?;
                         let (snippet, style) = document.prepare(font, comments)?;
                         let png = renderer.png(&snippet, &style, Scale::X2)?;
-                        let width = u32::from_be_bytes(png[16..20].try_into()?);
-                        let height = u32::from_be_bytes(png[20..24].try_into()?);
+                        // Decode before publishing: GPUI can paint this image
+                        // immediately, without an empty async-loading frame.
+                        let image = Image::from_bytes(ImageFormat::Png, png)
+                            .to_image_data(decoder.clone())?;
+                        let dimensions = image.size(0);
                         Ok(Preview {
-                            png,
-                            width,
-                            height,
+                            image,
+                            width: dimensions.width.0.try_into()?,
+                            height: dimensions.height.0.try_into()?,
                             elapsed: start.elapsed(),
                         })
                     })()
                     .map_err(|e| format!("{e:#}"));
+                    last_completed = Some(Instant::now());
                     if tx
                         .send_blocking(Completion {
                             revision,
@@ -106,14 +131,21 @@ impl PreviewWorker {
         (Self { pending }, rx)
     }
     pub fn request(&self, revision: u64, document: Document) {
-        self.enqueue(revision, document, true);
+        self.enqueue(revision, document, Refresh::Debounced);
     }
     pub fn request_live(&self, revision: u64, document: Document) {
-        self.enqueue(revision, document, false);
+        self.enqueue(revision, document, Refresh::Live);
     }
-    fn enqueue(&self, revision: u64, document: Document, debounce: bool) {
+    pub fn finish_live(&self) {
         let (lock, wake) = &*self.pending;
-        lock.lock().unwrap().latest = Some((revision, document, debounce));
+        if let Some((_, _, refresh)) = &mut lock.lock().unwrap().latest {
+            *refresh = Refresh::Immediate;
+        }
+        wake.notify_one();
+    }
+    fn enqueue(&self, revision: u64, document: Document, refresh: Refresh) {
+        let (lock, wake) = &*self.pending;
+        lock.lock().unwrap().latest = Some((revision, document, refresh));
         wake.notify_one();
     }
 }
@@ -143,7 +175,12 @@ mod tests {
         }
         let completion = results.recv_blocking().unwrap();
         assert_eq!(completion.revision, 25);
-        assert!(completion.result.unwrap().png.starts_with(b"\x89PNG"));
+        let preview = completion.result.unwrap();
+        assert_eq!(preview.image.frame_count(), 1);
+        assert_eq!(
+            preview.image.as_bytes(0).unwrap().len(),
+            preview.width as usize * preview.height as usize * 4
+        );
         assert!(results.try_recv().is_err());
     }
 }

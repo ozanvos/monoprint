@@ -1,6 +1,6 @@
 use crate::{
     Error, LineNumberPolicy, LineNumbers, Renderer, Scale, Snippet, Style, TextRole, assets,
-    background, editor_theme, effects, highlight,
+    background, editor_theme, effects, fallback::Fallbacks, highlight,
 };
 use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::STANDARD};
@@ -13,33 +13,6 @@ pub(crate) enum Format {
     Png,
     Svg,
     Html,
-}
-
-fn validate_glyphs(bytes: &[u8], text: &str, role: TextRole, code_font: bool) -> Result<()> {
-    let face = ttf_parser::Face::parse(bytes, 0).context("font must be a valid TTF or OTF file")?;
-    validate_face_glyphs(&face, text, role, code_font)
-}
-
-fn validate_face_glyphs(
-    face: &ttf_parser::Face<'_>,
-    text: &str,
-    role: TextRole,
-    code_font: bool,
-) -> Result<()> {
-    for character in text.chars() {
-        if matches!(character, '\n' | '\t' | '\r') {
-            continue;
-        }
-        if face.glyph_index(character).is_none() {
-            return Err(Error::UnsupportedGlyph {
-                text: role,
-                character,
-                code_font,
-            }
-            .into());
-        }
-    }
-    Ok(())
 }
 
 fn font_face(family: &str, bytes: &[u8]) -> String {
@@ -72,6 +45,7 @@ fn code_width(
     comment_font: Option<&[u8]>,
     comments: &[std::ops::Range<usize>],
     source: &str,
+    font_size: u32,
 ) -> Result<f32> {
     let face = ttf_parser::Face::parse(font, 0)?;
     let comment_face = comment_font
@@ -99,7 +73,7 @@ fn code_width(
             } else {
                 &face
             };
-            let unit = 15.0 / f32::from(face.units_per_em());
+            let unit = font_size as f32 / f32::from(face.units_per_em());
             let count = if character == '\t' { 2 - column % 2 } else { 1 };
             let glyph = face
                 .glyph_index(if character == '\t' { ' ' } else { character })
@@ -114,6 +88,108 @@ fn code_width(
     Ok(longest.max(1.0))
 }
 
+// Measure complex text using the same shaper as the final image. Scalar glyph
+// advances cannot account for emoji sequences, combining marks or script shaping.
+fn shaped_code_width(
+    code: &str,
+    fonts: &Fonts,
+    style: &Style,
+    weight: u32,
+    fallbacks: &str,
+) -> Result<f32> {
+    let tail = if fallbacks.is_empty() {
+        String::new()
+    } else {
+        format!(",{fallbacks}")
+    };
+    let features = if style.ligatures {
+        "'liga' 1,'clig' 1,'calt' 1"
+    } else {
+        "'liga' 0,'clig' 0,'calt' 0"
+    };
+    let css = format!(
+        "pre{{display:inline-block;margin:0;padding:0;white-space:pre;tab-size:2;\
+         font-family:CodeMono{tail};font-weight:{weight};font-size:{}px;line-height:{}px;\
+         letter-spacing:0.1px;font-feature-settings:{features};\
+         --monoprint-comment-font:CommentFont{tail}}}",
+        style.font_size,
+        f64::from(style.font_size) * 1.5,
+    );
+    let node = takumi::from_html(&format!("<pre>{code}</pre>"), FromHtmlOptions::default())?;
+    Ok(takumi_raster::measure_size(
+        RenderOptions::builder()
+            .viewport(Viewport::new((None, None)))
+            .node(node)
+            .fonts(fonts)
+            .stylesheet(Arc::new(StyleSheet::parse(&css)?))
+            .build(),
+    )?
+    .width
+    .max(1.0))
+}
+
+// Only transform trusted frame CSS, never user markup or source text. Insert
+// named fallbacks before generic browser families to keep HTML deterministic.
+fn with_fallback_families(css: &str, families: &str) -> String {
+    let mut result = String::with_capacity(css.len());
+    let mut rest = css;
+    while let Some(start) = rest.find("font-family:") {
+        let start = start + "font-family:".len();
+        result.push_str(&rest[..start]);
+        rest = &rest[start..];
+        let end = rest.find([';', '}']).unwrap_or(rest.len());
+        let value = &rest[..end];
+        if matches!(value.trim(), "inherit" | "initial" | "unset" | "revert") {
+            result.push_str(value);
+        } else if let Some((named, generic)) = value
+            .rsplit_once(',')
+            .filter(|(_, generic)| matches!(generic.trim(), "sans-serif" | "monospace" | "serif"))
+        {
+            result.push_str(&format!("{named},{families},{generic}"));
+        } else {
+            result.push_str(&format!("{value},{families}"));
+        }
+        rest = &rest[end..];
+    }
+    result.push_str(rest);
+    result.push_str(&format!(
+        "#capture{{--monoprint-comment-font:CommentFont,{families}}}"
+    ));
+    result
+}
+
+fn typography_css(font: &[u8], font_size: u32, line_count: usize) -> Result<String> {
+    // Keep the original CSS (and exported bytes) untouched at the legacy frame default.
+    if font_size == 15 {
+        return Ok(String::new());
+    }
+    let ratio = f64::from(font_size) / 15.0;
+    let rendered_size = f64::from(font_size) * 149.0 / 150.0;
+    let line_height = f64::from(font_size) * 1.5;
+    // the frame's gutter is specified in rem, so merely increasing font-size makes
+    // large line numbers overlap code or extend outside the window. Keep its
+    // proportions while also reserving room for every digit in long snippets.
+    let face = ttf_parser::Face::parse(font, 0)?;
+    let digit_advance = ('0'..='9')
+        .filter_map(|digit| face.glyph_index(digit))
+        .filter_map(|glyph| face.glyph_hor_advance(glyph))
+        .max()
+        .unwrap_or(0);
+    let digit_width =
+        f64::from(digit_advance) / f64::from(face.units_per_em()) * rendered_size + 0.1;
+    let number_width = (16.0 * ratio).max(line_count.to_string().len() as f64 * digit_width);
+    let number_gap = 24.0 * ratio;
+    let number_margin = number_width + number_gap;
+    let number_padding = number_margin + 8.0 * ratio;
+    let number_offset = 6.0 * ratio;
+    Ok(format!(
+        ".Editor__formatted{{font-size:{rendered_size}px;line-height:{line_height}px}}\
+         .Editor__editor .line{{min-height:{line_height}px}}\
+         .Editor__editor.Editor__showLineNumbers{{--line-number-padding:{number_padding}px}}\
+         .Editor__editor.Editor__showLineNumbers .line:before{{width:{number_width}px;margin-right:{number_gap}px;margin-left:-{number_margin}px;left:0;transform:translateX({number_offset}px)}}"
+    ))
+}
+
 pub(crate) fn export(
     renderer: &Renderer,
     snippet: &Snippet,
@@ -122,7 +198,10 @@ pub(crate) fn export(
     format: Format,
     png_scale: Scale,
 ) -> Result<Vec<u8>> {
-    let theme = style.theme.data();
+    let theme = style
+        .theme
+        .data_for(style.appearance)
+        .expect("validated theme appearance");
     let mode = style.appearance.as_str();
     let palette = &theme.syntax[mode];
     let font = style
@@ -138,28 +217,22 @@ pub(crate) fn export(
         mode,
         style.comment_font.is_some(),
     )?;
+    let mut fallbacks = Fallbacks::default();
     if let Some(comment_font) = &style.comment_font {
-        let code_face = ttf_parser::Face::parse(font, 0)?;
-        let comment_face = ttf_parser::Face::parse(comment_font.bytes(), 0)?;
         let mut offset = 0;
         for range in &code.comments {
-            validate_face_glyphs(
-                &code_face,
-                &source[offset..range.start],
-                TextRole::Code,
-                true,
-            )?;
-            validate_face_glyphs(
-                &comment_face,
+            fallbacks.include(font, &source[offset..range.start], TextRole::Code, true)?;
+            fallbacks.include(
+                comment_font.bytes(),
                 &source[range.clone()],
                 TextRole::Comment,
                 false,
             )?;
             offset = range.end;
         }
-        validate_face_glyphs(&code_face, &source[offset..], TextRole::Code, true)?;
+        fallbacks.include(font, &source[offset..], TextRole::Code, true)?;
     } else {
-        validate_glyphs(font, source, TextRole::Code, true)?;
+        fallbacks.include(font, source, TextRole::Code, true)?;
     }
     let numbers = code.language != "plain"
         && match style.theme.line_numbers() {
@@ -222,7 +295,7 @@ pub(crate) fn export(
             "removed-frame" => assets::font("ibm-plex-mono"),
             _ => assets::font("inter"),
         };
-        validate_glyphs(
+        fallbacks.include(
             title_font,
             &snippet.title,
             TextRole::Title,
@@ -268,16 +341,24 @@ pub(crate) fn export(
         template = template.replace(&format!("asset:{name}"), data);
         css = css.replace(&format!("asset:{name}"), data);
     }
+    let secondary_font = matches!(theme.id.as_str(), "removed-frame" | "removed-frame");
+    let fallback_families = fallbacks.families();
     if style.width.is_none() {
-        css += &format!(
-            ".Editor__formatted>pre{{width:{}px}}",
+        let measured_width = if !fallbacks.is_empty() || !source.is_ascii() {
+            let fonts = renderer.fonts(style, secondary_font, fallbacks)?;
+            shaped_code_width(&code.html, &fonts, style, weight, &fallback_families)?
+        } else {
             code_width(
                 font,
                 style.comment_font.as_ref().map(|font| font.bytes()),
                 &code.comments,
                 source,
+                style.font_size,
             )?
-            .ceil()
+        };
+        css += &format!(
+            ".Editor__formatted>pre{{width:{}px}}",
+            measured_width.ceil()
         );
     }
     let fill_template = |template: &str| {
@@ -295,7 +376,10 @@ pub(crate) fn export(
     let frame = fill_template(&template);
     let mut html = format!("<div id=\"capture\" data-theme=\"{mode}\">{frame}</div>");
     css += "#capture{--font-space-mono:CodeMono;--font-soehne-mono:CodeMono}.TriggerdevFrame__fileName,.TriggerdevFrame__language{font-family:CodeMono}.Editor__editor .line{min-height:22.5px}";
-    let secondary_font = matches!(theme.id.as_str(), "removed-frame" | "removed-frame");
+    css += &typography_css(font, style.font_size, code.line_count)?;
+    if !fallbacks.is_empty() {
+        css = with_fallback_families(&css, &fallback_families);
+    }
     let parse_css = |css: &str| -> Result<Arc<StyleSheet>> {
         Ok(Arc::new(
             StyleSheet::parse(&effects::native_css(css, format == Format::Png)).map_err(
@@ -318,14 +402,14 @@ pub(crate) fn export(
     let mut node =
         takumi::from_html(&html, FromHtmlOptions::default()).context("parsing frame markup")?;
     if effects::needs_measurement(&theme.id) {
-        let fonts = renderer.fonts(style, secondary_font)?;
+        let fonts = renderer.fonts(style, secondary_font, fallbacks)?;
         let viewport =
             Viewport::new((style.width.map(|w| w * 2), None)).with_device_pixel_ratio(2.0);
         let size = takumi_raster::measure_size(
             RenderOptions::builder()
                 .viewport(viewport)
                 .node(node.clone())
-                .fonts(fonts)
+                .fonts(&fonts)
                 .stylesheet(stylesheet.clone())
                 .build(),
         )?;
@@ -350,13 +434,16 @@ pub(crate) fn export(
         if secondary_font {
             fonts += &font_face("IBM Plex Mono", assets::font("ibm-plex-mono"));
         }
+        for (family, bytes) in fallbacks.entries() {
+            fonts += &font_face(family, bytes);
+        }
         let result = format!(
             "<!doctype html><html lang=\"en\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>{}</title><style>{fonts}{css}</style></head><body>{html}</body></html>",
             assets::escape(&snippet.title)
         );
         return Ok(result.into_bytes());
     }
-    let fonts = renderer.fonts(style, secondary_font)?;
+    let fonts = renderer.fonts(style, secondary_font, fallbacks)?;
     // At 2x, the upstream 22.5px line height is integral. Keep the SVG's
     // viewBox at this precision and expose its normal CSS dimensions.
     let scale = if format == Format::Png {
@@ -374,7 +461,7 @@ pub(crate) fn export(
         RenderOptions::builder()
             .viewport(viewport)
             .node(node.clone())
-            .fonts(fonts)
+            .fonts(&fonts)
             .stylesheet(stylesheet.clone())
             .build(),
     )?;
@@ -407,7 +494,7 @@ pub(crate) fn export(
                 RenderOptions::builder()
                     .viewport(viewport)
                     .node(node)
-                    .fonts(fonts)
+                    .fonts(&fonts)
                     .stylesheet(stylesheet)
                     .build(),
             )
@@ -445,7 +532,7 @@ pub(crate) fn export(
                 takumi_svg::SvgOptions::builder()
                     .viewport(viewport)
                     .node(node)
-                    .fonts(fonts)
+                    .fonts(&fonts)
                     .stylesheet(stylesheet)
                     .build(),
             )

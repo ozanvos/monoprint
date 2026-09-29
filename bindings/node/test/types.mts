@@ -2,7 +2,7 @@ import { Font, Renderer, png, svg, html, getThemes, languageForFileName, Monopri
 import type { Background, PngOptions, Style, ThemeId, LanguageId } from 'monoprint';
 const theme: ThemeId = 'catppuccin-latte';
 const background: Background = 'lattice';
-const style = { theme, background, width: 'auto', lineNumbers: true } satisfies Style;
+const style = { theme, background, width: 'auto', lineNumbers: true, fontSize: 18 } satisfies Style;
 const renderer = new Renderer(style);
 const options = { language: 'typescript', scale: 2, highlight: [1, [2, 3]] } as const satisfies PngOptions;
 const p: Promise<Buffer> = renderer.png('code', options);
@@ -22,6 +22,8 @@ html('code', { font: {} });
 new Renderer({ theme: 'nuxtt' });
 // @ts-expect-error Unknown background treatment.
 new Renderer({ background: 'sparkles' });
+// @ts-expect-error Font size is numeric CSS pixels, not a CSS string.
+new Renderer({ fontSize: '18px' });
 // @ts-expect-error Content options do not belong to a reusable style.
 new Renderer({ language: 'rust' });
 if (new Error() instanceof MonoprintError) { const e = new MonoprintError('INVALID_FONT', 'bad font'); console.log(e.code, e.details.option); }

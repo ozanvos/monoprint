@@ -21,6 +21,8 @@ export interface Style {
   appearance?: Appearance;
   /** Outer CSS pixels, 0–512. Defaults to 64. */
   padding?: number;
+  /** Nominal code size in CSS pixels, an integer from 8–72. Defaults to 15. */
+  fontSize?: number;
   /** Fixed outer CSS width, or 'auto' to fit with a 520px minimum. */
   width?: number | 'auto';
   /** Remove the decorative background, retaining the code window. */
@@ -54,6 +56,8 @@ export interface ThemeInfo {
   readonly family: string;
   readonly defaultAppearance: Appearance;
   readonly appearances: readonly Appearance[];
+  /** Legacy palette IDs; these retain their original default appearance. */
+  readonly aliases: readonly ThemeId[];
   readonly lineNumbers: { readonly toggleable: boolean; readonly default: boolean };
 }
 export interface LanguageInfo {
@@ -202,7 +206,8 @@ function readCatalog(): void {
   if (cachedThemes) return;
   const catalog = JSON.parse(native().catalog()) as { themes: ThemeInfo[]; languages: LanguageInfo[] };
   cachedThemes = Object.freeze(catalog.themes.map(t => Object.freeze({ ...t,
-    appearances: Object.freeze(t.appearances), lineNumbers: Object.freeze(t.lineNumbers) })));
+    appearances: Object.freeze(t.appearances), aliases: Object.freeze(t.aliases),
+    lineNumbers: Object.freeze(t.lineNumbers) })));
   cachedLanguages = Object.freeze(catalog.languages.map(l => Object.freeze({ ...l, aliases: Object.freeze(l.aliases) })));
 }
 /** All bundled themes, families and appearance/line-number capabilities, without initializing rendering. */

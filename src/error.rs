@@ -15,7 +15,7 @@ pub enum Error {
     InvalidOption(InvalidOption),
     /// The supplied bytes are not a supported TTF or OTF face.
     InvalidFont,
-    /// A visible character is missing from its font.
+    /// A visible character is missing from its font and bundled fallbacks.
     UnsupportedGlyph {
         /// The text containing the missing character.
         text: TextRole,
@@ -54,6 +54,8 @@ pub enum InvalidOption {
     },
     /// Padding is outside 0..=512 CSS pixels.
     Padding(u32),
+    /// Code font size is outside 8..=72 CSS pixels.
+    FontSize(u32),
     /// Width must satisfy both the outer bounds and the space needed by padding.
     Width {
         /// Requested CSS width.
@@ -137,14 +139,14 @@ impl fmt::Display for Error {
                 };
                 write!(
                     f,
-                    "{label} font cannot display {character:?} (U+{:04X}); {}",
+                    "{label} font and bundled fallbacks cannot display {character:?} (U+{:04X}); {}",
                     *character as u32,
                     if *text == TextRole::Comment {
                         "supply a comment font containing this glyph"
                     } else if *code_font {
                         "supply a code font containing this glyph"
                     } else {
-                        "use text supported by this theme's label font (a custom font only changes the code font)"
+                        "use text supported by this theme's label font or bundled fallbacks (a custom font only changes the code font)"
                     }
                 )
             }
@@ -175,6 +177,7 @@ impl fmt::Display for InvalidOption {
                 f.write_str("font exceeds 64 MiB; use a smaller TTF or OTF file")
             }
             Self::Padding(value) => write!(f, "padding {value} must be between 0 and 512px"),
+            Self::FontSize(value) => write!(f, "font size {value} must be between 8 and 72px"),
             Self::Width { width, min, max } => write!(
                 f,
                 "width {width} must be between {min} and {max}px and leave room for the code after padding"

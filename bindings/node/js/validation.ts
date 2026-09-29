@@ -2,7 +2,7 @@ import { MonoprintError, limits } from './index.js';
 import type { Font, PngOptions, RenderOptions, Style } from './index.js';
 import type { NativeFont } from './native.js';
 
-const styleKeys = ['theme', 'appearance', 'padding', 'width', 'transparent', 'background', 'lineNumbers', 'font'];
+const styleKeys = ['theme', 'appearance', 'padding', 'fontSize', 'width', 'transparent', 'background', 'lineNumbers', 'font'];
 const contentKeys = ['language', 'title', 'subtitle', 'highlight'];
 function invalid(option: string, message: string): never {
   throw new MonoprintError('INVALID_ARGUMENT', `${option}: ${message}`, { option });
@@ -24,7 +24,7 @@ function validate(value: Record<string, unknown>, fonts: WeakMap<Font, NativeFon
     if (key in value && typeof value[key] !== 'string') invalid(key, 'must be a string');
   }
   if ('appearance' in value && !['light', 'dark'].includes(value.appearance as string)) invalid('appearance', "must be 'light' or 'dark'");
-  for (const key of ['padding', 'scale']) if (key in value) integer(value[key], key);
+  for (const key of ['padding', 'fontSize', 'scale']) if (key in value) integer(value[key], key);
   if ('width' in value && value.width !== 'auto') integer(value.width, 'width');
   if ('transparent' in value && typeof value.transparent !== 'boolean') invalid('transparent', 'must be boolean');
   if ('background' in value && !['theme', 'solid', 'lattice', 'halftone', 'none'].includes(value.background as string)) invalid('background', 'must be theme, solid, lattice, halftone, or none');

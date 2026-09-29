@@ -3,7 +3,7 @@ use crate::viewport::PreviewViewport;
 use gpui_kit::{Pixels, Point, Size, point, px};
 use std::ops::RangeInclusive;
 
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, PartialEq)]
 pub enum ResizeEdge {
     Left,
     Right,
@@ -22,6 +22,10 @@ pub struct CanvasResize {
 }
 
 impl CanvasResize {
+    pub fn is_dragging_edge(&self, edge: ResizeEdge) -> bool {
+        self.dragging && self.edge == edge
+    }
+
     pub fn new(
         edge: ResizeEdge,
         pointer: Point<Pixels>,

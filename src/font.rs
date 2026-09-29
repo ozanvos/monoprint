@@ -1,12 +1,18 @@
-use crate::{Error, InvalidOption, MAX_FONT_BYTES, RenderError, assets};
+use crate::{Error, InvalidOption, MAX_FONT_BYTES, RenderError, assets, fallback::Fallbacks};
 use std::{
+    collections::VecDeque,
     fmt,
     str::FromStr,
-    sync::{Arc, OnceLock},
+    sync::{Arc, Mutex, OnceLock},
 };
 use takumi::prelude::{FontOverride, FontResource, FontSource, Fonts};
 
-pub(crate) type PreparedFonts = OnceLock<Result<Fonts, String>>;
+/// One lazily prepared base set and a small LRU of requested coverage subsets.
+#[derive(Default)]
+pub(crate) struct PreparedFonts {
+    base: OnceLock<Result<Arc<Fonts>, String>>,
+    fallbacks: Mutex<VecDeque<(Fallbacks, Arc<Fonts>)>>,
+}
 
 const TYPEFACES: [(&str, &str); 10] = [
     ("commit-mono", "Commit Mono"),
@@ -65,7 +71,8 @@ impl fmt::Display for BundledFont {
 
 /// An in-memory TTF or OTF typeface, reusable for code or comments.
 ///
-/// Clones share bytes and at most two lazily prepared font sets. Dropping all
+/// Clones share bytes and two lazily prepared base font sets, each caching at
+/// most eight recently used fallback combinations. Dropping all
 /// clones releases those resources; custom fonts never enter the renderer's
 /// bundled-font cache. No filesystem or system-font lookup takes place.
 /// Styles with a separate comment typeface also cache their combined font set.
@@ -117,8 +124,12 @@ impl Font {
         )?;
         Ok(())
     }
-    pub(crate) fn prepared(&self, secondary: bool) -> Result<&Fonts, Error> {
-        cached_fonts(&self.0.prepared[usize::from(secondary)], || {
+    pub(crate) fn prepared(
+        &self,
+        secondary: bool,
+        fallbacks: Fallbacks,
+    ) -> Result<Arc<Fonts>, Error> {
+        cached_fonts(&self.0.prepared[usize::from(secondary)], fallbacks, || {
             prepare(
                 FontSource::from_shared(Arc::new(self.0.bytes.clone())),
                 secondary,
@@ -141,11 +152,41 @@ pub(crate) const BUNDLED_NAMES: [&str; 9] = [
 
 pub(crate) fn cached_fonts(
     cell: &PreparedFonts,
+    fallbacks: Fallbacks,
     init: impl FnOnce() -> anyhow::Result<Fonts>,
-) -> Result<&Fonts, Error> {
-    cell.get_or_init(|| init().map_err(|e| format!("preparing fonts: {e:#}")))
+) -> Result<Arc<Fonts>, Error> {
+    let base = cell
+        .base
+        .get_or_init(|| {
+            init()
+                .map(Arc::new)
+                .map_err(|e| format!("preparing fonts: {e:#}"))
+        })
         .as_ref()
-        .map_err(|message| Error::Render(RenderError(message.clone())))
+        .map_err(|message| Error::Render(RenderError(message.clone())))?;
+    if fallbacks.is_empty() {
+        return Ok(base.clone());
+    }
+    let mut cache = cell
+        .fallbacks
+        .lock()
+        .unwrap_or_else(|poison| poison.into_inner());
+    if let Some(index) = cache.iter().position(|(key, _)| *key == fallbacks) {
+        let entry = cache.remove(index).expect("located cached fonts");
+        let fonts = entry.1.clone();
+        cache.push_back(entry);
+        return Ok(fonts);
+    }
+    let mut fonts = base.as_ref().clone();
+    fallbacks.register(&mut fonts).map_err(|error| {
+        Error::Render(RenderError(format!("preparing fallback fonts: {error:#}")))
+    })?;
+    let fonts = Arc::new(fonts);
+    if cache.len() == 8 {
+        cache.pop_front();
+    }
+    cache.push_back((fallbacks, fonts.clone()));
+    Ok(fonts)
 }
 pub(crate) fn bundled_source(name: &str) -> FontSource<'static> {
     FontSource::from_shared(Arc::new(assets::font(name)))
@@ -171,4 +212,54 @@ pub(crate) fn prepare(source: FontSource<'_>, secondary: bool) -> anyhow::Result
         )?;
     }
     Ok(fonts)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::TextRole;
+
+    #[test]
+    fn fallback_cache_is_bounded_and_keeps_in_flight_font_sets_alive() {
+        let cache = PreparedFonts::default();
+        let base = cached_fonts(&cache, Fallbacks::default(), || Ok(Fonts::default())).unwrap();
+        let base_again = cached_fonts(&cache, Fallbacks::default(), || unreachable!()).unwrap();
+        assert!(Arc::ptr_eq(&base, &base_again));
+        assert!(cache.fallbacks.lock().unwrap().is_empty());
+
+        let mut keys = Vec::new();
+        for text in [
+            "Привет",
+            "🦀",
+            "中文",
+            "❤\u{fe0e}",
+            "مرحبا",
+            "नमस्ते",
+            "שלום",
+            "สวัสดี",
+            "Привет 🦀",
+        ] {
+            let mut key = Fallbacks::default();
+            key.include(assets::font("space-mono"), text, TextRole::Code, true)
+                .unwrap();
+            assert!(
+                !keys.contains(&key),
+                "test inputs must exercise nine distinct subsets"
+            );
+            keys.push(key);
+        }
+        let held = cached_fonts(&cache, keys[0], || unreachable!()).unwrap();
+        for key in &keys[1..] {
+            cached_fonts(&cache, *key, || unreachable!()).unwrap();
+        }
+        assert_eq!(cache.fallbacks.lock().unwrap().len(), 8);
+        let rebuilt = cached_fonts(&cache, keys[0], || unreachable!()).unwrap();
+        assert!(!Arc::ptr_eq(&held, &rebuilt));
+        // Eviction removes only the cache's Arc; the ongoing render still owns
+        // a usable font registry and can take another immutable snapshot.
+        let _ = held.snapshot();
+        assert_eq!(cache.fallbacks.lock().unwrap().len(), 8);
+        let reused = cached_fonts(&cache, keys[0], || unreachable!()).unwrap();
+        assert!(Arc::ptr_eq(&rebuilt, &reused));
+    }
 }

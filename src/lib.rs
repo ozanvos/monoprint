@@ -58,6 +58,7 @@ mod catalog;
 mod editor_theme;
 mod effects;
 mod error;
+mod fallback;
 mod font;
 mod highlight;
 mod options;
@@ -159,28 +160,43 @@ impl Renderer {
             .as_ref()
             .map_err(|e| Error::Render(RenderError(e.clone())))
     }
-    fn fonts<'a>(&'a self, style: &'a Style, secondary: bool) -> Result<&'a Fonts, Error> {
+    fn fonts(
+        &self,
+        style: &Style,
+        secondary: bool,
+        fallbacks: fallback::Fallbacks,
+    ) -> Result<Arc<Fonts>, Error> {
         if let (Some(comment_font), Some(cache)) = (&style.comment_font, &style.mixed_fonts) {
-            return font::cached_fonts(cache, || {
-                let mut fonts = self.code_fonts(style, secondary)?.clone();
+            return font::cached_fonts(cache, fallbacks, || {
+                let mut fonts = self
+                    .code_fonts(style, secondary, fallback::Fallbacks::default())?
+                    .as_ref()
+                    .clone();
                 comment_font.register_as(&mut fonts, "CommentFont")?;
                 Ok(fonts)
             });
         }
-        self.code_fonts(style, secondary)
+        self.code_fonts(style, secondary, fallbacks)
     }
-    fn code_fonts<'a>(&'a self, style: &'a Style, secondary: bool) -> Result<&'a Fonts, Error> {
+    fn code_fonts(
+        &self,
+        style: &Style,
+        secondary: bool,
+        fallbacks: fallback::Fallbacks,
+    ) -> Result<Arc<Fonts>, Error> {
         if let Some(font) = &style.font {
-            return font.prepared(secondary);
+            return font.prepared(secondary, fallbacks);
         }
         let name = &style.theme.data().font;
         let index = font::BUNDLED_NAMES
             .iter()
             .position(|candidate| candidate == name)
             .expect("bundled theme font");
-        font::cached_fonts(&self.0.fonts[index * 2 + usize::from(secondary)], || {
-            font::prepare(font::bundled_source(name), secondary)
-        })
+        font::cached_fonts(
+            &self.0.fonts[index * 2 + usize::from(secondary)],
+            fallbacks,
+            || font::prepare(font::bundled_source(name), secondary),
+        )
     }
 }
 
@@ -193,6 +209,9 @@ fn validate<'a>(snippet: &'a Snippet, style: &Style) -> Result<Cow<'a, str>, Err
     }
     if style.padding > 512 {
         return Err(InvalidOption::Padding(style.padding).into());
+    }
+    if !(8..=72).contains(&style.font_size) {
+        return Err(InvalidOption::FontSize(style.font_size).into());
     }
     if let Some(width) = style.width {
         let min = 80.max(style.padding * 2 + 49);
