@@ -75,7 +75,7 @@ pub use options::{
     Appearance, LineNumbers, LineRange, PngCompression, PngOptions, Scale, Snippet, Style,
     TextRange,
 };
-pub use raster::RasterImage;
+pub use raster::{BgraImage, RasterImage};
 
 use giallo::Registry;
 use std::{
@@ -162,8 +162,19 @@ impl Renderer {
         style: &Style,
         scale: Scale,
     ) -> Result<RasterImage, Error> {
-        match self.render(snippet, style, render::Format::Raster, scale)? {
-            render::Output::Raster(image) => Ok(image),
+        match self.render(snippet, style, render::Format::Rgba, scale)? {
+            render::Output::Raster(image) => Ok(RasterImage(image)),
+            render::Output::Text(_) => unreachable!("raster output requested"),
+        }
+    }
+    /// Render straight-alpha BGRA8 for native previews without a separate
+    /// channel-swap pass. Uses the same scale, layout and limits as [`Self::rgba`].
+    ///
+    /// The channel order is produced during raster finalization. Take the
+    /// allocation with [`BgraImage::into_pixels`] to hand it to the native UI.
+    pub fn bgra(&self, snippet: &Snippet, style: &Style, scale: Scale) -> Result<BgraImage, Error> {
+        match self.render(snippet, style, render::Format::Bgra, scale)? {
+            render::Output::Raster(image) => Ok(BgraImage(image)),
             render::Output::Text(_) => unreachable!("raster output requested"),
         }
     }

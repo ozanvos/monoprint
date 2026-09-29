@@ -306,6 +306,17 @@ impl Canvas {
     })
   }
 
+  pub(crate) fn into_bgra(self) -> crate::BgraBitmap {
+    let (width, height) = (self.image.width(), self.image.height());
+    let mut pixels = self.image.take();
+    demultiply_bgra_in_place(&mut pixels);
+    crate::BgraBitmap {
+      width,
+      height,
+      pixels,
+    }
+  }
+
   pub(crate) fn with_pixmap<R>(&mut self, f: impl FnOnce(&mut Pixmap) -> R) -> R {
     f(&mut self.image)
   }
@@ -647,11 +658,80 @@ pub(crate) fn demultiply_rgba_in_place(data: &mut [u8]) {
   });
 }
 
+// One traversal: uniform runs only need a channel swap; mixed runs combine
+// exact integer demultiplication with the swap before storing each pixel.
+fn demultiply_bgra_in_place(data: &mut [u8]) {
+  let (runs, tail) = data.as_chunks_mut::<64>();
+  for run in runs {
+    if !crate::simd::swap_uniform_rgba_run(run) {
+      demultiply_bgra_pixels(run.as_chunks_mut::<4>().0);
+    }
+  }
+  demultiply_bgra_pixels(tail.as_chunks_mut::<4>().0);
+}
+
+fn demultiply_bgra_pixels(pixels: &mut [[u8; 4]]) {
+  for pixel in pixels {
+    let [red, green, blue, alpha] = *pixel;
+    if alpha == 255 || alpha == 0 {
+      *pixel = [blue, green, red, alpha];
+    } else {
+      let a = u32::from(alpha);
+      let channel = |c: u8| ((u32::from(c) * 510 + a) / (a * 2)) as u8;
+      *pixel = [channel(blue), channel(green), channel(red), alpha];
+    }
+  }
+}
+
 #[cfg(test)]
 mod demultiply_tests {
   use tiny_skia::PremultipliedColorU8;
 
-  use super::demultiply_rgba_in_place;
+  use super::{demultiply_bgra_in_place, demultiply_rgba_in_place};
+
+  #[test]
+  fn fused_bgra_matches_separate_passes_for_all_alphas_and_tails() {
+    for offset in 0..16 {
+      for count in [0, 1, 15, 16, 17, 31, 32, 33, 65] {
+        for alpha in 0..=255u8 {
+          for mixed in [false, true] {
+            let mut storage = vec![0xa5; offset + count * 4 + 16];
+            let pixels = &mut storage[offset..offset + count * 4];
+            for (i, pixel) in pixels.as_chunks_mut::<4>().0.iter_mut().enumerate() {
+              let a = if mixed {
+                alpha.wrapping_add(i as u8)
+              } else {
+                alpha
+              };
+              let bound = u16::from(a) + 1;
+              *pixel = [
+                (i as u16 * 17 % bound) as u8,
+                (i as u16 * 31 % bound) as u8,
+                (i as u16 * 97 % bound) as u8,
+                a,
+              ];
+              // Preserve the legacy treatment of RGB noise under zero alpha.
+              if a == 0 {
+                *pixel = [19, 71, 231, 0];
+              }
+            }
+            let mut expected = pixels.to_vec();
+            demultiply_rgba_in_place(&mut expected);
+            for pixel in expected.as_chunks_mut::<4>().0 {
+              pixel.swap(0, 2);
+            }
+            demultiply_bgra_in_place(pixels);
+            assert_eq!(
+              pixels, expected,
+              "alpha {alpha}, count {count}, offset {offset}"
+            );
+            assert!(storage[..offset].iter().all(|&b| b == 0xa5));
+            assert!(storage[offset + count * 4..].iter().all(|&b| b == 0xa5));
+          }
+        }
+      }
+    }
+  }
 
   /// Integer rounding may differ from tiny-skia's float division, but only
   /// where the float lands within a rounding step of the true value.

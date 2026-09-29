@@ -1,6 +1,8 @@
 //! Real GPUI controls and Metal pixels, without controlling the user's desktop.
 #[path = "../src/appearance.rs"]
 mod appearance;
+#[path = "../src/assets.rs"]
+mod assets;
 #[allow(dead_code, unused_imports)]
 #[path = "../src/canvas_resize.rs"]
 mod canvas_resize;
@@ -742,7 +744,7 @@ mod macos {
         for (width, height) in [(1440., 900.), (1100., 700.)] {
             let mut cx = HeadlessAppContext::with_platform(
                 gpui_kit::platform::current_platform(true).text_system(),
-                Arc::new(gpui_kit::assets::Assets),
+                Arc::new(crate::assets::Assets),
                 gpui_kit::platform::current_headless_renderer,
             );
             cx.update(|cx| {
@@ -830,14 +832,19 @@ mod macos {
             // Select styles alone do not constrain its full-size outer wrapper.
             cx.update_window(handle.into(), |_, window, _| {
                 let open = window.find("open-source").bounds();
+                let paste = window.find("paste-source").bounds();
                 let language = window.find("source-language").bounds();
                 let wrap = window.find("wrap-source").bounds();
+                assert_eq!(open.size, size(px(26.), px(26.)));
+                assert_eq!(paste.size, open.size);
                 assert_eq!(language.size.height, px(26.));
                 assert!(language.size.width <= px(80.));
                 assert!(language.size.width >= px(40.));
                 assert_eq!(language.center().y, open.center().y);
+                assert_eq!(language.center().y, paste.center().y);
                 assert_eq!(language.center().y, wrap.center().y);
-                assert!(open.right() < language.left());
+                assert!(open.right() < paste.left());
+                assert!(paste.right() < language.left());
                 assert!(language.right() < wrap.left());
                 assert!(
                     open.left() >= px(76.),
@@ -887,6 +894,13 @@ mod macos {
                 cx.update_window(handle.into(), |_, window, cx| {
                     // Measure the rendered toolbar as well as the split's state.
                     let source_right = window.find("wrap-source").bounds().right() + px(9.);
+                    let open = window.find("open-source").bounds();
+                    let paste = window.find("paste-source").bounds();
+                    let language = window.find("source-language").bounds();
+                    assert!(open.left() >= px(76.));
+                    assert!(open.right() < paste.left());
+                    assert!(paste.right() < language.left());
+                    assert!(language.size.width >= px(40.));
                     assert!(
                         (f32::from(source_right) - expected).abs() < 1.,
                         "{label}: {source_right:?}"

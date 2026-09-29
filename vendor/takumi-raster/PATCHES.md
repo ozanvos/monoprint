@@ -57,3 +57,17 @@ Additional exact-output optimizations:
   transparent-pixel rules. Scalar tails and non-AArch64 fallback are retained.
   Tests cover all source-alpha/mask-alpha pairs, zero destination alpha,
   saturation, chunk tails and alignment against the scalar reference.
+
+Native preview output:
+
+- `render_bgra` shares the existing painting pipeline but finalizes the owned
+  canvas as straight-alpha BGRA in one traversal. The existing RGBA/animation
+  paths retain their alpha-conversion arithmetic and output contracts.
+- `canvas.rs` fuses exact integer demultiplication and red/blue ordering for
+  mixed-alpha pixels. `simd.rs` uses NEON to classify and swap sixteen uniformly
+  opaque/transparent pixels from the same loaded channels. Other targets use
+  the existing baseline alpha classifier and a portable channel swap per run.
+  Transparent RGB noise is preserved in the same order as the old two-pass path.
+- Tests compare against the separate RGBA-demultiply-plus-swap path for all
+  alpha values, mixed/uniform runs, alignments and tails. Monoprint additionally
+  checks every theme appearance and odd/even scale pixel parity.

@@ -162,16 +162,34 @@ impl Studio {
                     .window_control_area(WindowControlArea::Drag)
                     .child(
                         Button::new("open-source")
-                            .ghost()
+                            .outline()
                             .xsmall()
-                            .h(px(26.))
+                            .size(px(26.))
                             .flex_shrink_0()
-                            .px(px(5.))
-                            .label("Open…")
-                            .text_size(px(11.))
+                            .p_0()
+                            .border_color(rgb(p.strong))
+                            .bg(rgb(p.control))
+                            .child(Icon::new(IconName::FolderOpen).size(px(13.)))
+                            .accessibility_label("Open source file")
                             .tooltip("Open source file · ⌘O")
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.open(&OpenSource, window, cx)
+                            })),
+                    )
+                    .child(
+                        Button::new("paste-source")
+                            .outline()
+                            .xsmall()
+                            .size(px(26.))
+                            .flex_shrink_0()
+                            .p_0()
+                            .border_color(rgb(p.strong))
+                            .bg(rgb(p.control))
+                            .child(Icon::new(IconName::ClipboardPaste).size(px(13.)))
+                            .accessibility_label("Paste source code")
+                            .tooltip("Replace code with clipboard text")
+                            .on_click(cx.listener(|this, _, window, cx| {
+                                this.paste(&PasteSource, window, cx)
                             })),
                     )
                     .child(
@@ -260,42 +278,6 @@ impl Studio {
                             ),
                     )
                 },
-            )
-            .child(
-                div()
-                    .px(px(13.))
-                    .h(px(31.))
-                    .flex_shrink_0()
-                    .border_t_1()
-                    .border_color(rgb(p.border))
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .gap(px(9.))
-                    .text_size(px(11.))
-                    .text_color(rgb(p.muted))
-                    .child(
-                        div()
-                            .flex_1()
-                            .min_w_0()
-                            .truncate()
-                            .child(self.source_name.clone()),
-                    )
-                    .child(
-                        Button::new("paste-source")
-                            .ghost()
-                            .xsmall()
-                            .h(px(24.))
-                            .label("Paste")
-                            .tooltip("Replace code with clipboard text")
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                this.paste(&PasteSource, window, cx)
-                            })),
-                    )
-                    .child(format!(
-                        "{} lines",
-                        self.document.source.split('\n').count()
-                    )),
             )
     }
     fn selection_toolbar(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
@@ -702,33 +684,6 @@ impl Studio {
 
     fn canvas_panel(&self, cx: &mut Context<Self>) -> impl IntoElement {
         let p = palette(cx);
-        let theme = self
-            .document
-            .theme
-            .parse::<ImageTheme>()
-            .unwrap_or_default();
-        let busy = self.canvas_resize.is_some() || self.revision != self.preview_revision;
-        let dimensions = self
-            .preview
-            .as_ref()
-            .map(|p| {
-                format!(
-                    "{} × {} px",
-                    p.width / 2 * self.document.scale,
-                    p.height / 2 * self.document.scale
-                )
-            })
-            .unwrap_or_else(|| "—".into());
-        let status = if busy {
-            "Updating preview…".to_owned()
-        } else if self.error.is_some() {
-            "Preview needs attention".into()
-        } else {
-            self.preview
-                .as_ref()
-                .map(|p| format!("Ready · {:.0} ms", p.elapsed.as_secs_f64() * 1000.))
-                .unwrap_or_else(|| "Ready".into())
-        };
         div()
             .size_full()
             .min_w_0()
@@ -850,36 +805,6 @@ impl Studio {
                         .child(notice),
                 )
             })
-            .child(
-                div()
-                    .flex()
-                    .items_center()
-                    .justify_between()
-                    .px(px(13.))
-                    .h(px(23.))
-                    .flex_shrink_0()
-                    .border_t_1()
-                    .border_color(rgb(p.border))
-                    .text_size(px(11.))
-                    .text_color(rgb(p.muted))
-                    .child(
-                        div()
-                            .flex()
-                            .items_center()
-                            .gap_2()
-                            .child(div().size(px(5.)).rounded_full().bg(rgb(if busy {
-                                0xE4C48C
-                            } else {
-                                p.green
-                            })))
-                            .child(format!("{status} · {}", theme.name())),
-                    )
-                    .child(if self.document.format == Format::Png {
-                        dimensions
-                    } else {
-                        "Vector / CSS dimensions".into()
-                    }),
-            )
     }
     fn section_header(
         &self,
@@ -954,7 +879,7 @@ impl Studio {
         .track_scroll(&self.theme_scroll);
         settings_section(p)
             .open(self.open_sections[InspectorSection::Theme as usize])
-            .child(self.section_header(InspectorSection::Theme, theme.name(), cx))
+            .child(self.section_header(InspectorSection::Theme, "", cx))
             .content(
                 div()
                     .flex()

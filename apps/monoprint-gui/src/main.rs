@@ -1,4 +1,5 @@
 mod appearance;
+mod assets;
 mod canvas_resize;
 mod document;
 #[cfg(target_os = "macos")]
@@ -51,7 +52,7 @@ fn main() {
         }
     }
     gpui_kit::application()
-        .with_assets(gpui_kit::assets::Assets)
+        .with_assets(assets::Assets)
         .run(move |cx| {
             gpui_kit::init(cx);
             appearance::init(cx);

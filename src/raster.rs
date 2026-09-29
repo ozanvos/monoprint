@@ -75,3 +75,36 @@ impl RasterImage {
         Ok(data)
     }
 }
+
+/// An owned, tightly packed BGRA8 image with straight alpha, top-to-bottom rows
+/// and no row padding. Kept distinct from [`RasterImage`] to make channel order
+/// explicit when passing pixels to a native UI or an encoder.
+pub struct BgraImage(pub(crate) image::RgbaImage);
+
+impl BgraImage {
+    /// Width in output pixels.
+    pub fn width(&self) -> u32 {
+        self.0.width()
+    }
+    /// Height in output pixels.
+    pub fn height(&self) -> u32 {
+        self.0.height()
+    }
+    /// Borrow the BGRA8 pixels. Each row occupies `width() * 4` bytes.
+    pub fn pixels(&self) -> &[u8] {
+        self.0.as_raw()
+    }
+    /// Take the pixel allocation without a copy or channel conversion.
+    pub fn into_pixels(self) -> Vec<u8> {
+        self.0.into_raw()
+    }
+}
+
+impl fmt::Debug for BgraImage {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        f.debug_struct("BgraImage")
+            .field("width", &self.width())
+            .field("height", &self.height())
+            .finish_non_exhaustive()
+    }
+}

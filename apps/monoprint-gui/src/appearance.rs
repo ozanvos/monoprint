@@ -25,7 +25,6 @@ pub struct Palette {
     pub control_on: u32,
     pub overlay: u32,
     pub overlay_ink: u32,
-    pub green: u32,
 }
 impl Palette {
     pub const DARK: Self = Self {
@@ -47,7 +46,6 @@ impl Palette {
         control_on: 0x4E4E4B,
         overlay: 0xECECE8,
         overlay_ink: 0x1F1F1E,
-        green: 0x6FBF8E,
     };
     pub const LIGHT: Self = Self {
         light: true,
@@ -68,7 +66,6 @@ impl Palette {
         control_on: 0xDEDEDB,
         overlay: 0x252524,
         overlay_ink: 0xF5F5F2,
-        green: 0x2E8A57,
     };
     pub fn chrome(self) -> Rgba {
         material_tint(self.surface, 0.18)

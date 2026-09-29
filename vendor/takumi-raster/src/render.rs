@@ -427,6 +427,27 @@ fn create_measured_node(
 
 /// Renders a node to an image.
 pub fn render<'g>(options: RenderOptions<'g>) -> Result<Bitmap> {
+  Ok(Bitmap::from_rgba(paint(options)?.into_inner()?))
+}
+
+/// Owned, tightly packed BGRA8 pixels with straight alpha and top-to-bottom rows.
+/// This output cannot be passed to RGBA encoders without conversion.
+pub struct BgraBitmap {
+  /// Width in pixels.
+  pub width: u32,
+  /// Height in pixels.
+  pub height: u32,
+  /// BGRA bytes, with exactly `width * height * 4` bytes and no row padding.
+  pub pixels: Vec<u8>,
+}
+
+/// Renders straight-alpha BGRA, fusing alpha conversion and channel order in
+/// the canvas finalization pass. The canvas allocation is transferred intact.
+pub fn render_bgra(options: RenderOptions<'_>) -> Result<BgraBitmap> {
+  Ok(paint(options)?.into_bgra())
+}
+
+fn paint(options: RenderOptions<'_>) -> Result<Canvas> {
   let RenderOptions {
     viewport,
     fonts,
@@ -455,17 +476,17 @@ pub fn render<'g>(options: RenderOptions<'g>) -> Result<Bitmap> {
     }))
     .build();
 
-  render_with_context(render_context, node, viewport)
+  paint_with_context(render_context, node, viewport)
 }
 
 /// Rasterizes `node` under an already-built [`RenderContext`]. The context
 /// carries the font snapshot, images, and stylesheet, so animation frames share
 /// one snapshot instead of re-snapshotting per frame.
-fn render_with_context(
+fn paint_with_context(
   render_context: RenderContext,
   node: Node,
   viewport: Viewport,
-) -> Result<Bitmap> {
+) -> Result<Canvas> {
   let mut root = RenderNode::from_node(&render_context, node);
   let mut tree = LayoutTree::from_render_node(&root);
 
@@ -504,9 +525,7 @@ fn render_with_context(
     },
   )?;
 
-  let image = canvas.into_inner()?;
-
-  Ok(Bitmap::from_rgba(image))
+  Ok(canvas)
 }
 
 /// A scene with its per-frame-invariant render state precomputed: the font
@@ -554,7 +573,9 @@ impl<'a, 'g> PreparedScene<'a, 'g> {
       }))
       .build();
 
-    render_with_context(render_context, options.node.clone(), options.viewport)
+    Ok(Bitmap::from_rgba(
+      paint_with_context(render_context, options.node.clone(), options.viewport)?.into_inner()?,
+    ))
   }
 }
 

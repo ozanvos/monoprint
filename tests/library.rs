@@ -70,6 +70,7 @@ fn public_values_can_cross_thread_boundaries() {
     send_sync::<Snippet>();
     send_sync::<Error>();
     send_sync::<monoprint::RasterImage>();
+    send_sync::<monoprint::BgraImage>();
 }
 
 #[test]
@@ -105,6 +106,12 @@ fn raw_pixels_match_png_at_odd_and_even_scales_and_retain_validation() {
                 [expected[2], expected[1], expected[0], expected[3]]
             );
         }
+        let fused = renderer.bgra(&snippet, &style, scale).unwrap();
+        assert_eq!((fused.width(), fused.height()), decoded.dimensions());
+        assert_eq!(fused.pixels(), bgra);
+        let allocation = fused.pixels().as_ptr();
+        let fused = fused.into_pixels();
+        assert_eq!(fused.as_ptr(), allocation);
         let allocation = raw.pixels().as_ptr();
         let pixels = raw.into_pixels();
         assert_eq!(

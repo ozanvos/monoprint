@@ -1,6 +1,6 @@
 use crate::{
-    Error, LineNumberPolicy, LineNumbers, RasterImage, Renderer, Scale, Snippet, Style, TextRole,
-    assets, background, editor_theme, effects, fallback::Fallbacks, highlight,
+    Error, LineNumberPolicy, LineNumbers, Renderer, Scale, Snippet, Style, TextRole, assets,
+    background, editor_theme, effects, fallback::Fallbacks, highlight,
 };
 use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::STANDARD};
@@ -10,9 +10,16 @@ use takumi_raster::RenderOptions;
 
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Format {
-    Raster,
+    Rgba,
+    Bgra,
     Svg,
     Html,
+}
+
+impl Format {
+    fn is_raster(self) -> bool {
+        matches!(self, Self::Rgba | Self::Bgra)
+    }
 }
 
 fn font_face(family: &str, bytes: &[u8]) -> String {
@@ -191,7 +198,7 @@ fn typography_css(font: &[u8], font_size: u32, line_count: usize) -> Result<Stri
 }
 
 pub(crate) enum Output {
-    Raster(RasterImage),
+    Raster(image::RgbaImage),
     Text(String),
 }
 
@@ -387,20 +394,18 @@ pub(crate) fn render(
     }
     let parse_css = |css: &str| -> Result<Arc<StyleSheet>> {
         Ok(Arc::new(
-            StyleSheet::parse(&effects::native_css(css, format == Format::Raster)).map_err(
-                |error| {
-                    let message = error.to_string();
-                    let tail: String = message
-                        .chars()
-                        .rev()
-                        .take(500)
-                        .collect::<Vec<_>>()
-                        .into_iter()
-                        .rev()
-                        .collect();
-                    anyhow::anyhow!("parsing {} frame styles: {tail}", theme.id)
-                },
-            )?,
+            StyleSheet::parse(&effects::native_css(css, format.is_raster())).map_err(|error| {
+                let message = error.to_string();
+                let tail: String = message
+                    .chars()
+                    .rev()
+                    .take(500)
+                    .collect::<Vec<_>>()
+                    .into_iter()
+                    .rev()
+                    .collect();
+                anyhow::anyhow!("parsing {} frame styles: {tail}", theme.id)
+            })?,
         ))
     };
     let mut stylesheet = parse_css(&css)?;
@@ -452,7 +457,7 @@ pub(crate) fn render(
     // At 2x, the upstream 22.5px line height is integral. Keep the SVG's
     // viewBox at this precision and expose its normal CSS dimensions.
     let raster_scale = scale;
-    let scale = if format == Format::Raster {
+    let scale = if format.is_raster() {
         if u32::from(scale).is_multiple_of(2) {
             u32::from(scale)
         } else {
@@ -476,7 +481,7 @@ pub(crate) fn render(
     // Takumi 2.14's raster canvas and SVG-source rasterizer each cap pixmaps
     // at 16 Mi pixels. Check here so callers get our actionable typed error
     // rather than an opaque backend failure. Vector output keeps its budget.
-    let pixel_budget = if format == Format::Raster {
+    let pixel_budget = if format.is_raster() {
         16 << 20
     } else {
         64_000_000
@@ -488,30 +493,35 @@ pub(crate) fn render(
         return Err(Error::ImageTooLarge {
             width: width as u32,
             height: height as u32,
-            supersampled: format == Format::Raster && !u32::from(raster_scale).is_multiple_of(2),
+            supersampled: format.is_raster() && !u32::from(raster_scale).is_multiple_of(2),
         }
         .into());
     }
     viewport =
         Viewport::new((Some(width as u32), Some(height as u32))).with_device_pixel_ratio(scale);
     match format {
-        Format::Raster => {
-            let bitmap = takumi_raster::render(
-                RenderOptions::builder()
-                    .viewport(viewport)
-                    .node(node)
-                    .fonts(&fonts)
-                    .stylesheet(stylesheet)
-                    .build(),
-            )
-            .context("rendering raster image")?;
-            let mut image =
-                image::RgbaImage::from_raw(bitmap.width(), bitmap.height(), bitmap.into_raw())
-                    .context("invalid rendered bitmap")?;
+        Format::Rgba | Format::Bgra => {
+            let options = RenderOptions::builder()
+                .viewport(viewport)
+                .node(node)
+                .fonts(&fonts)
+                .stylesheet(stylesheet)
+                .build();
+            let (width, height, pixels) = if format == Format::Bgra {
+                let bitmap = takumi_raster::render_bgra(options).context("rendering BGRA image")?;
+                (bitmap.width, bitmap.height, bitmap.pixels)
+            } else {
+                let bitmap = takumi_raster::render(options).context("rendering RGBA image")?;
+                (bitmap.width(), bitmap.height(), bitmap.into_raw())
+            };
+            // Internal four-channel container; BGRA stays BGRA. The resampler
+            // applies identical arithmetic independently to each channel.
+            let mut image = image::RgbaImage::from_raw(width, height, pixels)
+                .context("invalid rendered bitmap")?;
             if !u32::from(raster_scale).is_multiple_of(2) {
                 image = crate::resample::half(&image);
             }
-            Ok(Output::Raster(RasterImage(image)))
+            Ok(Output::Raster(image))
         }
         Format::Svg => {
             let svg = takumi_svg::render(

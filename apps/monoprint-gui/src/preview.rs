@@ -11,7 +11,6 @@ pub struct Preview {
     pub image: Arc<RenderImage>,
     pub width: u32,
     pub height: u32,
-    pub elapsed: Duration,
 }
 const LIVE_REFRESH_INTERVAL: Duration = Duration::from_millis(100);
 
@@ -88,7 +87,6 @@ impl PreviewWorker {
                         .save(revision, &document)
                         .err()
                         .map(|e| e.to_string());
-                    let start = Instant::now();
                     let result = (|| -> anyhow::Result<Preview> {
                         let font = fonts.load_selection(
                             document.font_id.as_deref(),
@@ -99,14 +97,13 @@ impl PreviewWorker {
                             document.comment_font_path.as_deref(),
                         )?;
                         let (snippet, style) = document.prepare(font, comments)?;
-                        let raster = renderer.rgba(&snippet, &style, Scale::X2)?;
+                        let raster = renderer.bgra(&snippet, &style, Scale::X2)?;
                         let (width, height) = (raster.width(), raster.height());
                         let image = render_image(raster);
                         Ok(Preview {
                             image,
                             width,
                             height,
-                            elapsed: start.elapsed(),
                         })
                     })()
                     .map_err(|e| format!("{e:#}"));
@@ -146,11 +143,10 @@ impl PreviewWorker {
     }
 }
 
-/// GPUI takes straight-alpha BGRA. Swap channels in the owned raster allocation,
-/// then move it into the frame; no PNG round trip or second pixel buffer.
-fn render_image(raster: monoprint::RasterImage) -> Arc<RenderImage> {
+/// GPUI takes ownership of the final BGRA allocation without conversion.
+fn render_image(raster: monoprint::BgraImage) -> Arc<RenderImage> {
     let (width, height) = (raster.width(), raster.height());
-    let pixels = raster.into_bgra_pixels();
+    let pixels = raster.into_pixels();
     let buffer = image::RgbaImage::from_raw(width, height, pixels)
         .expect("renderer guarantees width × height × 4 bytes");
     Arc::new(RenderImage::new([image::Frame::new(buffer)]))
@@ -201,7 +197,7 @@ mod tests {
                     .width(640)
                     .padding(32);
                 let expected = png_preview(&renderer, &snippet, &style, &decoder);
-                let actual = render_image(renderer.rgba(&snippet, &style, Scale::X2).unwrap());
+                let actual = render_image(renderer.bgra(&snippet, &style, Scale::X2).unwrap());
                 assert_eq!(actual.size(0), expected.size(0));
                 assert_eq!(
                     actual.as_bytes(0),
@@ -223,7 +219,7 @@ mod tests {
                     .font(),
             );
         let expected = png_preview(&renderer, &snippet, &style, &decoder);
-        let actual = render_image(renderer.rgba(&snippet, &style, Scale::X2).unwrap());
+        let actual = render_image(renderer.bgra(&snippet, &style, Scale::X2).unwrap());
         assert_eq!(actual.as_bytes(0), expected.as_bytes(0));
     }
 
@@ -232,6 +228,7 @@ mod tests {
     fn benchmark_preview_transport() {
         let decoder = SvgRenderer::new(Arc::new(()));
         let renderer = Renderer::new();
+        let mut report = Vec::new();
         for (lines, columns) in [(10, 60), (30, 80), (100, 100)] {
             let source = (0..lines)
                 .map(|i| {
@@ -242,35 +239,70 @@ mod tests {
                 .collect::<Vec<_>>()
                 .join("\n");
             let snippet = Snippet::new(source).language("rust".parse().unwrap());
-            let style = Style::default().width(columns as u32 * 13 + 192);
-            let render = |raw| {
-                if raw {
-                    render_image(renderer.rgba(&snippet, &style, Scale::X2).unwrap())
-                } else {
-                    png_preview(&renderer, &snippet, &style, &decoder)
+            for transparent in [false, true] {
+                let style = Style::default()
+                    .width(columns as u32 * 13 + 192)
+                    .transparent(transparent);
+                let render = |mode| match mode {
+                    0 => png_preview(&renderer, &snippet, &style, &decoder),
+                    1 => {
+                        // The committed pre-fusion path, including the same in-place swap.
+                        let raster = renderer.rgba(&snippet, &style, Scale::X2).unwrap();
+                        let (width, height) = (raster.width(), raster.height());
+                        let pixels = raster.into_bgra_pixels();
+                        Arc::new(RenderImage::new([image::Frame::new(
+                            image::RgbaImage::from_raw(width, height, pixels).unwrap(),
+                        )]))
+                    }
+                    2 => render_image(renderer.bgra(&snippet, &style, Scale::X2).unwrap()),
+                    _ => unreachable!(),
+                };
+                let expected = render(0);
+                for mode in [1, 2] {
+                    assert_eq!(render(mode).as_bytes(0), expected.as_bytes(0));
                 }
-            };
-            let expected = render(false);
-            assert_eq!(render(true).as_bytes(0), expected.as_bytes(0));
-            let mut timings = [Vec::new(), Vec::new()];
-            for sample in 0..15 {
-                for mode in if sample % 2 == 0 { [0, 1] } else { [1, 0] } {
-                    let start = Instant::now();
-                    let image = std::hint::black_box(render(mode == 1));
-                    let ms = start.elapsed().as_secs_f64() * 1000.;
-                    assert_eq!(image.as_bytes(0), expected.as_bytes(0));
-                    timings[mode].push(ms);
+                let mut timings = [Vec::new(), Vec::new(), Vec::new()];
+                // Rotate all six permutations to balance cache/order effects.
+                let orders = [
+                    [0, 1, 2],
+                    [2, 1, 0],
+                    [1, 2, 0],
+                    [0, 2, 1],
+                    [2, 0, 1],
+                    [1, 0, 2],
+                ];
+                for sample in 0..31 {
+                    for mode in orders[sample % orders.len()] {
+                        let start = Instant::now();
+                        let image = std::hint::black_box(render(mode));
+                        let ms = start.elapsed().as_secs_f64() * 1000.;
+                        assert_eq!(image.as_bytes(0), expected.as_bytes(0));
+                        timings[mode].push(ms);
+                    }
                 }
+                let medians = timings.each_ref().map(|times| {
+                    let mut sorted = times.clone();
+                    sorted.sort_by(f64::total_cmp);
+                    sorted[15]
+                });
+                eprintln!(
+                    "{lines}x{columns} @2x transparent={transparent}: PNG {:.3} ms, separate {:.3} ms, fused {:.3} ms; {:.1}% less vs separate",
+                    medians[0],
+                    medians[1],
+                    medians[2],
+                    (1. - medians[2] / medians[1]) * 100.
+                );
+                report.push(serde_json::json!({
+                    "lines": lines, "columns": columns, "transparent": transparent,
+                    "width": expected.size(0).width.0, "height": expected.size(0).height.0,
+                    "samples_ms": {"png": timings[0], "separate": timings[1], "fused": timings[2]},
+                    "median_ms": {"png": medians[0], "separate": medians[1], "fused": medians[2]},
+                    "pixel_identical": true,
+                }));
             }
-            for times in &mut timings {
-                times.sort_by(f64::total_cmp);
-            }
-            eprintln!(
-                "{lines}x{columns} @2x: PNG {:.2} ms, raw {:.2} ms; {:.1}% faster (median of 15)",
-                timings[0][7],
-                timings[1][7],
-                (1. - timings[1][7] / timings[0][7]) * 100.
-            );
+        }
+        if let Ok(path) = std::env::var("MONOPRINT_PREVIEW_BENCH_REPORT") {
+            std::fs::write(path, serde_json::to_vec_pretty(&report).unwrap()).unwrap();
         }
     }
 

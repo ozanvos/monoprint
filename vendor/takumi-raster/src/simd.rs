@@ -35,6 +35,36 @@ impl Simd {
   }
 }
 
+/// Swaps a uniform opaque/transparent run to BGRA. Mixed runs stay untouched.
+/// Alpha classification and stores share the loaded channels on AArch64.
+#[cfg(all(target_arch = "aarch64", target_endian = "little"))]
+pub(crate) fn swap_uniform_rgba_run(run: &mut PixelRun) -> bool {
+  use std::arch::aarch64::*;
+  // SAFETY: NEON is baseline; `run` owns exactly sixteen complete pixels.
+  unsafe {
+    let channels = vld4q_u8(run.as_ptr());
+    if vminvq_u8(channels.3) != 255 && vmaxvq_u8(channels.3) != 0 {
+      return false;
+    }
+    vst4q_u8(
+      run.as_mut_ptr(),
+      uint8x16x4_t(channels.2, channels.1, channels.0, channels.3),
+    );
+    true
+  }
+}
+
+#[cfg(not(all(target_arch = "aarch64", target_endian = "little")))]
+pub(crate) fn swap_uniform_rgba_run(run: &mut PixelRun) -> bool {
+  if !baseline::alpha_is_uniform(run) {
+    return false;
+  }
+  for pixel in run.as_chunks_mut::<4>().0 {
+    pixel.swap(0, 2);
+  }
+  true
+}
+
 /// Four gradient projections to LUT indices; `axis_length` and `scale` are finite and
 /// non-negative and the scaled index stays below 2^31, which every gradient LUT satisfies.
 pub(crate) use baseline::linear_lut_indices;
