@@ -169,7 +169,9 @@ impl Studio {
                     .items_center()
                     .justify_end()
                     .gap(px(if highlighted { 2. } else { 7. }))
-                    .pl(px(if cfg!(target_os = "macos") { 76. } else { 13. }))
+                    // Leave a clear gap after the native traffic-light cluster.
+                    // The language selector yields space before the icon buttons.
+                    .pl(px(if cfg!(target_os = "macos") { 92. } else { 13. }))
                     .pr(px(9.))
                     .border_b_1()
                     .border_color(rgb(p.border))
@@ -231,7 +233,8 @@ impl Studio {
                             "Code language",
                             "Find a language…",
                         )
-                        .w(px(160.)),
+                        .w(px(160.))
+                        .min_w(px(26.)),
                     )
                     .child(
                         Button::new("wrap-source")

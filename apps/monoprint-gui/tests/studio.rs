@@ -908,8 +908,8 @@ mod macos {
                 assert!(paste.right() < language.left());
                 assert!(language.right() < wrap.left());
                 assert!(
-                    open.left() >= px(76.),
-                    "leave room for the native window controls"
+                    open.left() >= px(92.),
+                    "leave a clear gap after the native window controls"
                 );
                 let code = window.find("code-typeface").bounds();
                 let comments = window.find("comment-typeface").bounds();
@@ -958,7 +958,7 @@ mod macos {
                     let open = window.find("open-source").bounds();
                     let paste = window.find("paste-source").bounds();
                     let language = window.find("source-language").bounds();
-                    assert!(open.left() >= px(76.));
+                    assert!(open.left() >= px(92.));
                     assert!(open.right() < paste.left());
                     assert!(paste.right() < language.left());
                     assert!(language.size.width >= px(40.));
@@ -1891,8 +1891,10 @@ mod macos {
                     clear.center().y,
                     window.find("open-source").bounds().center().y
                 );
-                assert!(window.find("open-source").bounds().left() >= px(76.));
-                assert!(window.find("source-language").bounds().size.width >= px(40.));
+                assert!(window.find("open-source").bounds().left() >= px(92.));
+                // With Clear highlights present at the minimum sidebar width,
+                // retain a usable dropdown hit target and the traffic-light gap.
+                assert!(window.find("source-language").bounds().size.width >= px(26.));
             })
             .unwrap();
             click(&mut cx, handle, &studio, "clear-highlights");
