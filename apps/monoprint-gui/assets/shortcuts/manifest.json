@@ -1,0 +1,10 @@
+{
+  "Monoprint Clipboard to PNG": {
+    "sourceSHA256": "6ff3b160fb86af44919ad82aa495b7f3f73a4be4572ed08c5499f691847b6399",
+    "signedSHA256": "713079e253db0aa60e7d393fa39b9c17e4373f77752a6cf1fd9f5887d293f3d7"
+  },
+  "Monoprint Source File to PNG": {
+    "sourceSHA256": "b1d8d1af0e7fd8e4a7b0dcf0eeeac9d63f177f32a2893cb622c6faa03a803862",
+    "signedSHA256": "3da92dd0967230371864838407d298e79d61e0f8ed7d8a3d14ef2e52f62baac4"
+  }
+}

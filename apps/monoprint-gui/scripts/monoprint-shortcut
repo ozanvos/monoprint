@@ -1,0 +1,38 @@
+#!/bin/sh
+# CLI bridge for the bundled macOS Shortcuts. Only these scripts use this helper.
+set -eu
+
+cli=${MONOPRINT_CLI:-"$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)/monoprint"}
+destination=${MONOPRINT_OUTPUT_DIR:-"$HOME/Pictures/Monoprint"}
+mode=${1:-}
+if [ ! -x "$cli" ]; then
+    printf '%s\n' 'Monoprint CLI is missing. Install the complete Monoprint.app bundle.' >&2
+    exit 1
+fi
+case "$mode" in
+    text)
+        [ "$#" -eq 2 ] || { printf '%s\n' 'Usage: monoprint-shortcut text LANGUAGE < source' >&2; exit 2; }
+        ;;
+    files)
+        [ "$#" -eq 2 ] && [ -f "$2" ] || { printf '%s\n' 'Choose exactly one UTF-8 source file.' >&2; exit 2; }
+        ;;
+    *) printf '%s\n' 'Usage: monoprint-shortcut text LANGUAGE | files SOURCE' >&2; exit 2 ;;
+esac
+mkdir -p "$destination"
+temporary=$(mktemp "$destination/.monoprint-XXXXXX")
+clipboard_file=""
+trap 'rm -f "$temporary"; if [ -n "$clipboard_file" ]; then rm -f "$clipboard_file"; fi' EXIT HUP INT TERM
+if [ "$mode" = text ]; then
+    clipboard_file=$(mktemp "${TMPDIR:-/tmp/}monoprint-clipboard-XXXXXX")
+    # Read at most the CLI's 1 MiB source limit plus its overflow sentinel.
+    /usr/bin/head -c 1048577 > "$clipboard_file"
+    [ -s "$clipboard_file" ] || { printf '%s\n' 'Copy some UTF-8 code first.' >&2; exit 2; }
+    "$cli" - --language "$2" --format png --output "$temporary" --force --scale 2 --png-compression balanced < "$clipboard_file"
+else
+    case "$2" in /*) source=$2 ;; *) source="$PWD/$2" ;; esac
+    "$cli" "$source" --title "$(basename -- "$source")" --format png --output "$temporary" --force --scale 2 --png-compression balanced
+fi
+# Hard-link publication refuses to replace an existing export, including symlinks.
+output="$destination/monoprint-$(date +%Y%m%d-%H%M%S)-${temporary##*-}.png"
+ln "$temporary" "$output"
+printf '%s\n' "$output"

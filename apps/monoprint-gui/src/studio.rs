@@ -1,6 +1,7 @@
 use crate::{
     canvas_resize::{CanvasResize, ResizeEdge},
     document::{self, Document, Format},
+    handoff::{self, DragExport},
     preview::{Preview, PreviewWorker},
     viewport::PreviewViewport,
 };
@@ -24,6 +25,7 @@ gpui_kit::actions!(
         ExportImage,
         CopyImage,
         PasteSource,
+        ShowShortcuts,
         ToggleUiAppearance,
         Quit
     ]
@@ -152,6 +154,11 @@ pub struct Studio {
     pub wrap: bool,
     pub source_name: String,
     pub last_export: Option<PathBuf>,
+    pub drag_export: Option<DragExport>,
+    pub preparing_drag: bool,
+    pub incoming_source: Option<Vec<PathBuf>>,
+    _drag_task: Option<Task<()>>,
+    source_request: u64,
     pub thumbnails: Vec<(Theme, Arc<Image>)>,
     pub light_thumbnails: std::collections::HashMap<Theme, Arc<Image>>,
     _render_task: Task<()>,
@@ -436,6 +443,11 @@ impl Studio {
             wrap: true,
             source_name,
             last_export: None,
+            drag_export: None,
+            preparing_drag: false,
+            incoming_source: None,
+            _drag_task: None,
+            source_request: 0,
             thumbnails,
             light_thumbnails,
             renderer,
@@ -457,6 +469,7 @@ impl Studio {
     }
 
     pub fn changed(&mut self, cx: &mut Context<Self>) {
+        self.invalidate_drag_export();
         self.canvas_resize = None;
         self.live_preview_since = None;
         self.revision += 1;
@@ -464,6 +477,156 @@ impl Studio {
         self.notice = None;
         self.worker.request(self.revision, self.document.clone());
         cx.notify();
+    }
+
+    fn invalidate_drag_export(&mut self) {
+        self.drag_export = None;
+        self.preparing_drag = false;
+        self._drag_task = None;
+    }
+
+    /// Prewarm only when the export affordance is approached; raw previews stay PNG-free.
+    pub fn prepare_drag_export(&mut self, cx: &mut Context<Self>) {
+        if self.preparing_drag
+            || self
+                .drag_export
+                .as_ref()
+                .is_some_and(|d| d.revision == self.revision)
+        {
+            return;
+        }
+        self.preparing_drag = true;
+        let revision = self.revision;
+        let document = self.document.clone();
+        let renderer = self.renderer.clone();
+        let render = cx
+            .background_executor()
+            .spawn(async move { handoff::stage_png(&renderer, &document, revision) });
+        self._drag_task = Some(cx.spawn(async move |this, cx| {
+            let result = render.await;
+            let _ = this.update(cx, |this, cx| {
+                if this.revision != revision {
+                    return;
+                }
+                this.preparing_drag = false;
+                match result {
+                    Ok(export) => this.drag_export = Some(export),
+                    Err(error) => {
+                        this.notice = Some(format!("Could not prepare a PNG to drag: {error:#}"))
+                    }
+                }
+                cx.notify();
+            });
+        }));
+        cx.notify();
+    }
+
+    pub fn listen_for_sources(
+        &mut self,
+        incoming: async_channel::Receiver<Vec<String>>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        cx.spawn_in(window, async move |this, cx| {
+            while let Ok(urls) = incoming.recv().await {
+                let paths = urls
+                    .iter()
+                    .map(|url| handoff::source_url(url))
+                    .collect::<anyhow::Result<Vec<_>>>();
+                if this
+                    .update_in(cx, |this, window, cx| match paths {
+                        Ok(paths) => this.open_paths(&paths, window, cx),
+                        Err(error) => {
+                            this.notice = Some(format!("{error:#}"));
+                            cx.notify();
+                        }
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        })
+        .detach();
+    }
+
+    pub fn open_paths(&mut self, paths: &[PathBuf], window: &mut Window, cx: &mut Context<Self>) {
+        self.incoming_source = None;
+        cx.notify();
+        if paths.is_empty() {
+            return;
+        }
+        if paths.len() != 1 {
+            self.notice = Some("Open one source file at a time.".into());
+            cx.notify();
+            return;
+        }
+        self.load_source(paths[0].clone(), window, cx);
+    }
+
+    pub fn show_shortcuts(&mut self, _: &ShowShortcuts, _: &mut Window, cx: &mut Context<Self>) {
+        let directory = std::env::current_exe()
+            .ok()
+            .and_then(|path| Some(path.parent()?.parent()?.join("Resources/Shortcuts")));
+        if let Some(directory) =
+            directory.filter(|path| path.join("Monoprint Clipboard to PNG.shortcut").is_file())
+        {
+            if let Ok(url) = url::Url::from_directory_path(directory) {
+                cx.open_url(url.as_str());
+            }
+        } else {
+            self.notice = Some("Shortcuts are included in the packaged macOS app. See the Studio documentation for setup.".into());
+            cx.notify();
+        }
+    }
+
+    /// Receive native drops even when keyboard input suppresses GPUI's hover state.
+    pub fn finish_source_drop(
+        &mut self,
+        event: &MouseUpEvent,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
+        if event.button != MouseButton::Left || self.incoming_source.is_none() {
+            return;
+        }
+        let paths = self.incoming_source.take().unwrap();
+        if cx.has_active_drag()
+            && Bounds::new(Point::default(), window.viewport_size()).contains(&event.position)
+        {
+            cx.stop_active_drag(window);
+            self.open_paths(&paths, window, cx);
+            cx.stop_propagation();
+        }
+        cx.notify();
+    }
+
+    fn load_source(&mut self, path: PathBuf, window: &mut Window, cx: &mut Context<Self>) {
+        self.source_request += 1;
+        let request = self.source_request;
+        let read = cx.background_executor().spawn({
+            let path = path.clone();
+            async move { document::read_source(&path) }
+        });
+        cx.spawn_in(window, async move |this, cx| {
+            let result = read.await;
+            let _ = this.update_in(cx, |this, window, cx| {
+                if this.source_request != request {
+                    return;
+                }
+                match result {
+                    Ok(source) => {
+                        this.install_source(path, source, window, cx);
+                        window.activate_window();
+                    }
+                    Err(error) => {
+                        this.notice = Some(format!("{error:#}"));
+                        cx.notify();
+                    }
+                }
+            });
+        })
+        .detach();
     }
 
     pub fn begin_canvas_resize(
@@ -521,6 +684,7 @@ impl Studio {
         });
         self.sync_canvas_resize();
         self.revision += 1;
+        self.invalidate_drag_export();
         self.error = None;
         self.notice = None;
         self.live_preview_since.get_or_insert(self.revision);
@@ -658,18 +822,11 @@ impl Studio {
                 let Some(path) = paths.into_iter().next() else {
                     return Ok(None);
                 };
-                let source = cx
-                    .background_executor()
-                    .spawn({
-                        let path = path.clone();
-                        async move { document::read_source(&path) }
-                    })
-                    .await?;
-                Ok::<_, anyhow::Error>(Some((path, source)))
+                Ok::<_, anyhow::Error>(Some(path))
             }
             .await;
             let _ = this.update_in(cx, |this, window, cx| match result {
-                Ok(Some((path, source))) => this.install_source(path, source, window, cx),
+                Ok(Some(path)) => this.load_source(path, window, cx),
                 Ok(None) => {}
                 Err(e) => {
                     this.notice = Some(format!("{e:#}"));

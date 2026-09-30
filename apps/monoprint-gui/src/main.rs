@@ -2,6 +2,7 @@ mod appearance;
 mod assets;
 mod canvas_resize;
 mod document;
+mod handoff;
 #[cfg(target_os = "macos")]
 mod material;
 mod preview;
@@ -51,98 +52,112 @@ fn main() {
             Err(e) => error = Some(format!("{e:#}")),
         }
     }
-    gpui_kit::application()
-        .with_assets(assets::Assets)
-        .run(move |cx| {
-            gpui_kit::init(cx);
-            appearance::init(cx);
-            cx.on_action(|_: &Quit, cx| cx.quit());
-            cx.bind_keys([
-                KeyBinding::new("secondary-q", Quit, None),
-                KeyBinding::new("secondary-o", OpenSource, Some("Monoprint")),
-                KeyBinding::new("secondary-s", ExportImage, Some("Monoprint")),
-                KeyBinding::new("secondary-shift-c", CopyImage, Some("Monoprint")),
-                KeyBinding::new("secondary-shift-l", ToggleUiAppearance, Some("Monoprint")),
-                KeyBinding::new("escape", input::Escape, Some("ThemeBrowser")),
+    // Register before launch: Finder may deliver its open event before the window exists.
+    let (open_files, incoming_files) = async_channel::unbounded();
+    let application = gpui_kit::application().with_assets(assets::Assets);
+    application.on_open_urls(move |urls| {
+        let _ = open_files.try_send(urls);
+    });
+    application.run(move |cx| {
+        gpui_kit::init(cx);
+        appearance::init(cx);
+        cx.on_action(|_: &Quit, cx| cx.quit());
+        cx.bind_keys([
+            KeyBinding::new("secondary-q", Quit, None),
+            KeyBinding::new("secondary-o", OpenSource, Some("Monoprint")),
+            KeyBinding::new("secondary-s", ExportImage, Some("Monoprint")),
+            KeyBinding::new("secondary-shift-c", CopyImage, Some("Monoprint")),
+            KeyBinding::new("secondary-shift-l", ToggleUiAppearance, Some("Monoprint")),
+            KeyBinding::new("escape", input::Escape, Some("ThemeBrowser")),
+        ]);
+        let mut file_items = vec![
+            MenuItem::action("Open Source…", OpenSource),
+            MenuItem::action("Export Image…", ExportImage),
+        ];
+        if cfg!(target_os = "macos") {
+            file_items.extend([
+                MenuItem::separator(),
+                MenuItem::action("Set Up Shortcuts…", ShowShortcuts),
             ]);
-            cx.set_menus(vec![
-                Menu {
-                    disabled: false,
-                    name: "Monoprint".into(),
-                    items: vec![MenuItem::action("Quit Monoprint", Quit)],
+        }
+        cx.set_menus(vec![
+            Menu {
+                disabled: false,
+                name: "Monoprint".into(),
+                items: vec![MenuItem::action("Quit Monoprint", Quit)],
+            },
+            Menu {
+                disabled: false,
+                name: "File".into(),
+                items: file_items,
+            },
+            Menu {
+                disabled: false,
+                name: "Edit".into(),
+                items: vec![
+                    MenuItem::action("Undo", input::Undo),
+                    MenuItem::action("Redo", input::Redo),
+                    MenuItem::separator(),
+                    MenuItem::action("Cut", input::Cut),
+                    MenuItem::action("Copy", input::Copy),
+                    MenuItem::action("Paste", input::Paste),
+                    MenuItem::action("Select All", input::SelectAll),
+                    MenuItem::separator(),
+                    MenuItem::action("Copy Image", CopyImage),
+                ],
+            },
+            Menu {
+                disabled: false,
+                name: "View".into(),
+                items: vec![MenuItem::action(
+                    "Toggle Light / Dark Interface",
+                    ToggleUiAppearance,
+                )],
+            },
+        ]);
+        let bounds = Bounds::centered(None, size(px(1440.), px(900.)), cx);
+        cx.open_window(
+            WindowOptions {
+                window_bounds: Some(WindowBounds::Windowed(bounds)),
+                window_min_size: Some(size(px(1100.), px(700.))),
+                window_background: if cfg!(target_os = "macos") {
+                    // The unmodified AppKit material is installed below.
+                    WindowBackgroundAppearance::Transparent
+                } else {
+                    WindowBackgroundAppearance::Opaque
                 },
-                Menu {
-                    disabled: false,
-                    name: "File".into(),
-                    items: vec![
-                        MenuItem::action("Open Source…", OpenSource),
-                        MenuItem::action("Export Image…", ExportImage),
-                    ],
-                },
-                Menu {
-                    disabled: false,
-                    name: "Edit".into(),
-                    items: vec![
-                        MenuItem::action("Undo", input::Undo),
-                        MenuItem::action("Redo", input::Redo),
-                        MenuItem::separator(),
-                        MenuItem::action("Cut", input::Cut),
-                        MenuItem::action("Copy", input::Copy),
-                        MenuItem::action("Paste", input::Paste),
-                        MenuItem::action("Select All", input::SelectAll),
-                        MenuItem::separator(),
-                        MenuItem::action("Copy Image", CopyImage),
-                    ],
-                },
-                Menu {
-                    disabled: false,
-                    name: "View".into(),
-                    items: vec![MenuItem::action(
-                        "Toggle Light / Dark Interface",
-                        ToggleUiAppearance,
-                    )],
-                },
-            ]);
-            let bounds = Bounds::centered(None, size(px(1440.), px(900.)), cx);
-            cx.open_window(
-                WindowOptions {
-                    window_bounds: Some(WindowBounds::Windowed(bounds)),
-                    window_min_size: Some(size(px(1100.), px(700.))),
-                    window_background: if cfg!(target_os = "macos") {
-                        // The unmodified AppKit material is installed below.
-                        WindowBackgroundAppearance::Transparent
-                    } else {
-                        WindowBackgroundAppearance::Opaque
-                    },
-                    titlebar: Some(TitlebarOptions {
-                        title: Some("Monoprint".into()),
-                        appears_transparent: true,
-                        traffic_light_position: Some(point(px(13.), px(14.))),
-                    }),
-                    // Route custom-header gestures through GPUI instead of AppKit,
-                    // which otherwise also maximizes when a header button is double-clicked.
-                    app_owns_titlebar_drag: true,
-                    ..Default::default()
-                },
-                |window, cx| {
-                    #[cfg(target_os = "macos")]
-                    if let Err(error) = material::install(window) {
-                        window.set_background_appearance(WindowBackgroundAppearance::Opaque);
-                        eprintln!("Could not install the window material: {error:#}");
-                    }
-                    let studio =
-                        cx.new(|cx| Studio::new(document, error, source_name, session, window, cx));
-                    let focus = studio.read(cx).focus.clone();
-                    window.focus(&focus, cx);
-                    window.on_window_should_close(cx, |_, cx| {
-                        cx.quit();
-                        true
-                    });
-                    // Root otherwise paints an opaque theme background over the material.
-                    cx.new(|cx| Root::new(studio, window, cx).bg(transparent_black()))
-                },
-            )
-            .expect("open Monoprint window");
-            cx.activate(true);
-        });
+                titlebar: Some(TitlebarOptions {
+                    title: Some("Monoprint".into()),
+                    appears_transparent: true,
+                    traffic_light_position: Some(point(px(13.), px(14.))),
+                }),
+                // Route custom-header gestures through GPUI instead of AppKit,
+                // which otherwise also maximizes when a header button is double-clicked.
+                app_owns_titlebar_drag: true,
+                ..Default::default()
+            },
+            |window, cx| {
+                #[cfg(target_os = "macos")]
+                if let Err(error) = material::install(window) {
+                    window.set_background_appearance(WindowBackgroundAppearance::Opaque);
+                    eprintln!("Could not install the window material: {error:#}");
+                }
+                let studio =
+                    cx.new(|cx| Studio::new(document, error, source_name, session, window, cx));
+                studio.update(cx, |studio, cx| {
+                    studio.listen_for_sources(incoming_files, window, cx);
+                });
+                let focus = studio.read(cx).focus.clone();
+                window.focus(&focus, cx);
+                window.on_window_should_close(cx, |_, cx| {
+                    cx.quit();
+                    true
+                });
+                // Root otherwise paints an opaque theme background over the material.
+                cx.new(|cx| Root::new(studio, window, cx).bg(transparent_black()))
+            },
+        )
+        .expect("open Monoprint window");
+        cx.activate(true);
+    });
 }

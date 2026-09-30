@@ -25,6 +25,9 @@ target = root / 'target/gui'
 manifest = gui / 'Cargo.toml'
 subprocess.run(['cargo', 'build', '--locked', '--manifest-path', str(manifest),
                 '--target-dir', str(target), *([] if args.debug else ['--release'])], check=True)
+# The shortcuts use a stable bundled executable, never the interactive shell's PATH.
+subprocess.run(['cargo', 'build', '--locked', '--manifest-path', str(root / 'Cargo.toml'),
+                '--bin', 'monoprint', '--target-dir', str(target), *([] if args.debug else ['--release'])], check=True)
 host = next(line.removeprefix('host: ') for line in subprocess.check_output(['rustc', '-vV'], text=True).splitlines() if line.startswith('host: '))
 metadata = json.loads(subprocess.check_output(['cargo', 'metadata', '--locked', '--offline',
     '--manifest-path', str(manifest), '--format-version', '1', '--filter-platform', host]))
@@ -36,12 +39,27 @@ resources = contents / 'Resources'
 resources.mkdir(exist_ok=True)
 shutil.copy2(gui / 'assets/Monoprint.icns', resources / 'Monoprint.icns')
 shutil.copy2(target / ('debug' if args.debug else 'release') / 'monoprint-gui', contents / 'MacOS/monoprint-gui')
+shutil.copy2(target / ('debug' if args.debug else 'release') / 'monoprint', contents / 'MacOS/monoprint')
+shutil.copy2(gui / 'scripts/monoprint-shortcut', contents / 'MacOS/monoprint-shortcut')
+(contents / 'MacOS/monoprint-shortcut').chmod(0o755)
+subprocess.run([sys.executable, str(gui / 'scripts/build-shortcuts.py'), '--output', str(gui / 'assets/shortcuts'), '--check'], check=True)
+shortcuts = resources / 'Shortcuts'
+if shortcuts.exists():
+    shutil.rmtree(shortcuts)
+shortcuts.mkdir()
+for path in (gui / 'assets/shortcuts').glob('*.shortcut'):
+    shutil.copy2(path, shortcuts / path.name)
 (contents / 'Info.plist').write_bytes(plistlib.dumps({
     'CFBundleName': 'Monoprint', 'CFBundleDisplayName': 'Monoprint',
     'CFBundleIdentifier': 'app.monoprint.studio', 'CFBundleExecutable': 'monoprint-gui',
     'CFBundlePackageType': 'APPL', 'CFBundleIconFile': 'Monoprint.icns', 'CFBundleShortVersionString': version,
     'CFBundleVersion': version, 'NSHighResolutionCapable': True,
     'LSMinimumSystemVersion': '12.0',
+    'CFBundleDocumentTypes': [{
+        'CFBundleTypeName': 'UTF-8 Source Code', 'CFBundleTypeRole': 'Viewer',
+        'LSHandlerRank': 'Alternate',
+        'LSItemContentTypes': ['public.source-code', 'public.plain-text', 'public.json', 'public.xml'],
+    }],
 }))
 # Preserve renderer assets' notices and source obligations alongside this binary.
 for name in ['LICENSE', 'THIRD_PARTY_NOTICES.md']:

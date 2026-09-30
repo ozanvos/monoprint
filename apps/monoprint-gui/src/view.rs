@@ -20,6 +20,18 @@ use gpui_kit::{
 };
 use monoprint::{Appearance, Background, Language, Theme as ImageTheme};
 
+struct DragThumbnail(Option<std::sync::Arc<RenderImage>>);
+impl Render for DragThumbnail {
+    fn render(&mut self, _: &mut Window, _: &mut Context<Self>) -> impl IntoElement {
+        div()
+            .w(px(160.))
+            .h(px(100.))
+            .when_some(self.0.clone(), |view, image| {
+                view.child(img(image).size_full().object_fit(ObjectFit::Contain))
+            })
+    }
+}
+
 fn header_bar(id: &'static str, window: &mut Window, cx: &mut App) -> Stateful<Div> {
     let header = div().id(id);
     if !cfg!(target_os = "macos") {
@@ -83,6 +95,24 @@ impl Render for Studio {
             .on_action(cx.listener(Self::copy_image))
             .on_action(cx.listener(Self::paste))
             .on_action(cx.listener(Self::toggle_ui_appearance))
+            .on_action(cx.listener(Self::show_shortcuts))
+            .on_drag_move(
+                cx.listener(|this, event: &DragMoveEvent<ExternalPaths>, _, cx| {
+                    if this.incoming_source.is_none() {
+                        this.incoming_source = event
+                            .dragged_item()
+                            .downcast_ref::<ExternalPaths>()
+                            .map(|files| files.paths().to_vec());
+                        cx.notify();
+                    }
+                }),
+            )
+            .on_mouse_up_out(MouseButton::Left, cx.listener(Self::finish_source_drop))
+            .on_mouse_up(MouseButton::Left, cx.listener(Self::finish_source_drop))
+            .on_file_drop_exit(cx.listener(|this, _, _, cx| {
+                this.incoming_source = None;
+                cx.notify();
+            }))
             .on_action(cx.listener(|this, _: &input::Escape, window, cx| {
                 if this.browsing_themes {
                     this.close_theme_browser(window, cx);
@@ -131,6 +161,21 @@ impl Render for Studio {
                     )
                     .child(self.inspector(window, cx)),
             )
+            // Editors own their mouse-up gestures. During a file drag, a topmost
+            // target receives the drop before those handlers can consume it.
+            .when(self.incoming_source.is_some(), |view| {
+                view.child(
+                    div()
+                        .id("source-file-drop")
+                        .absolute()
+                        .inset_0()
+                        .occlude()
+                        .on_file_drop_exit(cx.listener(|this, _, _, cx| {
+                            this.incoming_source = None;
+                            cx.notify();
+                        })),
+                )
+            })
             .children(self.selection_toolbar(cx))
             .children(Root::render_dialog_layer(window, cx))
             .children(Root::render_sheet_layer(window, cx))
@@ -185,6 +230,58 @@ impl Studio {
                     .tooltip("Copy PNG at the selected scale · ⌘⇧C")
                     .on_click(
                         cx.listener(|this, _, window, cx| this.copy_image(&CopyImage, window, cx)),
+                    ),
+            )
+            .child(
+                div()
+                    .id("drag-image")
+                    .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                        if *hovered {
+                            this.prepare_drag_export(cx);
+                        }
+                    }))
+                    .on_mouse_down(
+                        MouseButton::Left,
+                        cx.listener(|this, _, _, cx| {
+                            this.prepare_drag_export(cx);
+                        }),
+                    )
+                    .when_some(
+                        self.drag_export
+                            .clone()
+                            .filter(|export| export.revision == self.revision),
+                        |view, export| {
+                            let thumbnail =
+                                self.preview.as_ref().map(|preview| preview.image.clone());
+                            view.cursor(CursorStyle::OpenHand)
+                                .on_drag(export, move |_, _, _, cx| {
+                                    cx.new(|_| DragThumbnail(thumbnail.clone()))
+                                })
+                                .external_drag_payload(
+                                    |export: &crate::handoff::DragExport, _, _| {
+                                        Some(ExternalDragPayload::Files(FileDragPaths::new([(
+                                            export.path.clone(),
+                                            false,
+                                        )])))
+                                    },
+                                )
+                        },
+                    )
+                    .child(
+                        Button::new("drag-image-button")
+                            .outline()
+                            .border_color(rgb(p.strong))
+                            .bg(rgb(p.control))
+                            .size(px(34.))
+                            .p_0()
+                            .loading(self.preparing_drag)
+                            .child(Icon::new(IconName::ArrowUpRight).size(px(18.)))
+                            .accessibility_label("Drag PNG into another app")
+                            .tooltip(if self.preparing_drag {
+                                "Preparing PNG…"
+                            } else {
+                                "Drag PNG into another app at the selected scale"
+                            }),
                     ),
             )
     }

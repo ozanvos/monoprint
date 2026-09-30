@@ -9,6 +9,9 @@ mod canvas_resize;
 #[allow(dead_code, unused_imports)] // Shared source also contains standard-harness tests.
 #[path = "../src/document.rs"]
 mod document;
+#[allow(dead_code, unused_imports)]
+#[path = "../src/handoff.rs"]
+mod handoff;
 #[cfg(target_os = "macos")]
 #[allow(dead_code)] // The production raw-window adapter is unavailable on the test platform.
 #[path = "../src/material.rs"]
@@ -83,6 +86,190 @@ mod macos {
                 .save(std::path::PathBuf::from(dir).join(format!("{name}.png")))
                 .unwrap();
         }
+    }
+
+    fn assert_handoffs(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        let directory = tempfile::tempdir().unwrap();
+        let first = directory.path().join("示例 #1.py");
+        let second = directory.path().join("drop.rs");
+        let invalid = directory.path().join("binary.png");
+        std::fs::write(&first, "print('hello')").unwrap();
+        std::fs::write(&second, "fn dropped() {}").unwrap();
+        std::fs::write(&invalid, [0xff, 0xfe]).unwrap();
+        let (sender, incoming) = async_channel::unbounded();
+        cx.update_window(handle.into(), |_, window, cx| {
+            studio.update(cx, |s, cx| s.listen_for_sources(incoming, window, cx));
+        })
+        .unwrap();
+        sender
+            .try_send(vec![url::Url::from_file_path(&first).unwrap().into()])
+            .unwrap();
+        let deadline = Instant::now() + Duration::from_secs(15);
+        while cx.read_entity(studio, |s, _| s.document.source != "print('hello')") {
+            cx.run_until_parked();
+            assert!(
+                Instant::now() < deadline,
+                "open-document event not delivered"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |s, _| {
+            assert_eq!(s.document.language, "python");
+            assert_eq!(s.document.title, "示例 #1.py");
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            let position = point(px(150.), px(180.));
+            assert!(!cx.has_active_drag(), "no previous drag should remain");
+            window.dispatch_event(
+                FileDropEvent::Entered {
+                    position,
+                    paths: ExternalPaths(vec![second.clone()].into()),
+                }
+                .to_platform_input(),
+                cx,
+            );
+            assert!(cx.has_active_drag());
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.read_entity(studio, |s, _| {
+            assert!(
+                s.incoming_source.is_some(),
+                "file enter must activate the drop target"
+            )
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            let position = point(px(150.), px(180.));
+            window.refresh();
+            window.render_frame(cx);
+            window.dispatch_event(FileDropEvent::Submit { position }.to_platform_input(), cx);
+        })
+        .unwrap();
+        while cx.read_entity(studio, |s, _| s.document.source != "fn dropped() {}") {
+            cx.run_until_parked();
+            assert!(Instant::now() < deadline, "file drop not delivered");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            studio.update(cx, |s, cx| {
+                assert_eq!(s.document.language, "rust");
+                s.open_paths(&[first.clone(), second.clone()], window, cx);
+                assert!(s.notice.as_ref().unwrap().contains("one source file"));
+                s.open_paths(&[invalid], window, cx);
+            });
+        })
+        .unwrap();
+        while cx.read_entity(studio, |s, _| {
+            !s.notice.as_ref().is_some_and(|n| n.contains("UTF-8"))
+        }) {
+            cx.run_until_parked();
+            assert!(
+                Instant::now() < deadline,
+                "invalid-file error not delivered"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        cx.read_entity(studio, |s, _| {
+            assert_eq!(s.document.source, "fn dropped() {}")
+        });
+        // A cancelled drop must not leave an invisible target over the editor.
+        cx.update_window(handle.into(), |_, window, cx| {
+            let position = point(px(150.), px(180.));
+            window.dispatch_event(
+                FileDropEvent::Entered {
+                    position,
+                    paths: ExternalPaths(vec![first].into()),
+                }
+                .to_platform_input(),
+                cx,
+            );
+        })
+        .unwrap();
+        cx.run_until_parked();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            window.dispatch_event(FileDropEvent::Exited.to_platform_input(), cx);
+        })
+        .unwrap();
+        cx.read_entity(studio, |s, _| {
+            assert!(s.incoming_source.is_none());
+            assert_eq!(s.document.source, "fn dropped() {}");
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.render_frame(cx);
+            let position = window.find("drag-image-button").bounds().center();
+            window.dispatch_event(
+                MouseMoveEvent {
+                    position,
+                    pressed_button: None,
+                    modifiers: Default::default(),
+                }
+                .to_platform_input(),
+                cx,
+            );
+        })
+        .unwrap();
+        while cx.read_entity(studio, |s, _| s.drag_export.is_none()) {
+            cx.run_until_parked();
+            assert!(Instant::now() < deadline, "drag export not prepared");
+            std::thread::sleep(Duration::from_millis(10));
+        }
+        settle(cx, handle, studio);
+        let path = cx.read_entity(studio, |s, _| s.drag_export.as_ref().unwrap().path.clone());
+        cx.update_window(handle.into(), |_, window, cx| {
+            let origin = window.find("drag-image-button").bounds().center();
+            window.dispatch_event(
+                MouseDownEvent {
+                    position: origin,
+                    button: MouseButton::Left,
+                    modifiers: Default::default(),
+                    click_count: 1,
+                    first_mouse: false,
+                }
+                .to_platform_input(),
+                cx,
+            );
+            window.dispatch_event(
+                MouseMoveEvent {
+                    position: origin + point(px(-20.), px(0.)),
+                    pressed_button: Some(MouseButton::Left),
+                    modifiers: Default::default(),
+                }
+                .to_platform_input(),
+                cx,
+            );
+            assert!(cx.has_active_drag(), "export affordance must start a drag");
+            window.dispatch_event(
+                MouseUpEvent {
+                    position: origin,
+                    button: MouseButton::Left,
+                    modifiers: Default::default(),
+                    click_count: 1,
+                }
+                .to_platform_input(),
+                cx,
+            );
+            studio.update(cx, |s, cx| {
+                s.install_source("main.rs".into(), "fn main() {}".into(), window, cx);
+                assert!(
+                    s.drag_export.is_none(),
+                    "edits invalidate the cached export"
+                );
+            });
+        })
+        .unwrap();
+        assert!(
+            path.exists(),
+            "recipient can still read the PNG after an edit"
+        );
+        std::fs::remove_dir_all(path.parent().unwrap()).unwrap();
+        settle(cx, handle, studio);
     }
 
     fn assert_fallback_glyphs(
@@ -1488,6 +1675,7 @@ mod macos {
                 assert_eq!(s.document.language, "rust");
                 assert_eq!(s.document.title, "main.rs");
             });
+            assert_handoffs(&mut cx, handle, &studio);
 
             cx.update_window(handle.into(), |_, window, _| {
                 assert!(window.find("export-image").visible());
