@@ -1,18 +1,24 @@
 #!/usr/bin/env python3
 """Build a local macOS .app, keeping UI dependencies and notices isolated."""
 import argparse
+import hashlib
 import json
 from pathlib import Path
 import plistlib
 import shutil
 import subprocess
 import sys
+import tomllib
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--debug', action='store_true', help='Use the faster development build')
+parser.add_argument('--sign-identity', default='-', help='Developer ID Application identity; defaults to local ad-hoc signing')
+parser.add_argument('--notary-profile', help='Existing notarytool keychain profile; requires Developer ID signing')
 args = parser.parse_args()
 if sys.platform != 'darwin':
     parser.error('This bundle script is for macOS; use cargo run on other platforms.')
+if args.notary_profile and (args.sign_identity == '-' or args.debug):
+    parser.error('Notarization requires a release build and --sign-identity')
 gui = Path(__file__).resolve().parents[1]
 root = gui.parents[1]
 target = root / 'target/gui'
@@ -55,20 +61,55 @@ for path in [fallback / 'manifest.json', fallback / 'NOTICE.txt', *fallback.rglo
 # Additional native UI dependencies have their own lockfile and provenance.
 inventory = []
 notices = []
+lock = tomllib.loads((gui / 'Cargo.lock').read_text())
+checksums = {(p['name'], p['version']): p.get('checksum') for p in lock['package']}
 for package in sorted(metadata['packages'], key=lambda p: (p['name'], p['version'])):
     if not package.get('source'):
         continue
     source = Path(package['manifest_path']).parent
     files = sorted(p for p in source.rglob('*') if p.is_file() and p.name.upper().startswith(('LICENSE', 'LICENCE', 'COPYING', 'NOTICE')))
-    inventory.append({k: package[k] for k in ['name', 'version', 'license', 'repository']} | {
+    record = {k: package[k] for k in ['name', 'version', 'license', 'repository']} | {
         'source': f"https://crates.io/api/v1/crates/{package['name']}/{package['version']}/download",
         'notice_files': [str(p.relative_to(source)) for p in files],
-    })
+    }
+    if package.get('license') in ('EUPL-1.2', 'MPL-2.0'):
+        archive_name = f"{package['name']}-{package['version']}.crate"
+        archive = source.parents[2] / 'cache' / source.parent.name / archive_name
+        source_bytes = archive.read_bytes()
+        checksum = hashlib.sha256(source_bytes).hexdigest()
+        if checksum != checksums[(package['name'], package['version'])]:
+            raise RuntimeError(f'Corresponding source checksum mismatch: {archive_name}')
+        destination = resources / 'licenses/sources' / archive_name
+        destination.parent.mkdir(parents=True, exist_ok=True)
+        destination.write_bytes(source_bytes)
+        record['bundled_source'] = f'sources/{archive_name}'
+        record['sha256'] = checksum
+    inventory.append(record)
     for path in files:
         notices.append(f"\n{'=' * 72}\n{package['name']} {package['version']} — {path.relative_to(source)}\n{'=' * 72}\n" + path.read_text(errors='replace'))
 (resources / 'licenses/gui-dependencies.json').write_text(json.dumps(inventory, indent=2) + '\n')
 (resources / 'licenses/gui-dependency-notices.txt').write_text('Packaged notices from the optional GUI lockfile, including host build/test dependencies.\n' + ''.join(notices))
+(resources / 'licenses/sources/README.md').write_text(
+    '# Corresponding dependency source\n\nUnmodified Giallo (EUPL-1.2) and MPL-2.0 dependency source archives accompany this app. '
+    'Extract each `.crate` as a gzip-compressed tar archive. Versions, checksums and exact upstream source URLs are in '
+    '`../gui-dependencies.json`; license texts are in `../gui-dependency-notices.txt`. MPL grammar sources are in '
+    '`../grammar-sources/`. Original third-party licenses remain applicable.\n')
 shutil.copy2(manifest.parent / 'Cargo.lock', resources / 'gui-Cargo.lock')
-# Local ad-hoc signing makes the copied bundle usable; this is not notarization.
-subprocess.run(['codesign', '--force', '--deep', '--sign', '-', str(bundle)], check=True)
+# Local builds retain ad-hoc signing. Public distribution uses a Developer ID.
+subprocess.run(['codesign', '--force', '--deep', '--sign', args.sign_identity,
+                *([] if args.sign_identity == '-' else ['--options', 'runtime', '--timestamp']),
+                str(bundle)], check=True)
+subprocess.run(['codesign', '--verify', '--deep', '--strict', str(bundle)], check=True)
+if args.notary_profile:
+    archive = target / 'Monoprint-notarization.zip'
+    if archive.exists():
+        archive.unlink()
+    subprocess.run(['ditto', '-c', '-k', '--keepParent', str(bundle), str(archive)], check=True)
+    result = json.loads(subprocess.check_output([
+        'xcrun', 'notarytool', 'submit', str(archive), '--keychain-profile', args.notary_profile,
+        '--wait', '--output-format', 'json'], text=True))
+    if result.get('status') != 'Accepted':
+        raise RuntimeError(f"Notarization was not accepted: {result.get('status')}")
+    subprocess.run(['xcrun', 'stapler', 'staple', str(bundle)], check=True)
+    subprocess.run(['xcrun', 'stapler', 'validate', str(bundle)], check=True)
 print(bundle)

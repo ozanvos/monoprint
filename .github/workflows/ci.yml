@@ -28,3 +28,15 @@ jobs:
           RUSTDOCFLAGS: -D warnings
       - run: cargo build --locked --release
       - run: ./target/release/monoprint fixtures/example.ts -o example.png
+  studio:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - run: cargo fmt --manifest-path apps/monoprint-gui/Cargo.toml -- --check
+      - run: cargo clippy --locked --manifest-path apps/monoprint-gui/Cargo.toml --target-dir target/gui --all-targets -- -D warnings
+      - run: cargo test --locked --manifest-path apps/monoprint-gui/Cargo.toml --target-dir target/gui --bin monoprint-gui
+      - run: python3 apps/monoprint-gui/scripts/bundle-macos.py --debug
+      - run: codesign --verify --deep --strict target/gui/Monoprint.app

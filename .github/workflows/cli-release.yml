@@ -1,0 +1,44 @@
+name: CLI release archives
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  package:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15
+            target: aarch64-apple-darwin
+          - runner: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+    runs-on: ${{ matrix.runner }}
+    env:
+      CARGO_TARGET_DIR: ${{ github.workspace }}/target
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - uses: dtolnay/rust-toolchain@1.97.0
+      - run: cargo fetch --locked
+      - run: cargo test --locked --release
+      - run: node scripts/package-cli.mjs --out output/cli-release
+      - name: Check the relocated archive
+        shell: bash
+        run: |
+          mkdir output/cli-consumer
+          tar -xzf output/cli-release/*.tar.gz -C output/cli-consumer
+          binary=$(find output/cli-consumer -type f -name monoprint)
+          "$binary" fixtures/example.ts --scale 1 -o output/cli-consumer/example.png
+          "$binary" fixtures/example.ts -o output/cli-consumer/example.svg
+          "$binary" fixtures/example.ts -o output/cli-consumer/example.html
+      - uses: actions/upload-artifact@v4
+        with:
+          name: cli-${{ matrix.target }}
+          path: |
+            output/cli-release/*.tar.gz
+            output/cli-release/*.sha256
+            output/cli-release/manifest.json
+          if-no-files-found: error

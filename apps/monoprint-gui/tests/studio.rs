@@ -663,6 +663,16 @@ mod macos {
     }
 
     fn pointer_click(window: &mut Window, position: Point<Pixels>, cx: &mut App) {
+        pointer_click_count(window, position, 1, false, cx);
+    }
+
+    fn pointer_click_count(
+        window: &mut Window,
+        position: Point<Pixels>,
+        click_count: usize,
+        move_while_pressed: bool,
+        cx: &mut App,
+    ) {
         window.dispatch_event(
             MouseMoveEvent {
                 position,
@@ -676,22 +686,50 @@ mod macos {
             MouseDownEvent {
                 position,
                 button: MouseButton::Left,
-                click_count: 1,
+                click_count,
                 ..Default::default()
             }
             .to_platform_input(),
             cx,
         );
+        if move_while_pressed {
+            // TestWindow intentionally panics on start_window_move. This makes
+            // accidental titlebar dragging from a control a regression failure.
+            window.dispatch_event(
+                MouseMoveEvent {
+                    position: position + point(px(1.), px(0.)),
+                    pressed_button: Some(MouseButton::Left),
+                    ..Default::default()
+                }
+                .to_platform_input(),
+                cx,
+            );
+        }
         window.dispatch_event(
             MouseUpEvent {
                 position,
                 button: MouseButton::Left,
-                click_count: 1,
+                click_count,
                 ..Default::default()
             }
             .to_platform_input(),
             cx,
         );
+    }
+
+    fn header_control_click(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+        id: &'static str,
+        click_count: usize,
+    ) {
+        cx.update_window(handle.into(), |_, window, cx| {
+            let position = window.find(id).bounds().center();
+            pointer_click_count(window, position, click_count, true, cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
     }
 
     pub fn run() {
@@ -992,12 +1030,12 @@ mod macos {
                     capture(&mut cx, handle, &format!("source-{label}-{}", width as u32));
                 }
             }
-            click(&mut cx, handle, &studio, "wrap-source");
+            header_control_click(&mut cx, handle, &studio, "wrap-source", 1);
             cx.read_entity(&studio, |s, _| assert!(!s.wrap));
-            click(&mut cx, handle, &studio, "wrap-source");
+            header_control_click(&mut cx, handle, &studio, "wrap-source", 2);
             cx.read_entity(&studio, |s, _| assert!(s.wrap));
 
-            click(&mut cx, handle, &studio, "source-language");
+            header_control_click(&mut cx, handle, &studio, "source-language", 1);
             std::thread::sleep(Duration::from_millis(180));
             settle(&mut cx, handle, &studio);
             capture(&mut cx, handle, &format!("language-menu-{}", width as u32));
@@ -1008,7 +1046,7 @@ mod macos {
             let original = cx.read_entity(&studio, |s, _| {
                 (s.revision, serde_json::to_string(&s.document).unwrap())
             });
-            click(&mut cx, handle, &studio, "half-preview");
+            header_control_click(&mut cx, handle, &studio, "half-preview", 2);
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.viewport.zoom, viewport::PreviewZoom::Half)
             });
@@ -1019,7 +1057,7 @@ mod macos {
             });
             click(&mut cx, handle, &studio, "fit-preview");
             assert_canvas_gestures(&mut cx, handle, &studio);
-            click(&mut cx, handle, &studio, "ui-appearance");
+            header_control_click(&mut cx, handle, &studio, "ui-appearance", 1);
             cx.update(|cx| assert!(appearance::palette(cx).light));
             assert_material_visible(&mut cx, handle, &studio);
             capture(
@@ -1027,7 +1065,7 @@ mod macos {
                 handle,
                 &format!("light-interface-{}", width as u32),
             );
-            click(&mut cx, handle, &studio, "ui-appearance");
+            header_control_click(&mut cx, handle, &studio, "ui-appearance", 2);
             cx.update(|cx| assert!(!appearance::palette(cx).light));
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(

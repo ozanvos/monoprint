@@ -119,6 +119,9 @@ fn main() {
                         appears_transparent: true,
                         traffic_light_position: Some(point(px(13.), px(14.))),
                     }),
+                    // Route custom-header gestures through GPUI instead of AppKit,
+                    // which otherwise also maximizes when a header button is double-clicked.
+                    app_owns_titlebar_drag: true,
                     ..Default::default()
                 },
                 |window, cx| {

@@ -36,7 +36,7 @@ Platform packages publish first and the main package last. The script uses `--ig
 Without `--publish`, the publisher only validates, even if `--dry-run` is omitted.
 Receipts bind native files and tarballs to one source commit and input hash;
 mixed revisions, dirty release builds and altered packed metadata are rejected.
-See [release packaging](private-release-prep.md) for workflow configuration and npm OIDC setup.
+See [release packaging](release.md) for workflow configuration and npm OIDC setup.
 
 To assemble already-built release artifacts yourself, use `npm run package -- --artifacts /path/to/native-artifacts --out /fresh/output`. It refuses missing, duplicate, stale, wrong-version, or altered native artifacts. `--local` creates an explicitly non-release subset for local testing. Output paths must be fresh; packaging never deletes an existing caller-selected directory.
 

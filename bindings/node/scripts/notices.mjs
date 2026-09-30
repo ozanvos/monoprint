@@ -2,11 +2,11 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { directory, root, run, readJson, filesUnder, sha256 } from './shared.mjs';
 
-export async function prepareNotices(destination, targets) {
+export async function prepareNotices(destination, targets, packageName = 'monoprint-node') {
   await fs.mkdir(destination, { recursive: true });
   for (const name of ['LICENSE', 'THIRD_PARTY_NOTICES.md']) await fs.copyFile(path.join(root, name), path.join(destination, name));
   await fs.cp(path.join(root, 'licenses'), path.join(destination, 'licenses'), { recursive: true });
-  await fs.cp(path.join(directory, 'licenses'), path.join(destination, 'licenses/node'), { recursive: true });
+  if (packageName === 'monoprint-node') await fs.cp(path.join(directory, 'licenses'), path.join(destination, 'licenses/node'), { recursive: true });
   for (const file of ['docs/grammar-licenses.md', 'docs/grammar-license-validation.json', 'docs/font-fallback.md', 'assets/fonts/manifest.json',
     'assets/fonts/fallback/manifest.json', 'assets/fonts/fallback/NOTICE.txt',
     ...(await fs.readdir(path.join(root, 'assets/fonts/fallback'))).filter(n => n.endsWith('-OFL.txt')).map(n => `assets/fonts/fallback/${n}`),
@@ -20,10 +20,10 @@ export async function prepareNotices(destination, targets) {
   const packages = new Map();
   const selected = new Set();
   for (const target of targets) {
-    const metadata = JSON.parse(run('cargo', ['metadata', '--offline', '--locked', '--no-default-features', '--filter-platform', target.triple, '--format-version', '1'], { stdio: 'pipe', maxBuffer: 32 * 1024 * 1024 }));
+    const metadata = JSON.parse(run('cargo', ['metadata', '--offline', '--locked', ...(packageName === 'monoprint-node' ? ['--no-default-features'] : []), '--filter-platform', target.triple, '--format-version', '1'], { stdio: 'pipe', maxBuffer: 32 * 1024 * 1024 }));
     for (const pkg of metadata.packages) packages.set(pkg.id, pkg);
     const nodes = new Map(metadata.resolve.nodes.map(n => [n.id, n]));
-    const pending = [metadata.packages.find(p => p.name === 'monoprint-node').id];
+    const pending = [metadata.packages.find(p => p.name === packageName).id];
     const visited = new Set();
     while (pending.length) {
       const id = pending.pop();
@@ -37,7 +37,7 @@ export async function prepareNotices(destination, targets) {
   const nodeUpstream = await readJson(path.join(directory, 'licenses/upstream.json'));
   const inventory = [];
   const lock = await fs.readFile(path.join(root, 'Cargo.lock'), 'utf8');
-  let notices = `MONOPRINT NODE BINDING — LOCKED RUST DEPENDENCY NOTICES\nIncludes build dependencies for these resolved targets: ${targets.map(t => t.triple).join(', ')}.\n`;
+  let notices = `MONOPRINT ${packageName === 'monoprint-node' ? 'NODE BINDING' : 'CLI'} — LOCKED RUST DEPENDENCY NOTICES\nIncludes build dependencies for these resolved targets: ${targets.map(t => t.triple).join(', ')}.\n`;
   for (const id of [...selected].sort()) {
     const pkg = packages.get(id);
     if (!pkg.source) continue;

@@ -68,13 +68,13 @@ impl Palette {
         overlay_ink: 0xF5F5F2,
     };
     pub fn chrome(self) -> Rgba {
-        material_tint(self.surface, 0.18)
+        material_tint(self.surface, if self.light { 0.26 } else { 0.18 })
     }
     pub fn preview_background(self) -> Rgba {
-        material_tint(self.stage, if self.light { 0.14 } else { 0.24 })
+        material_tint(self.stage, if self.light { 0.22 } else { 0.24 })
     }
     pub fn inspector_background(self) -> Rgba {
-        material_tint(self.raised, if self.light { 0.18 } else { 0.12 })
+        material_tint(self.raised, if self.light { 0.26 } else { 0.12 })
     }
 }
 

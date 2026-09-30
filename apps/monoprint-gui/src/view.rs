@@ -20,6 +20,42 @@ use gpui_kit::{
 };
 use monoprint::{Appearance, Background, Language, Theme as ImageTheme};
 
+fn header_bar(id: &'static str, window: &mut Window, cx: &mut App) -> Stateful<Div> {
+    let header = div().id(id);
+    if !cfg!(target_os = "macos") {
+        return header;
+    }
+
+    // Match GPUI Kit's TitleBar gesture ownership, but exclude interactive
+    // children: their mouse-down prevents default before it reaches the header.
+    let pressed = window.use_keyed_state(id, cx, |_, _| false);
+    header
+        .on_mouse_down_out(window.listener_for(&pressed, |pressed, _, _, _| *pressed = false))
+        .on_mouse_down(
+            MouseButton::Left,
+            window.listener_for(&pressed, |pressed, _, window, _| {
+                *pressed = !window.default_prevented();
+            }),
+        )
+        .on_mouse_up(
+            MouseButton::Left,
+            window.listener_for(&pressed, |pressed, event: &MouseUpEvent, window, _| {
+                if std::mem::take(pressed) && event.click_count == 2 {
+                    // Honor the macOS preference (zoom, minimize, or no action).
+                    window.titlebar_double_click();
+                }
+            }),
+        )
+        .on_mouse_move(window.listener_for(
+            &pressed,
+            |pressed, event: &MouseMoveEvent, window, _| {
+                if event.dragging() && std::mem::take(pressed) {
+                    window.start_window_move();
+                }
+            },
+        ))
+}
+
 impl Render for Studio {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let p = palette(cx);
@@ -84,12 +120,12 @@ impl Render for Studio {
                                         .size(px(source_width))
                                         .size_range(px(240.)..px(source_max))
                                         .flex_none()
-                                        .child(self.source_panel(cx)),
+                                        .child(self.source_panel(window, cx)),
                                 )
                                 .child(
                                     resizable_panel()
                                         .size_range(px(360.)..Pixels::MAX)
-                                        .child(self.canvas_panel(cx)),
+                                        .child(self.canvas_panel(window, cx)),
                                 ),
                         ),
                     )
@@ -152,7 +188,7 @@ impl Studio {
                     ),
             )
     }
-    fn source_panel(&self, cx: &mut Context<Self>) -> impl IntoElement {
+    fn source_panel(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         let highlighted =
             !self.document.highlights.is_empty() || !self.document.text_highlights.is_empty();
@@ -162,7 +198,7 @@ impl Studio {
             .flex_col()
             .size_full()
             .child(
-                div()
+                header_bar("source-header", window, cx)
                     .h(px(40.))
                     .flex_shrink_0()
                     .flex()
@@ -234,7 +270,10 @@ impl Studio {
                             "Find a language…",
                         )
                         .w(px(160.))
-                        .min_w(px(26.)),
+                        .min_w(px(26.))
+                        // Buttons prevent default on mouse-down; Select does not.
+                        // Give the language trigger the same header-gesture boundary.
+                        .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default()),
                     )
                     .child(
                         Button::new("wrap-source")
@@ -687,7 +726,7 @@ impl Studio {
         )
     }
 
-    fn canvas_panel(&self, cx: &mut Context<Self>) -> impl IntoElement {
+    fn canvas_panel(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         div()
             .size_full()
@@ -696,7 +735,7 @@ impl Studio {
             .flex_col()
             .bg(p.preview_background())
             .child(
-                div()
+                header_bar("canvas-header", window, cx)
                     .flex()
                     .items_center()
                     .justify_between()
