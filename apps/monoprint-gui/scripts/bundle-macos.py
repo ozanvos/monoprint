@@ -8,12 +8,17 @@ import plistlib
 import shutil
 import subprocess
 import sys
+import tempfile
 import tomllib
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--debug', action='store_true', help='Use the faster development build')
 parser.add_argument('--sign-identity', default='-', help='Developer ID Application identity; defaults to local ad-hoc signing')
 parser.add_argument('--notary-profile', help='Existing notarytool keychain profile; requires Developer ID signing')
+parser.add_argument('--sign-keychain', type=Path)
+parser.add_argument('--notary-keychain', type=Path)
+parser.add_argument('--archive-dir', type=Path, help='Fresh directory for final ZIP, checksums and receipt')
+parser.add_argument('--local', action='store_true', help='Allow dirty source; mark artifacts verification-only')
 args = parser.parse_args()
 if sys.platform != 'darwin':
     parser.error('This bundle script is for macOS; use cargo run on other platforms.')
@@ -21,6 +26,15 @@ if args.notary_profile and (args.sign_identity == '-' or args.debug):
     parser.error('Notarization requires a release build and --sign-identity')
 gui = Path(__file__).resolve().parents[1]
 root = gui.parents[1]
+sys.path.insert(0, str(root / 'scripts'))
+from macos_release import sign_app, notarize_app, zip_app, source_digest
+commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
+dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root, text=True).strip())
+source_hash = source_digest(root)
+if args.archive_dir and args.archive_dir.exists():
+    parser.error('--archive-dir must be a fresh directory')
+if args.archive_dir and dirty and not args.local:
+    parser.error('Distribution archives require clean source; use --local for verification-only artifacts')
 target = root / 'target/gui'
 manifest = gui / 'Cargo.toml'
 subprocess.run(['cargo', 'build', '--locked', '--manifest-path', str(manifest),
@@ -33,11 +47,15 @@ metadata = json.loads(subprocess.check_output(['cargo', 'metadata', '--locked', 
     '--manifest-path', str(manifest), '--format-version', '1', '--filter-platform', host]))
 version = next(p['version'] for p in metadata['packages'] if p['name'] == 'monoprint-gui')
 bundle = target / 'Monoprint.app'
-contents = bundle / 'Contents'
+# Assemble a fresh bundle: stale signed files/resources must not survive rebuilds.
+staging = tempfile.TemporaryDirectory(prefix='monoprint-bundle-', dir=target)
+assembled = Path(staging.name) / 'Monoprint.app'
+contents = assembled / 'Contents'
 (contents / 'MacOS').mkdir(parents=True, exist_ok=True)
 resources = contents / 'Resources'
 resources.mkdir(exist_ok=True)
-shutil.copy2(gui / 'assets/Monoprint.icns', resources / 'Monoprint.icns')
+subprocess.run([sys.executable, str(gui / 'scripts/build-icon.py'),
+                '--output', str(resources)], check=True)
 shutil.copy2(target / ('debug' if args.debug else 'release') / 'monoprint-gui', contents / 'MacOS/monoprint-gui')
 shutil.copy2(target / ('debug' if args.debug else 'release') / 'monoprint', contents / 'MacOS/monoprint')
 shutil.copy2(gui / 'scripts/monoprint-shortcut', contents / 'MacOS/monoprint-shortcut')
@@ -52,7 +70,8 @@ for path in (gui / 'assets/shortcuts').glob('*.shortcut'):
 (contents / 'Info.plist').write_bytes(plistlib.dumps({
     'CFBundleName': 'Monoprint', 'CFBundleDisplayName': 'Monoprint',
     'CFBundleIdentifier': 'app.monoprint.studio', 'CFBundleExecutable': 'monoprint-gui',
-    'CFBundlePackageType': 'APPL', 'CFBundleIconFile': 'Monoprint.icns', 'CFBundleShortVersionString': version,
+    'CFBundlePackageType': 'APPL', 'CFBundleIconFile': 'Monoprint.icns',
+    'CFBundleIconName': 'Monoprint', 'CFBundleShortVersionString': version,
     'CFBundleVersion': version, 'NSHighResolutionCapable': True,
     'LSMinimumSystemVersion': '12.0',
     'CFBundleDocumentTypes': [{
@@ -113,21 +132,35 @@ for package in sorted(metadata['packages'], key=lambda p: (p['name'], p['version
     '`../gui-dependencies.json`; license texts are in `../gui-dependency-notices.txt`. MPL grammar sources are in '
     '`../grammar-sources/`. Original third-party licenses remain applicable.\n')
 shutil.copy2(manifest.parent / 'Cargo.lock', resources / 'gui-Cargo.lock')
-# Local builds retain ad-hoc signing. Public distribution uses a Developer ID.
-subprocess.run(['codesign', '--force', '--deep', '--sign', args.sign_identity,
-                *([] if args.sign_identity == '-' else ['--options', 'runtime', '--timestamp']),
-                str(bundle)], check=True)
-subprocess.run(['codesign', '--verify', '--deep', '--strict', str(bundle)], check=True)
-if args.notary_profile:
-    archive = target / 'Monoprint-notarization.zip'
-    if archive.exists():
-        archive.unlink()
-    subprocess.run(['ditto', '-c', '-k', '--keepParent', str(bundle), str(archive)], check=True)
-    result = json.loads(subprocess.check_output([
-        'xcrun', 'notarytool', 'submit', str(archive), '--keychain-profile', args.notary_profile,
-        '--wait', '--output-format', 'json'], text=True))
-    if result.get('status') != 'Accepted':
-        raise RuntimeError(f"Notarization was not accepted: {result.get('status')}")
-    subprocess.run(['xcrun', 'stapler', 'staple', str(bundle)], check=True)
-    subprocess.run(['xcrun', 'stapler', 'validate', str(bundle)], check=True)
+# Sign inner Mach-O executables first, then the enclosing app.
+sign_app(assembled, args.sign_identity, args.sign_keychain)
+notary = notarize_app(assembled, args.notary_profile, args.notary_keychain) if args.notary_profile else None
+if commit != subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip():
+    raise RuntimeError('Checkout revision changed while building')
+if source_hash != source_digest(root):
+    raise RuntimeError('Source inputs changed while building; rebuild the bundle')
+final_dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root, text=True).strip())
+if args.archive_dir and final_dirty and not args.local:
+    raise RuntimeError('Checkout changed while packaging')
+if bundle.exists():
+    shutil.rmtree(bundle)
+shutil.move(str(assembled), str(bundle))
+staging.cleanup()
+if args.archive_dir:
+    args.archive_dir.mkdir(parents=True)
+    name = f'Monoprint-{version}-{host}.zip'
+    archive = args.archive_dir / name
+    # The final archive is created after stapling; the submission ZIP is temporary.
+    zip_app(bundle, archive)
+    checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
+    (args.archive_dir / (name + '.sha256')).write_text(f'{checksum}  {name}\n')
+    receipt = {'version': version, 'commit': commit, 'target': host,
+        'release': not args.local and not args.debug, 'dirty': final_dirty,
+        'inputHash': source_hash,
+        'signed': args.sign_identity != '-', 'notarization': notary,
+        'stapled': bool(notary), 'archive': name, 'archiveSha256': checksum,
+        'archiveBytes': archive.stat().st_size,
+        'compiler': subprocess.check_output(['rustc', '-vV'], text=True).strip(),
+        'xcode': subprocess.check_output(['xcodebuild', '-version'], text=True).strip()}
+    (args.archive_dir / 'manifest.json').write_text(json.dumps(receipt, indent=2) + '\n')
 print(bundle)

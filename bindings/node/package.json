@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "Offline code-image rendering for Node.js",
   "license": "Apache-2.0",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ozanvos/monoprint.git",
+    "directory": "bindings/node"
+  },
+  "bugs": {
+    "url": "https://github.com/ozanvos/monoprint/issues"
+  },
   "type": "commonjs",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",

@@ -1,6 +1,16 @@
 name: CLI release archives
 on:
   workflow_dispatch:
+    inputs:
+      signed:
+        description: Sign and notarize macOS (requires private environment secrets)
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      signed:
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -14,26 +24,29 @@ jobs:
           - runner: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
     runs-on: ${{ matrix.runner }}
+    environment: ${{ inputs.signed && matrix.target == 'aarch64-apple-darwin' && 'apple-signing' || '' }}
     env:
       CARGO_TARGET_DIR: ${{ github.workspace }}/target
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
-      - uses: dtolnay/rust-toolchain@1.97.0
+          node-version: 22.23.0
+      - uses: dtolnay/rust-toolchain@1.98.1
       - run: cargo fetch --locked
       - run: cargo test --locked --release
-      - run: node scripts/package-cli.mjs --out output/cli-release
-      - name: Check the relocated archive
-        shell: bash
-        run: |
-          mkdir output/cli-consumer
-          tar -xzf output/cli-release/*.tar.gz -C output/cli-consumer
-          binary=$(find output/cli-consumer -type f -name monoprint)
-          "$binary" fixtures/example.ts --scale 1 -o output/cli-consumer/example.png
-          "$binary" fixtures/example.ts -o output/cli-consumer/example.svg
-          "$binary" fixtures/example.ts -o output/cli-consumer/example.html
+      - if: ${{ !inputs.signed || matrix.target != 'aarch64-apple-darwin' }}
+        run: node scripts/package-cli.mjs --out output/cli-release
+      - if: ${{ inputs.signed && matrix.target == 'aarch64-apple-darwin' }}
+        run: python3 scripts/with-apple-signing.py -- node scripts/package-cli.mjs --out output/cli-release
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+      - run: node scripts/test-cli-package.mjs --from output/cli-release
       - uses: actions/upload-artifact@v4
         with:
           name: cli-${{ matrix.target }}

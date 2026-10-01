@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="Monoprint turns code into images. A native macOS app, offline CLI and Rust and TypeScript APIs.">
+  <meta name="robots" content="noindex,nofollow">
+  <title>Monoprint — code into images</title>
+  <link rel="icon" href="assets/icon.png">
+  <link rel="stylesheet" href="style.css">
+  <script src="preview.js" defer></script>
+</head>
+<body>
+  <header class="masthead">
+    <a class="brand" href="#"><img src="assets/icon.png" width="36" height="36" alt="">Monoprint</a>
+    <nav aria-label="Main"><a href="#studio">Studio</a><a href="#interfaces">CLI & APIs</a><a href="__REPOSITORY__">Source ↗</a></nav>
+  </header>
+  <main>
+    <section class="intro" aria-labelledby="intro-title">
+      <div class="intro-copy">
+        <p class="caption">PNG · SVG · HTML</p>
+        <h1 id="intro-title">Code, ready<br>to share.</h1>
+        <p class="lede">Choose a theme. Frame your snippet.<br>Keep the details that matter.</p>
+        <p class="description">A native macOS studio, an offline command line, and Rust and TypeScript APIs. One renderer, wherever you work.</p>
+        <p class="availability">Release in preparation · 0.1.0</p>
+        <a class="quiet-link" href="#interfaces">Try it from source <span aria-hidden="true">↓</span></a>
+      </div>
+      <div class="specimen">
+        <div class="specimen-frame"><img id="sample" src="assets/gruvbox.png" alt="A Rust snippet rendered with Gruvbox" width="1440" height="900"></div>
+        <div class="specimen-footer"><span id="sample-name">Gruvbox</span><span>Rendered by Monoprint</span></div>
+        <div class="theme-strip" role="group" aria-label="Sample theme">
+          <button type="button" data-theme="gruvbox" aria-pressed="true">Gruvbox</button>
+          <button type="button" data-theme="github" aria-pressed="false">GitHub light</button>
+          <button type="button" data-theme="candy" aria-pressed="false">Candy</button>
+          <button type="button" data-theme="nord" aria-pressed="false">Nord</button>
+        </div>
+      </div>
+    </section>
+    <section class="details" aria-label="Export capabilities">
+      <div><h2>54 presets. 96 appearances.</h2><p>Paired light and dark palettes, ten bundled typefaces, separate comment fonts and coding ligatures.</p></div>
+      <div><h2>Keep it local.</h2><p>Rendering runs on your machine. Fonts, syntax grammars and emoji fallbacks travel with it.</p></div>
+      <div><h2>Pick the format.</h2><p>PNG for sharing. Outlined SVG for scaling. Standalone HTML for selectable source.</p></div>
+    </section>
+    <section id="studio" class="studio">
+      <div class="section-heading"><h2>A place to frame your code.</h2><p>Native macOS · Apple Silicon</p></div>
+      <figure><img src="assets/studio.png" alt="Monoprint Studio with a source editor, live image canvas, theme picker and export settings" width="2880" height="1800" loading="lazy"><figcaption>Resize the canvas, select text to highlight, and copy or drag the image into your next document.</figcaption></figure>
+    </section>
+    <section id="interfaces" class="interfaces">
+      <div class="interface-copy"><h2>Fits your workflow.</h2><p>Export a file from your terminal, render a batch in Rust, or use the same renderer from a Node application.</p><p class="caption">No browser to launch.<br>No font installation.</p></div>
+      <div class="code-panel">
+        <div class="interface-tabs" role="group" aria-label="Code example">
+          <button type="button" data-example="cli" aria-pressed="true">CLI</button><button type="button" data-example="rust" aria-pressed="false">Rust</button><button type="button" data-example="typescript" aria-pressed="false">TypeScript</button>
+        </div>
+        <pre id="example"><code>cargo build --locked --release
+
+./target/release/monoprint main.rs \
+  --theme gruvbox-medium --padding 32 \
+  --scale 2 -o code.png</code></pre>
+        <p id="interface-note">Build from source with Rust 1.97+ and a C compiler. Prebuilt downloads are in preparation.</p>
+      </div>
+    </section>
+    <section class="platforms"><h2>Prepared platforms</h2><dl><div><dt>Studio</dt><dd>macOS 12+ · Apple Silicon</dd></div><div><dt>CLI</dt><dd>macOS arm64 · Linux x86-64</dd></div><div><dt>Node.js 22+</dt><dd>macOS arm64/x64 · Linux glibc arm64/x64 · Windows x64</dd></div></dl><p>Release builds and signed downloads still need qualification. Rust uses a source dependency while registry packaging is being prepared.</p></section>
+  </main>
+  <footer><span>Monoprint · Apache-2.0</span><div><a href="__REPOSITORY__/blob/main/README.md">Documentation ↗</a><a href="__REPOSITORY__/blob/main/THIRD_PARTY_NOTICES.md">Third-party notices ↗</a></div></footer>
+</body>
+</html>

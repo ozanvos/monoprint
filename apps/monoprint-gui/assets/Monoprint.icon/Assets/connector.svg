@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <defs>
+    <linearGradient id="plane" x1="0" y1="0" x2="0.85" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#a5a7b0"/><stop offset="1" stop-color="#81848e"/>
+    </linearGradient>
+    <clipPath id="fold"><path d="M 510 381 L 620 522 L 499 598 L 465 548 Z"/></clipPath>
+    <radialGradient id="ivory-shadow" cx="0" cy="0" r="28" gradientUnits="userSpaceOnUse" gradientTransform="translate(512 440) scale(1 4)">
+      <stop stop-color="#10131a" stop-opacity="0.30"/>
+      <stop offset="0.25" stop-color="#10131a" stop-opacity="0.24"/>
+      <stop offset="0.60" stop-color="#10131a" stop-opacity="0.10"/>
+      <stop offset="1" stop-color="#10131a" stop-opacity="0"/>
+    </radialGradient>
+    <linearGradient id="silver-shadow" x1="570" y1="550" x2="557" y2="531" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#10131a" stop-opacity="0.26"/><stop offset="1" stop-color="#10131a" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <path d="M 510 381 L 620 522 L 499 598 L 465 548 Z" fill="url(#plane)"/>
+  <g clip-path="url(#fold)">
+    <path d="M 510 381 L 620 522 L 499 598 L 465 548 Z" fill="url(#ivory-shadow)"/>
+    <path d="M 499 598 L 625 513 L 610 491 L 484 576 Z" fill="url(#silver-shadow)"/>
+  </g>
+</svg>

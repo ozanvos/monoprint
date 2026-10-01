@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Package assets/icon.png at all standard macOS icon sizes using system tools."""
+"""Compile the Icon Composer source and macOS fallback using Apple's asset compiler."""
+import argparse
 from pathlib import Path
 import subprocess
 import sys
@@ -7,27 +8,30 @@ import tempfile
 
 
 def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    gui = Path(__file__).resolve().parents[1]
+    parser.add_argument('--output', type=Path, default=gui.parents[1] / 'target/gui/icon')
+    args = parser.parse_args()
     if sys.platform != 'darwin':
-        raise SystemExit('Building the .icns asset requires macOS sips and iconutil.')
-    assets = Path(__file__).resolve().parents[1] / 'assets'
-    source = assets / 'icon.png'
-    destination = assets / 'Monoprint.icns'
+        parser.error('Compiling the layered icon requires macOS and Xcode 26 or later.')
     with tempfile.TemporaryDirectory(prefix='monoprint-icon-') as directory:
-        iconset = Path(directory) / 'Monoprint.iconset'
-        iconset.mkdir()
-        for size in (16, 32, 128, 256, 512):
-            for scale in (1, 2):
-                pixels = str(size * scale)
-                suffix = '@2x' if scale == 2 else ''
-                output = iconset / f'icon_{size}x{size}{suffix}.png'
-                subprocess.run([
-                    'sips', '-z', pixels, pixels, str(source), '--out', str(output),
-                ], check=True, stdout=subprocess.DEVNULL)
-        # Complete the container before replacing the checked-in bundle asset.
-        compiled = Path(directory) / 'Monoprint.icns'
-        subprocess.run(['iconutil', '-c', 'icns', str(iconset), '-o', str(compiled)], check=True)
-        destination.write_bytes(compiled.read_bytes())
-    print(destination)
+        compiled = Path(directory)
+        subprocess.run([
+            'xcrun', 'actool', str(gui / 'assets/Monoprint.icon'),
+            '--compile', str(compiled), '--app-icon', 'Monoprint',
+            '--platform', 'macosx', '--target-device', 'mac',
+            '--minimum-deployment-target', '12.0',
+            '--output-partial-info-plist', str(compiled / 'icon-info.plist'),
+            '--output-format', 'human-readable-text',
+        ], check=True)
+        # Read both artifacts before updating the destination. Missing fallback
+        # generation or an unsupported compiler fails instead of using a stale icon.
+        artifacts = {name: (compiled / name).read_bytes()
+                     for name in ('Assets.car', 'Monoprint.icns')}
+        args.output.mkdir(parents=True, exist_ok=True)
+        for name, data in artifacts.items():
+            (args.output / name).write_bytes(data)
+    print(args.output)
 
 
 if __name__ == '__main__':

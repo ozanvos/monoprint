@@ -7,11 +7,15 @@ import { prepareNotices } from '../bindings/node/scripts/notices.mjs';
 const args = process.argv.slice(2);
 let destination;
 let local = false;
+const signing = new Map();
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--local') local = true;
   else if (args[i] === '--out' && args[i + 1] && !args[i + 1].startsWith('--')) destination = path.resolve(args[++i]);
-  else throw new Error('Usage: node scripts/package-cli.mjs --out FRESH_DIRECTORY [--local]');
+  else if (['--sign-identity', '--sign-keychain', '--notary-profile', '--notary-keychain'].includes(args[i]) && args[i + 1] && !args[i + 1].startsWith('--')) signing.set(args[i], args[++i]);
+  else throw new Error('Usage: node scripts/package-cli.mjs --out FRESH_DIRECTORY [--local] [--sign-identity ID --notary-profile PROFILE]');
 }
+if (signing.has('--notary-profile') && !signing.has('--sign-identity')) throw new Error('Notarization requires --sign-identity');
+if (signing.size && process.platform !== 'darwin') throw new Error('Apple signing requires macOS');
 if (!destination) throw new Error('Choose a fresh --out directory');
 if (await fs.stat(destination).then(() => true, () => false)) throw new Error(`${destination} already exists; choose a fresh --out directory`);
 const dirty = run('git', ['status', '--porcelain'], { stdio: 'pipe' }).toString().trim() !== '';
@@ -38,13 +42,23 @@ await fs.copyFile(path.join(root, 'README.md'), path.join(folder, 'README.md'));
 await fs.copyFile(path.join(root, 'Cargo.lock'), path.join(folder, 'Cargo.lock'));
 const binary = await fs.readFile(path.join(metadata.target_directory, triple, 'release/monoprint'));
 await fs.writeFile(path.join(folder, 'monoprint'), binary, { mode: 0o755 });
+let signature = { signed: false, notarization: null, stapled: false };
+if (signing.has('--sign-identity')) {
+  const receiptFile = path.join(destination, 'signature.json');
+  run('python3', [path.join(root, 'scripts/macos_release.py'), '--binary', path.join(folder, 'monoprint'),
+    '--receipt', receiptFile, ...[...signing].flat()]);
+  signature = JSON.parse(await fs.readFile(receiptFile, 'utf8'));
+  await fs.unlink(receiptFile);
+}
+const shippedBinary = await fs.readFile(path.join(folder, 'monoprint'));
 if (before !== await inputHash()) throw new Error('Native inputs changed while building; discard these artifacts and rebuild');
 if (commit !== run('git', ['rev-parse', 'HEAD'], { stdio: 'pipe' }).toString().trim()) throw new Error('Checkout revision changed while building; discard these artifacts and rebuild');
 const finalDirty = run('git', ['status', '--porcelain'], { stdio: 'pipe' }).toString().trim() !== '';
 if (finalDirty && !local) throw new Error('Checkout changed while packaging; discard these artifacts and rebuild');
 const receipt = {
   version: pkg.version, target: triple, release: !local,
-  commit, dirty: finalDirty, inputHash: before, binarySha256: sha256(binary), binaryBytes: binary.length,
+  commit, dirty: finalDirty, inputHash: before, binarySha256: sha256(shippedBinary), binaryBytes: shippedBinary.length,
+  ...signature,
   compiler: compiler.trim(),
 };
 await fs.writeFile(path.join(folder, 'build.json'), JSON.stringify(receipt, null, 2) + '\n');

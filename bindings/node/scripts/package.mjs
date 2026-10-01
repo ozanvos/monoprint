@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { directory, root, pkg, targets, run, npm, readJson, filesUnder, sha256, inputHash } from './shared.mjs';
+import { directory, root, pkg, targets, run, npm, readJson, filesUnder, sha256, inputHash, revision, isDirty } from './shared.mjs';
 import { prepareNotices } from './notices.mjs';
 
 const args = process.argv.slice(2);
@@ -8,6 +8,8 @@ const option = (flag, fallback) => args.includes(flag) ? args[args.indexOf(flag)
 const source = path.resolve(option('--artifacts', path.join(directory, 'native')));
 const destination = path.resolve(option('--out', path.join(directory, '.packages')));
 const local = args.includes('--local');
+const commit = revision();
+if (!local && isDirty()) throw new Error('Release npm packages require clean source; use --local for verification');
 for (let i = 0; i < args.length; i++) {
   if (args[i] === '--local') continue;
   if (['--artifacts', '--out'].includes(args[i]) && args[i + 1] && !args[i + 1].startsWith('--')) { i++; continue; }
@@ -27,7 +29,7 @@ for (const target of targets) {
   if (matches.length !== 1) throw new Error(`Expected one native artifact for ${target.id}, found ${matches.length}`);
   const bytes = await fs.readFile(matches[0]);
   const receipt = await readJson(matches[0].replace(/\.node$/, '.json'));
-  if (receipt.target !== target.id || receipt.triple !== target.triple || receipt.version !== pkg.version || receipt.sha256 !== sha256(bytes) || receipt.inputHash !== hash) {
+  if (receipt.target !== target.id || receipt.triple !== target.triple || receipt.version !== pkg.version || receipt.sha256 !== sha256(bytes) || receipt.inputHash !== hash || receipt.commit !== commit || (!local && receipt.dirty)) {
     throw new Error(`Stale or mismatched native artifact ${target.id}; rebuild against the current source/version`);
   }
   selected.push({ ...target, file: matches[0], receipt });
@@ -55,6 +57,8 @@ for (const target of selected) {
     main: `monoprint.${target.id}.node`, os: [target.os], cpu: [target.cpu],
     ...(target.libc ? { libc: [target.libc] } : {}), engines: pkg.engines, publishConfig: pkg.publishConfig,
     ...(pkg.repository ? { repository: pkg.repository } : {}),
+    ...(pkg.homepage ? { homepage: pkg.homepage } : {}),
+    ...(pkg.bugs ? { bugs: pkg.bugs } : {}),
   }, async folder => {
     await fs.copyFile(target.file, path.join(folder, `monoprint.${target.id}.node`));
     await fs.writeFile(path.join(folder, 'README.md'), `# ${pkg.name}-${target.id}\n\nNative runtime dependency of \`${pkg.name}\`. Install the main package for its TypeScript interface. Third-party notices and corresponding Giallo/MPL dependency and grammar sources are included.\n`);
@@ -65,8 +69,10 @@ await pack('main', { ...publicPackage, optionalDependencies: Object.fromEntries(
   await fs.cp(path.join(directory, 'dist'), path.join(folder, 'dist'), { recursive: true });
   await fs.copyFile(path.join(directory, 'README.md'), path.join(folder, 'README.md'));
 });
+if (hash !== await inputHash() || commit !== revision() || (!local && isDirty())) throw new Error('Source changed during packaging; discard and rebuild');
 await fs.writeFile(path.join(destination, 'manifest.json'), JSON.stringify({
   name: pkg.name, version: pkg.version, release: !local, inputHash: hash,
+  commit, dirty: isDirty(),
   targets: selected.map(({ id, receipt }) => ({ id, ...receipt })), tarballs,
 }, null, 2) + '\n');
 await fs.rm(legal, { recursive: true });

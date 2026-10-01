@@ -1,5 +1,7 @@
 name: Checks
-on: [push, pull_request]
+on: [push, pull_request, workflow_call, workflow_dispatch]
+permissions:
+  contents: read
 jobs:
   native:
     strategy:
@@ -10,12 +12,15 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 22.23.0
+      - run: node --test scripts/release.test.mjs
+      - run: node --test scripts/package-receipts.test.mjs
+      - run: python3 scripts/test_macos_release.py
       - run: node --test scripts/grammar-policy.test.mjs
       - run: node scripts/import-grammar-metadata.mjs --check
       - run: node scripts/import-editor-themes.mjs --check
       - run: python3 scripts/fetch-fallback-fonts.py --check
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@1.98.1
         with:
           components: rustfmt, clippy
       - run: cargo fmt --package monoprint -- --check
@@ -32,7 +37,10 @@ jobs:
     runs-on: macos-15
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: maxim-lobanov/setup-xcode@v1
+        with:
+          xcode-version: '26.3'
+      - uses: dtolnay/rust-toolchain@1.98.1
         with:
           components: rustfmt, clippy
       - run: cargo fmt --manifest-path apps/monoprint-gui/Cargo.toml -- --check
@@ -43,3 +51,9 @@ jobs:
         env:
           MONOPRINT_CLI: target/gui/debug/monoprint
       - run: codesign --verify --deep --strict target/gui/Monoprint.app
+  msrv:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@1.97.0
+      - run: cargo check --locked --all-targets

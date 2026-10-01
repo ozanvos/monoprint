@@ -1,0 +1,149 @@
+name: Release candidate
+# Never publish on push/tag creation. Private preparation is the default.
+on:
+  workflow_dispatch:
+    inputs:
+      signed:
+        description: Use private Apple signing/notarization credentials
+        type: boolean
+        default: false
+      publish:
+        description: Publish publicly (also requires committed enablement)
+        type: boolean
+        default: false
+      tag:
+        description: Existing vVERSION tag at this exact commit; required for publishing
+        type: string
+        default: ''
+permissions:
+  contents: read
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  preflight:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.0
+      - name: Check source and publication policy
+        env:
+          PUBLIC: ${{ inputs.publish }}
+          SIGNED: ${{ inputs.signed }}
+          RELEASE_TAG: ${{ inputs.tag }}
+          MONOPRINT_PUBLIC_PUBLISH: approved
+          GITHUB_REPOSITORY_VISIBILITY: ${{ github.event.repository.private && 'private' || 'public' }}
+        run: |
+          node --input-type=module <<'JS'
+          import { checkRelease } from './scripts/release-config.mjs';
+          const publish = process.env.PUBLIC === 'true';
+          if (publish && (process.env.SIGNED !== 'true' || !process.env.RELEASE_TAG)) throw new Error('Public distribution requires signing and an existing release tag');
+          await checkRelease({ publicPublish: publish, tag: process.env.RELEASE_TAG || undefined });
+          JS
+  checks:
+    needs: preflight
+    uses: ./.github/workflows/ci.yml
+  cli:
+    needs: checks
+    uses: ./.github/workflows/cli-release.yml
+    with:
+      signed: ${{ inputs.signed }}
+    secrets: inherit
+  npm:
+    needs: checks
+    uses: ./.github/workflows/npm-packages.yml
+  app:
+    needs: checks
+    uses: ./.github/workflows/macos-app.yml
+    with:
+      signed: ${{ inputs.signed }}
+    secrets: inherit
+  assemble:
+    needs: [cli, npm, app]
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22.23.0
+      - uses: actions/download-artifact@v4
+        with:
+          path: output/candidate-inputs
+      - name: Validate all channels against the current commit
+        env:
+          DISTRIBUTION: ${{ inputs.publish }}
+        run: |
+          args=()
+          if [ "$DISTRIBUTION" = true ]; then args+=(--distribution); fi
+          node scripts/release.mjs assemble --from output/candidate-inputs --out output/release-candidate "${args[@]}"
+      - run: node scripts/release.mjs snapshot --out output/release-source
+      - name: Render the website samples with the verified Linux executable
+        run: |
+          mkdir output/site-cli
+          tar -xzf output/candidate-inputs/cli-x86_64-unknown-linux-gnu/*.tar.gz -C output/site-cli
+          binary=$(find output/site-cli -type f -name monoprint)
+          node scripts/build-website.mjs --out output/website --cli "$binary"
+      - run: npm ci --ignore-scripts
+      - run: npx playwright install --with-deps chromium
+      - run: node scripts/test-website.mjs --from output/website --out output/playwright/website
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-candidate
+          path: output/release-candidate/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: source-snapshot
+          path: output/release-source/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: website-preview
+          path: |
+            output/website/*
+            output/playwright/website/*
+          if-no-files-found: error
+  publish:
+    if: ${{ inputs.publish }}
+    needs: assemble
+    runs-on: ubuntu-22.04
+    environment: public-release
+    permissions:
+      contents: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.20.0
+      - run: npm install --global npm@11.5.1 --ignore-scripts
+      - uses: actions/download-artifact@v4
+        with:
+          path: output/publish
+      - name: Recheck publishing authorization and verified bytes
+        env:
+          MONOPRINT_PUBLIC_PUBLISH: approved
+          RELEASE_TAG: ${{ inputs.tag }}
+          GITHUB_REPOSITORY_VISIBILITY: ${{ github.event.repository.private && 'private' || 'public' }}
+        run: |
+          node scripts/release.mjs check --public --tag "$RELEASE_TAG"
+          node scripts/release.mjs assemble --from output/publish --out output/verified-public --distribution
+      - name: Publish unchanged npm tarballs with OIDC provenance
+        run: npm run publish:packages --prefix bindings/node -- --from "$GITHUB_WORKSPACE/output/publish/npm-release" --publish --provenance
+        env:
+          MONOPRINT_PUBLIC_PUBLISH: approved
+          GITHUB_REPOSITORY_VISIBILITY: ${{ github.event.repository.private && 'private' || 'public' }}
+      - name: Verify a fresh registry install
+        run: node bindings/node/scripts/test-registry.mjs
+      - name: Create the GitHub release from the verified source tag
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ inputs.tag }}
+        run: |
+          gh release create "$RELEASE_TAG" --verify-tag --title "Monoprint $RELEASE_TAG" --notes-file "release/notes/${RELEASE_TAG#v}.md" output/verified-public/* output/publish/source-snapshot/*

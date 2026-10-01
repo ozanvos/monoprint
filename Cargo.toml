@@ -3,7 +3,8 @@ name = "monoprint"
 version = "0.1.0"
 edition = "2024"
 license = "Apache-2.0"
-description = "Offline code images with legacy frames themes, powered by Giallo and Takumi"
+description = "Offline code-image renderer and CLI"
+repository = "https://github.com/ozanvos/monoprint"
 rust-version = "1.97"
 # See docs/library.md: the backend fixes must ship in registry dependencies first.
 publish = false

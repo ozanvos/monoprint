@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { build } from 'esbuild';
-import { directory, root, pkg, targets, run, readJson, sha256, inputHash } from './shared.mjs';
+import { directory, root, pkg, targets, run, readJson, sha256, inputHash, revision, isDirty } from './shared.mjs';
 
 const args = process.argv.slice(2);
 if (args.some((arg, index) => !['--js-only', '--target'].includes(arg) && args[index - 1] !== '--target')) throw new Error('Usage: npm run build -- [--js-only] [--target RUST_TRIPLE]');
@@ -23,6 +23,9 @@ await fs.writeFile(path.join(directory, 'dist/index.mjs'),
   "export { Renderer, Font, MonoprintError, limits, png, svg, html, pngSync, svgSync, htmlSync, getThemes, getLanguages, languageForFileName } from './index.js';\n");
 await fs.writeFile(path.join(directory, 'dist/index.d.mts'), "export * from './index.js';\n");
 if (!args.includes('--js-only')) {
+  const commit = revision();
+  const hash = await inputHash();
+  const dirty = isDirty();
   const explicit = args.indexOf('--target');
   const triple = explicit < 0 ? run('rustc', ['-vV'], { stdio: 'pipe' }).toString().match(/^host: (.+)$/m)[1] : args[explicit + 1];
   const target = targets.find(t => t.triple === triple);
@@ -35,10 +38,12 @@ if (!args.includes('--js-only')) {
   const library = `${target.os === 'win32' ? '' : 'lib'}monoprint_node.${extension}`;
   const bytes = await fs.readFile(path.join(metadata.target_directory, ...(explicit < 0 ? [] : [triple]), 'release', library));
   const native = path.join(directory, 'native');
+  if (hash !== await inputHash() || commit !== revision()) throw new Error('Native source changed while building; rebuild the addon');
   await fs.mkdir(native, { recursive: true });
   await fs.writeFile(path.join(native, `monoprint.${target.id}.node`), bytes);
   await fs.writeFile(path.join(native, `monoprint.${target.id}.json`), JSON.stringify({
-    target: target.id, triple, version: pkg.version, sha256: sha256(bytes), inputHash: await inputHash(),
+    target: target.id, triple, version: pkg.version, sha256: sha256(bytes), inputHash: hash,
+    commit, dirty: dirty || isDirty(), compiler: run('rustc', ['-vV'], { stdio: 'pipe' }).toString().trim(),
   }, null, 2) + '\n');
   console.log(`Built ${target.id}: ${(bytes.length / 1048576).toFixed(2)} MiB`);
 }

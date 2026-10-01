@@ -1,9 +1,12 @@
 /target/
 /node_modules/
+/.playwright-cli/
 /artifacts/
 /reference-output/
 .DS_Store
 output/
+__pycache__/
+*.pyc
 /bindings/node/node_modules/
 /bindings/node/dist/
 /bindings/node/native/
