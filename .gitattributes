@@ -1,0 +1,7 @@
+# Keep scripts and generated text consistent on every build host.
+* text=auto eol=lf
+
+# Reviewed assets and corresponding source have byte-exact provenance hashes.
+# Preserve their original bytes, including any upstream line endings.
+assets/** -text
+licenses/** -text
