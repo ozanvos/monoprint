@@ -9,7 +9,7 @@ assets. This is not a measured executable-size or memory increase.
 ## Rendering behavior
 
 Fallback is automatic for code, separate comment fonts, and visible frame titles.
-The requested typeface wins wherever it supplies a character. Missing characters
+The requested typeface takes precedence wherever it supplies a character. Missing characters
 use the smallest required set of embedded fallback faces; no installed fonts or
 network access are needed. A character absent from every face still returns
 `UnsupportedGlyph` with its code point and text role.
@@ -71,12 +71,12 @@ sequence remains a renderer-level responsibility.
 The selected Noto Color Emoji is version 2.057, with CBDT/CBLC color bitmap data,
 GSUB substitutions and normal OpenType metrics. Its bitmap strike is 109 ppem
 at 32-bit color. It has no monochrome glyph outlines. Large exports therefore
-scale bitmap emoji rather than obtaining infinitely sharp vector artwork.
+scale bitmap emoji rather than rendering vector outlines.
 
 Noto-COLRv1 at the same upstream revision is smaller (5,038,236 bytes), but the
 current renderer's color-font path supports bitmap glyphs and COLRv0 rather
 than COLRv1. It was not bundled. The approved asset keeps the original font
-bytes instead of converting, subsetting or manufacturing a new font. The
+bytes instead of converting, subsetting or generating a new font. The
 [upstream Noto Emoji project](https://github.com/googlefonts/noto-emoji/tree/e20cbc2bbec1926686be9f9bee7d1d2cfa1fea0e)
 supplies both versions; the pinned bitmap file is under `2D/fonts/`.
 
@@ -110,7 +110,7 @@ visible attribution to code images.
 ## Reproduce and verify
 
 The maintenance importer does not discover newer revisions. It reads the
-reviewed manifest and refuses downloaded bytes that differ from its checksums:
+reviewed manifest and rejects downloaded bytes that differ from its checksums:
 
 ```sh
 # Network access: restore the exact fonts and licenses from pinned sources.
@@ -124,29 +124,3 @@ Normal rendering and builds do not run the downloader. The importer is separate
 from `fetch-fonts.py`, which manages selectable typefaces. A future font update
 requires explicit manifest/license review and renderer-level coverage checks;
 hash equality only establishes that the reviewed assets have not changed.
-
-## Local acceptance and size
-
-On macOS arm64, the stripped release CLI grew from **17.03 MiB to 48.54 MiB**
-with these fonts and the shaper's CJK/Thai segmentation data enabled. The native
-Node addon is **48.08 MiB**. These are executable sizes from the 2026-09-29 local
-build, not compressed download sizes or memory measurements.
-
-The fallback regression suite covers color/ZWJ/modifier/flag/keycap sequences,
-text and emoji selectors, mixed scripts and title/comment roles, wrapping,
-selection geometry, combining marks, cache isolation and unsupported characters.
-Local acceptance also checked the Node/CLI byte contract, a clean npm tarball
-consumer, and the native GUI at 1440×900 and 1100×700. A self-contained multilingual
-HTML export was inspected in Chrome 153; other browser engines remain unverified.
-Existing ASCII fixtures remained byte-identical across 116 exports covering all
-96 theme appearances.
-
-A small interleaved fresh-process ASCII PNG check (four Rust lines, 720px width,
-2× scale; two warmups and 21 measured runs per binary) measured **43.52 ms before**
-and **43.90 ms after**. This local sanity check does not replace the broader
-competitor benchmark or establish performance on other machines.
-
-```sh
-cargo test --locked --test glyph_fallback
-python3 scripts/fetch-fallback-fonts.py --check
-```

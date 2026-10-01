@@ -9,11 +9,11 @@ Monoprint embeds a reviewed subset of the pinned Shiki TextMate collection: **23
 - Resolved all 12 upstream `NOASSERTION` labels using source license texts. In particular, NSIS has a grammar-specific **Apache-2.0** license overriding the repository's MIT default; LLVM is **Apache-2.0 WITH LLVM-exception**; Apache configuration is **BSD-2-Clause-Views** and Apex is **BSD-3-Clause**.
 - Recovered missing licenses for ABAP, AppleScript, ERB, Logo, MIPS, PO, SSH configuration and TOML from the permissive bundle grant in each pinned README. The grant is preserved as `LicenseRef-TextMate-Bundle`, rather than relabeled MIT.
 - Recovered YAML's file-specific MIT license, MATLAB's BSD-2-Clause license, Kusto/SPARQL/Turtle's Apache-2.0 licenses, and the collection MIT license for the generated `ts-tags` grammar.
-- Hurl's pinned package manifest and Rel's pinned README explicitly declare MIT. Their declarations are preserved together with the full MIT terms; no missing copyright attribution was invented.
-- Replaced GitHub HTML pages masquerading as license text for AutoHotkey and Smithy with pinned raw notices. AutoHotkey v2's actual license is LGPL-3.0, so it is excluded.
+- Hurl's pinned package manifest and Rel's pinned README explicitly declare MIT. Their declarations are preserved together with the full MIT terms; no unverified copyright attribution was added.
+- Replaced GitHub HTML pages saved in place of license text for AutoHotkey and Smithy with pinned raw notices. AutoHotkey v2's actual license is LGPL-3.0, so it is excluded.
 - For Fennel, Jsonnet, Registry, RISC-V, Shell Session and Wenyan, license files were added after the grammar's recorded commit. Each grammar was verified byte-identical at the later pinned license revision; both source locations and the comparison hash are recorded in its review note.
 
-All retained license URLs now identify immutable commit revisions. Other known license labels were checked against the retrieved pinned license text, rather than copying the collection's moving `main`/`master` license URLs.
+All retained license URLs now identify immutable commit revisions. Other known license labels were checked against the retrieved pinned license text, rather than copying the collection's mutable `main`/`master` license URLs.
 
 ## Exclusions
 
@@ -23,13 +23,13 @@ All retained license URLs now identify immutable commit revisions. Other known l
 | AutoHotkey v2 | LGPL-3.0 source; excluded by the same policy |
 | APL, DAX, Dream Maker, GLSL, Tcl | No explicit redistribution grant found for the pinned source |
 
-These decisions remove the bytes from the **compiled registry**, not just the catalog. Explicit selection of an excluded language returns an unknown-language error. A filename that no longer identifies a supported language uses the existing plain-text fallback. A future replacement needs its own pinned source/license review and highlighting validation.
+These decisions remove the grammars from the **compiled registry**, not just the catalog. Explicit selection of an excluded language returns an unknown-language error. A filename that no longer identifies a supported language uses the existing plain-text fallback. A future replacement needs its own pinned source/license review and highlighting validation.
 
 GLSL embeddings in C++, its macro helper, Elm, Nim and the tagged-template helper no longer load the excluded GLSL grammar. LaTeX's optional Gnuplot embedding likewise remains unresolved. The surrounding grammars still work; embedded contents receive only the surrounding grammar's tokenization. These deliberate missing references are listed in the policy and checked during rebuilds. No excluded grammar is copied into a retained input.
 
 ## MPL source and distribution
 
-BIRD2, HCL and Terraform retain MPL-2.0. Both their original grammar JSON and the normalized JSON fed to Giallo are checked in under `licenses/grammar-sources/`. Preserve this directory, its README, the full license notices and the policy with software distributions. Recipients are informed that these covered source files are available under MPL-2.0. Mozilla's [MPL FAQ](https://www.mozilla.org/en-US/MPL/2.0/FAQ/) explains source availability for compiled larger works; retaining these grammars does not make their license Apache-2.0.
+BIRD2, HCL and Terraform retain MPL-2.0. Both their original grammar JSON and the normalized JSON provided to Giallo are checked in under `licenses/grammar-sources/`. Preserve this directory, its README, the full license notices and the policy with software distributions. Recipients are informed that these covered source files are available under MPL-2.0. Mozilla's [MPL FAQ](https://www.mozilla.org/en-US/MPL/2.0/FAQ/) explains source availability for compiled larger works; retaining these grammars does not make their license Apache-2.0.
 
 Giallo's EUPL license and all other dependency/font/theme obligations are separate and remain documented in `THIRD_PARTY_NOTICES.md`. This change does not publish a release or resolve the separate vendored SVG backend publishing constraint.
 
