@@ -48,22 +48,22 @@ jobs:
     needs: preflight
     uses: ./.github/workflows/ci.yml
   cli:
-    needs: checks
+    needs: preflight
     uses: ./.github/workflows/cli-release.yml
     with:
       signed: ${{ inputs.signed }}
     secrets: inherit
   npm:
-    needs: checks
+    needs: preflight
     uses: ./.github/workflows/npm-packages.yml
   app:
-    needs: checks
+    needs: preflight
     uses: ./.github/workflows/macos-app.yml
     with:
       signed: ${{ inputs.signed }}
     secrets: inherit
   assemble:
-    needs: [cli, npm, app]
+    needs: [checks, cli, npm, app]
     runs-on: ubuntu-22.04
     steps:
       - uses: actions/checkout@v4
