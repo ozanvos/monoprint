@@ -201,7 +201,7 @@ impl Studio {
                     } else {
                         format!("Export {}", self.document.format.label())
                     })
-                    .disabled(self.exporting || self.copy_state == CopyState::Copying)
+                    .disabled(self.exporting)
                     .tooltip("Save an image · ⌘S")
                     .on_click(cx.listener(|this, _, window, cx| {
                         this.export_file(&ExportImage, window, cx)
@@ -215,7 +215,8 @@ impl Studio {
                     .h(px(34.))
                     .px(px(9.))
                     .text_size(px(11.))
-                    .min_w(px(76.))
+                    // Reserve space for Copying… so feedback cannot resize Export.
+                    .w(px(110.))
                     .icon(if self.copy_state == CopyState::Copied {
                         IconName::Check
                     } else {
@@ -232,57 +233,62 @@ impl Studio {
                         cx.listener(|this, _, window, cx| this.copy_image(&CopyImage, window, cx)),
                     ),
             )
+    }
+
+    fn drag_image(&self, cx: &Context<Self>) -> impl IntoElement {
+        let p = palette(cx);
+        div()
+            .id("drag-image")
+            .absolute()
+            .left(px(8.))
+            .top(px(8.))
+            .invisible()
+            .group_hover("preview-image", |view| view.visible())
+            .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
+                if *hovered {
+                    this.prepare_drag_export(cx);
+                }
+            }))
+            .on_mouse_down(
+                MouseButton::Left,
+                cx.listener(|this, _, _, cx| {
+                    this.prepare_drag_export(cx);
+                    cx.stop_propagation();
+                }),
+            )
+            .when_some(
+                self.drag_export
+                    .clone()
+                    .filter(|export| export.revision == self.revision),
+                |view, export| {
+                    let thumbnail = self.preview.as_ref().map(|preview| preview.image.clone());
+                    view.cursor(CursorStyle::OpenHand)
+                        .on_drag(export, move |_, _, _, cx| {
+                            cx.new(|_| DragThumbnail(thumbnail.clone()))
+                        })
+                        .external_drag_payload(|export: &crate::handoff::DragExport, _, _| {
+                            Some(ExternalDragPayload::Files(FileDragPaths::new([(
+                                export.path.clone(),
+                                false,
+                            )])))
+                        })
+                },
+            )
             .child(
-                div()
-                    .id("drag-image")
-                    .on_hover(cx.listener(|this, hovered: &bool, _, cx| {
-                        if *hovered {
-                            this.prepare_drag_export(cx);
-                        }
-                    }))
-                    .on_mouse_down(
-                        MouseButton::Left,
-                        cx.listener(|this, _, _, cx| {
-                            this.prepare_drag_export(cx);
-                        }),
-                    )
-                    .when_some(
-                        self.drag_export
-                            .clone()
-                            .filter(|export| export.revision == self.revision),
-                        |view, export| {
-                            let thumbnail =
-                                self.preview.as_ref().map(|preview| preview.image.clone());
-                            view.cursor(CursorStyle::OpenHand)
-                                .on_drag(export, move |_, _, _, cx| {
-                                    cx.new(|_| DragThumbnail(thumbnail.clone()))
-                                })
-                                .external_drag_payload(
-                                    |export: &crate::handoff::DragExport, _, _| {
-                                        Some(ExternalDragPayload::Files(FileDragPaths::new([(
-                                            export.path.clone(),
-                                            false,
-                                        )])))
-                                    },
-                                )
-                        },
-                    )
-                    .child(
-                        Button::new("drag-image-button")
-                            .outline()
-                            .border_color(rgb(p.strong))
-                            .bg(rgb(p.control))
-                            .size(px(34.))
-                            .p_0()
-                            .loading(self.preparing_drag)
-                            .child(Icon::new(IconName::ArrowUpRight).size(px(18.)))
-                            .accessibility_label("Drag PNG into another app")
-                            .tooltip(if self.preparing_drag {
-                                "Preparing PNG…"
-                            } else {
-                                "Drag PNG into another app at the selected scale"
-                            }),
-                    ),
+                Button::new("drag-image-button")
+                    .outline()
+                    .border_color(rgb(p.strong))
+                    .bg(rgb(p.control))
+                    .size(px(34.))
+                    .p_0()
+                    .loading(self.preparing_drag)
+                    .child(Icon::new(IconName::File).size(px(18.)))
+                    .accessibility_label("Drag PNG into another app")
+                    .tooltip(if self.preparing_drag {
+                        "Preparing PNG…"
+                    } else {
+                        "Drag PNG into another app at the selected scale"
+                    }),
             )
     }
     fn source_panel(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -645,6 +651,9 @@ impl Studio {
                 })
                 .child(
                     div()
+                        .id("preview-image")
+                        .group("preview-image")
+                        .test_support()
                         .absolute()
                         .left(image_origin.x)
                         .top(image_origin.y)
@@ -657,7 +666,10 @@ impl Studio {
                             img(preview.image.clone())
                                 .size_full()
                                 .object_fit(ObjectFit::Contain),
-                        ),
+                        )
+                        .when(!active && !self.viewport.is_dragging(), |view| {
+                            view.child(self.drag_image(cx))
+                        }),
                 )
                 .child(
                     div()

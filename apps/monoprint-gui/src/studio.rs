@@ -1042,7 +1042,7 @@ impl Studio {
         self.changed(cx);
     }
     pub fn export_file(&mut self, _: &ExportImage, window: &mut Window, cx: &mut Context<Self>) {
-        if self.exporting || self.copy_state == CopyState::Copying {
+        if self.exporting {
             return;
         }
         let document = self.document.clone();

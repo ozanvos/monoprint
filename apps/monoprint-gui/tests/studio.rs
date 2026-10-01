@@ -201,6 +201,34 @@ mod macos {
             assert!(s.incoming_source.is_none());
             assert_eq!(s.document.source, "fn dropped() {}");
         });
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.dispatch_event(
+                MouseMoveEvent {
+                    position: point(px(150.), px(180.)),
+                    pressed_button: None,
+                    modifiers: Default::default(),
+                }
+                .to_platform_input(),
+                cx,
+            );
+            window.render_frame(cx);
+            assert!(
+                window
+                    .try_find("drag-image-button")
+                    .is_none_or(|button| !button.visible()),
+                "drag control stays hidden outside the preview"
+            );
+            window.hover("preview-image", cx);
+            let image = window.find("preview-image").bounds();
+            let button = window.find("drag-image-button");
+            assert!(
+                button.visible(),
+                "hovering the preview reveals the drag control"
+            );
+            assert_eq!(button.bounds().origin, image.origin + point(px(8.), px(8.)));
+        })
+        .unwrap();
         cx.update_window(handle.into(), |_, window, cx| {
             window.render_frame(cx);
             let position = window.find("drag-image-button").bounds().center();
@@ -234,6 +262,10 @@ mod macos {
                 }
                 .to_platform_input(),
                 cx,
+            );
+            assert!(
+                !studio.read(cx).viewport.is_dragging(),
+                "dragging the document control must not start canvas panning"
             );
             window.dispatch_event(
                 MouseMoveEvent {
@@ -1596,6 +1628,27 @@ mod macos {
 
             // Copy updates only its own button, writes an image, and resets its
             // feedback timeout on a second copy instead of flashing a banner.
+            let (export_bounds, copy_bounds) = cx
+                .update_window(handle.into(), |_, window, cx| {
+                    window.render_frame(cx);
+                    (
+                        window.find("export-image").bounds(),
+                        window.find("copy-image").bounds(),
+                    )
+                })
+                .unwrap();
+            let export_pixels = |pixels: &image::RgbaImage| {
+                let scale = pixels.width() as f32 / width;
+                image::imageops::crop_imm(
+                    pixels,
+                    (f32::from(export_bounds.origin.x) * scale) as u32,
+                    (f32::from(export_bounds.origin.y) * scale) as u32,
+                    (f32::from(export_bounds.size.width) * scale) as u32,
+                    (f32::from(export_bounds.size.height) * scale) as u32,
+                )
+                .to_image()
+            };
+            let idle_export = export_pixels(&cx.capture_screenshot(handle.into()).unwrap());
             for attempt in 0..2 {
                 cx.update_window(handle.into(), |_, window, cx| {
                     window.click("copy-image", cx);
@@ -1603,8 +1656,16 @@ mod macos {
                         assert_eq!(s.copy_state, studio::CopyState::Copying);
                         assert!(!s.exporting);
                     });
+                    window.render_frame(cx);
+                    assert_eq!(window.find("export-image").bounds(), export_bounds);
+                    assert_eq!(window.find("copy-image").bounds(), copy_bounds);
                 })
                 .unwrap();
+                assert_eq!(
+                    export_pixels(&cx.capture_screenshot(handle.into()).unwrap()),
+                    idle_export,
+                    "Copying must not change Export's rendered pixels"
+                );
                 cx.run_until_parked();
                 cx.read_entity(&studio, |s, cx| {
                     assert_eq!(s.copy_state, studio::CopyState::Copied);
@@ -1614,8 +1675,12 @@ mod macos {
                         [ClipboardEntry::Image(_)]
                     ));
                 });
-                cx.update_window(handle.into(), |_, window, cx| window.render_frame(cx))
-                    .unwrap();
+                cx.update_window(handle.into(), |_, window, cx| {
+                    window.render_frame(cx);
+                    assert_eq!(window.find("export-image").bounds(), export_bounds);
+                    assert_eq!(window.find("copy-image").bounds(), copy_bounds);
+                })
+                .unwrap();
                 if attempt == 0 {
                     capture(&mut cx, handle, &format!("copied-{}", width as u32));
                 }
@@ -1630,6 +1695,12 @@ mod macos {
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.copy_state, studio::CopyState::Idle)
             });
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.render_frame(cx);
+                assert_eq!(window.find("export-image").bounds(), export_bounds);
+                assert_eq!(window.find("copy-image").bounds(), copy_bounds);
+            })
+            .unwrap();
             click(&mut cx, handle, &studio, "close-theme-browser");
 
             cx.update_window(handle.into(), |_, window, cx| {
