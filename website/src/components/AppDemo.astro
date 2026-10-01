@@ -1,0 +1,48 @@
+---
+import Icon from './Icon.astro';
+import { themes, source, initialTheme } from '../data/demo.mjs';
+---
+<section class="app-demo" aria-label="Interactive Monoprint preview">
+  <div class="titlebar">
+    <div class="traffic-lights" aria-hidden="true"><i></i><i></i><i></i></div>
+    <span class="window-title">share.rs — Monoprint</span>
+    <div class="window-actions">
+      <button id="copy-image" class="button small" type="button" aria-label="Copy preview image"><Icon name="copy"/><span>Copy</span></button>
+      <a id="export-image" class="button small strong" href={`/assets/${initialTheme.id}.png`} download="monoprint-nightowl.png">Export…</a>
+    </div>
+  </div>
+  <div class="app-panes">
+    <div class="source-pane">
+      <div class="source-heading"><h2 class="label">Source</h2><span class="pill">Rust</span></div>
+      <div class="source-code" aria-label="Sample Rust source">
+        {source.map((line, index) => <div class:list={['source-line', { highlighted: index === 3 }]}><span class="line-number" aria-hidden="true">{index + 1}</span><code>{line}</code></div>)}
+      </div>
+    </div>
+    <div class="canvas">
+      <div class="preview-frame">
+        {themes.map(theme => <img id={`preview-${theme.id}`} class="preview-image" src={`/assets/${theme.id}.png`} alt={`Rust code in ${theme.name}, with line four highlighted`} width="1280" height="666" hidden={theme.id !== initialTheme.id} />)}
+        <i class="handle top-left" aria-hidden="true"></i><i class="handle top-right" aria-hidden="true"></i>
+        <i class="handle bottom-left" aria-hidden="true"></i><i class="handle bottom-right" aria-hidden="true"></i>
+      </div>
+      <div class="canvas-info" aria-hidden="true"><span class="pill">Fit</span><span class="pill" id="preview-dimensions"></span></div>
+    </div>
+    <aside class="inspector" aria-label="Preview settings">
+      <div class="inspector-section">
+        <h2 class="label">Theme</h2>
+        <label class="theme-search"><Icon name="search"/><input type="search" id="theme-search" placeholder="Find a theme…" aria-label="Find a demo theme" autocomplete="off" /></label>
+        <div class="theme-list" role="group" aria-label="Preview theme">
+          {themes.map(theme => <button type="button" data-theme={theme.id} class="theme-option" aria-pressed={theme.id === initialTheme.id}><span class="swatch" style={`--swatch:${theme.bg};--swatch-accent:${theme.accent}`} aria-hidden="true"></span><span>{theme.name}</span><span class="theme-check" aria-hidden="true">✓</span></button>)}
+        </div>
+        <p id="no-themes" class="empty" hidden>No matching themes.</p>
+      </div>
+      <div class="inspector-section typography-settings">
+        <h2 class="label">Type</h2>
+        <dl><div><dt>Font</dt><dd>JetBrains Mono</dd></div><div><dt>Comments</dt><dd>Same as code</dd></div><div><dt>Size</dt><dd>15 px</dd></div><div><dt>Ligatures</dt><dd class="green">● on</dd></div></dl>
+      </div>
+      <div class="inspector-section canvas-settings">
+        <h2 class="label">Canvas</h2>
+        <dl><div><dt>Width</dt><dd>640</dd></div><div><dt>Padding</dt><dd>64</dd></div><div><dt>Background</dt><dd>Theme</dd></div></dl>
+      </div>
+    </aside>
+  </div>
+</section>
