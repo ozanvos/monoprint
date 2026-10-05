@@ -1,0 +1,14 @@
+{
+  "recommendedDisclosure": "Data Not Collected",
+  "basis": [
+    "The app source has no analytics, telemetry, account login or remote upload path.",
+    "Rendering, syntax highlighting and local draft storage are performed on the device.",
+    "Exporting and copying happen on user action."
+  ],
+  "scope": "macOS app; excludes separately hosted support/privacy web server logs and user-initiated support email",
+  "verifyBeforeSubmission": [
+    "Review the final packaged build and all added SDKs for collection or transmission.",
+    "Confirm any website hosting and email provider practices in the published privacy policy."
+  ],
+  "contact": "contact@7ea.st"
+}

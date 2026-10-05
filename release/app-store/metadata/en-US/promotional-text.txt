@@ -1,0 +1,1 @@
+Create code images on your Mac. Choose a theme and font, highlight lines or text, and export PNG, SVG or HTML. Works offline.

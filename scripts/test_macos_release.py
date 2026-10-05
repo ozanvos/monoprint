@@ -8,6 +8,19 @@ import macos_release as release
 
 
 class MacOSReleaseTests(unittest.TestCase):
+    def test_app_store_rejects_private_selectors_and_concatenated_class_names(self):
+        with tempfile.TemporaryDirectory() as folder:
+            binary = Path(folder) / 'monoprint-gui'
+            binary.write_bytes(b'\xcf\xfa\xed\xfe_zoomFill:\0prefixNSWindowRestorationOptionssuffix')
+            with self.assertRaisesRegex(RuntimeError, '_zoomFill:.*NSWindowRestorationOptions'):
+                release.verify_app_store_apis(binary)
+
+    def test_app_store_accepts_public_api_names(self):
+        with tempfile.TemporaryDirectory() as folder:
+            binary = Path(folder) / 'monoprint-gui'
+            binary.write_bytes(b'\xcf\xfa\xed\xfemouseDownCanMoveWindow\0zoom:\0frameResizeCursorFromPosition:inDirections:\0')
+            release.verify_app_store_apis(binary)
+
     def test_inside_out_signing(self):
         with tempfile.TemporaryDirectory() as folder:
             bundle = Path(folder) / 'Monoprint.app'

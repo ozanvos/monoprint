@@ -2690,8 +2690,6 @@ dependencies = [
 [[package]]
 name = "gpui-pre-macos"
 version = "0.3.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "951d17e41a72067ad2d35c60e08a62e8ad7fa9400b41c802e26cfb459f6c05da"
 dependencies = [
  "accesskit",
  "accesskit_macos",
@@ -4270,6 +4268,7 @@ dependencies = [
  "async-channel",
  "giallo",
  "gpui-kit",
+ "gpui-pre-macos",
  "image",
  "monoprint",
  "objc2 0.6.4",

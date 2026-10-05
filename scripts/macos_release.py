@@ -16,6 +16,7 @@ def source_digest(root):
               'LICENSE', 'THIRD_PARTY_NOTICES.md']
     inputs += ['vendor/takumi-raster/Cargo.toml', 'vendor/takumi-svg/Cargo.toml']
     directories = ['src', 'assets', 'licenses', 'vendor/takumi-raster/src', 'vendor/takumi-svg/src',
+                   'vendor/gpui-component', 'vendor/gpui-pre-macos',
                    'apps/monoprint-gui/src', 'apps/monoprint-gui/scripts',
                    'apps/monoprint-gui/assets/Monoprint.icon', 'apps/monoprint-gui/assets/shortcuts',
                    'apps/monoprint-gui/assets/themes', 'scripts']
@@ -29,6 +30,20 @@ def source_digest(root):
         digest.update((root / name).read_bytes())
         digest.update(b'\0')
     return digest.hexdigest()
+
+
+def verify_app_store_apis(binary):
+    """Fail packaging if any audited private macOS API names survived compilation."""
+    forbidden = (
+        b'_opaqueRectForWindowMoveWhenInTitlebar', b'_zoomFill:',
+        b'_windowRestorationOptions', b'NSWindowRestorationOptions',
+        b'_windowResizeNorthWestSouthEastCursor', b'_windowResizeNorthEastSouthWestCursor',
+        b'CAChameleonLayer', b'NSWindowRestoresWorkspaceAtLaunch',
+    )
+    data = Path(binary).read_bytes()
+    found = [name.decode() for name in forbidden if name in data]
+    if found:
+        raise RuntimeError(f'App Store build contains private macOS API names: {", ".join(found)}')
 
 
 def sign_code(path, identity='-', keychain=None):

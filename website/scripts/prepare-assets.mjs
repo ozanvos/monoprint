@@ -32,8 +32,21 @@ export async function prepareAssets(directory = path.join(website, '.generated/p
       images.push({ name: sample.id, theme: sample.cli, appearance: sample.appearance, format: sample.format, sha256: sha256(await fs.readFile(file)) });
     }
   } finally { await fs.unlink(input); }
-  await fs.writeFile(path.join(directory, '_headers'), '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n  X-Robots-Tag: noindex, nofollow\n');
-  await fs.writeFile(path.join(directory, 'robots.txt'), 'User-agent: *\nDisallow: /\n');
-  await fs.writeFile(path.join(directory, 'build.json'), JSON.stringify({ version: config.version, commit: revision(), dirty: isDirty(), privatePreview: true, images }, null, 2) + '\n');
+  const publicSite = config.websitePublishing === true;
+  await fs.writeFile(path.join(directory, '_headers'), '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n' + (publicSite ? '' : '  X-Robots-Tag: noindex, nofollow\n'));
+  await fs.writeFile(path.join(directory, 'robots.txt'), `User-agent: *\n${publicSite ? 'Allow' : 'Disallow'}: /\n`);
+  // Keep the hosted pages and the App Store handoff sourced from the same copy.
+  const legal = path.join(root, 'release/app-store/pages');
+  await fs.copyFile(path.join(legal, 'style.css'), path.join(directory, 'legal.css'));
+  for (const page of ['support', 'privacy']) {
+    await fs.mkdir(path.join(directory, page), { recursive: true });
+    const html = (await fs.readFile(path.join(legal, `${page}.html`), 'utf8'))
+      .replace('href="style.css"', 'href="/legal.css"')
+      .replaceAll('href="support.html"', 'href="/support/"')
+      .replaceAll('href="privacy.html"', 'href="/privacy/"')
+      .replace('<nav>', '<nav><a href="/">Monoprint</a>');
+    await fs.writeFile(path.join(directory, page, 'index.html'), html);
+  }
+  await fs.writeFile(path.join(directory, 'build.json'), JSON.stringify({ version: config.version, commit: revision(), dirty: isDirty(), privatePreview: !publicSite, images }, null, 2) + '\n');
 }
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) await prepareAssets();

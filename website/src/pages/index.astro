@@ -19,7 +19,8 @@ const showcases = [
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="description" content="Create code images locally with the Monoprint macOS app, CLI, or Rust and TypeScript APIs." />
-    <meta name="robots" content="noindex,nofollow" />
+    {release.websitePublishing !== true && <meta name="robots" content="noindex,nofollow" />}
+    {release.homepage && <link rel="canonical" href={release.homepage + '/'} />}
     <title>Monoprint | Code images</title>
     <link rel="icon" href="/assets/icon.png" />
     <link rel="preload" href="/assets/jetbrains-mono.ttf" as="font" type="font/ttf" crossorigin />
@@ -29,7 +30,7 @@ const showcases = [
     <div class="page">
       <header class="masthead">
         <a class="brand" href="/">Monoprint</a>
-        <nav aria-label="Main"><a href={docs}>Docs</a><a href={`${docs}#options`}>CLI</a><a href={repository}>GitHub ↗</a><button class="button strong" type="button" disabled title="Downloads are being prepared">Download</button></nav>
+        <nav aria-label="Main"><a href="/support/">Support</a><a href="/privacy/">Privacy</a>{release.publicPublishing && <><a href={docs}>Docs</a><a href={cliDocs}>CLI</a><a href={repository}>GitHub ↗</a></>}<button class="button strong" type="button" disabled title="Downloads are being prepared">Download</button></nav>
       </header>
       <main id="main">
         <section class="hero" aria-labelledby="hero-title">
@@ -45,7 +46,7 @@ const showcases = [
           {showcases.map(item => <figure><div class:list={['showcase-tile', { lattice: item.transparent }]}><img src={item.image} width="1280" height="666" alt={item.alt} loading="lazy" /></div><figcaption><span>{item.name}</span><span>{item.detail}</span></figcaption></figure>)}
         </section>
       </main>
-      <footer><span>Monoprint</span><nav aria-label="Resources"><a href={docs}>Docs</a><a href={`${docs}#options`}>CLI</a><a href={`${repository}/blob/main/docs/library.md`}>Rust</a><a href={`${repository}/tree/main/bindings/node`}>TypeScript</a><a href={repository}>Source on GitHub ↗</a></nav></footer>
+      <footer><span>Monoprint</span><nav aria-label="Resources"><a href="/support/">Support</a><a href="/privacy/">Privacy</a><a href="mailto:contact@7ea.st">Contact</a>{release.publicPublishing && <><a href={docs}>Docs</a><a href={cliDocs}>CLI</a><a href={`${repository}/blob/main/docs/library.md`}>Rust</a><a href={`${repository}/tree/main/bindings/node`}>TypeScript</a><a href={repository}>Source on GitHub ↗</a></>}</nav></footer>
     </div>
     <p class="sr-only" role="status" id="feedback" aria-live="polite"></p>
     <script src="../scripts/demo.ts"></script>

@@ -1,0 +1,23 @@
+{
+  "source": "import { Effect } from \"effect\"\n\nexport error MissingPalette({\n  name: string\n})\n\nexport service Palettes {\n  find: (name: string) =>\n    Effect<string, MissingPalette>\n}\n\nexport let print = () => effect {\n  let palettes = Palettes!\n  palettes.find(\"Monoprint\")!\n}",
+  "language": "hem",
+  "theme": "ground",
+  "light": false,
+  "transparent": false,
+  "background": "theme",
+  "line_numbers": true,
+  "padding": "48",
+  "width": "640",
+  "title": "palette.hem",
+  "highlights": "",
+  "text_highlights": "",
+  "font_size": "17",
+  "ligatures": false,
+  "scale": 2,
+  "png_compression": "balanced",
+  "format": "Png",
+  "font_path": null,
+  "comment_font_path": null,
+  "font_id": "commit-mono",
+  "comment_font_id": null
+}

@@ -4,6 +4,7 @@ import fs from 'node:fs/promises';
 import http from 'node:http';
 import path from 'node:path';
 import { chromium } from 'playwright';
+import release from '../release/config.json' with { type: 'json' };
 
 const args = process.argv.slice(2);
 const option = flag => args[args.indexOf(flag) + 1];
@@ -38,7 +39,12 @@ try {
     document.querySelectorAll('img').forEach(image => image.loading = 'eager');
   });
   await page.waitForFunction(() => [...document.images].every(img => img.complete && img.naturalWidth > 0));
-  assert.equal(await page.locator('meta[name=robots]').getAttribute('content'), 'noindex,nofollow');
+  if (release.websitePublishing === true) {
+    assert.equal(await page.locator('meta[name=robots]').count(), 0);
+    assert.equal(await page.locator('link[rel=canonical]').getAttribute('href'), release.homepage + '/');
+  } else {
+    assert.equal(await page.locator('meta[name=robots]').getAttribute('content'), 'noindex,nofollow');
+  }
   assert.equal(await page.getByRole('link', { name: /Download/i }).count(), 0);
   assert.equal(await page.getByRole('button', { name: 'Download', exact: true }).count(), 2);
   assert.equal(await page.locator('button:disabled').count(), 2);
@@ -88,10 +94,19 @@ try {
   const download = await downloading;
   assert.equal(download.suggestedFilename(), 'monoprint-ayu.png');
   assert.deepEqual(await fs.readFile(await download.path()), await fs.readFile(path.join(source, 'assets/ayu.png')));
+  for (const name of ['Support', 'Privacy']) {
+    await page.goto(`${url}/${name.toLowerCase()}/`);
+    assert.equal(await page.getByRole('heading', { level: 1 }).textContent(), `Monoprint ${name === 'Support' ? 'support' : 'privacy policy'}`);
+    assert.ok(await page.locator('a[href="mailto:contact@7ea.st"]').count() > 0);
+    assert.ok(await page.locator('a[href="/"]').count() > 0);
+    await page.setViewportSize({ width: 320, height: 740 });
+    assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `${name} overflows at 320px`);
+    await page.screenshot({ path: path.join(out, `${name.toLowerCase()}-320.png`), fullPage: true });
+  }
   await context.close();
   assert.deepEqual(errors, []);
   assert.deepEqual(network, []);
-  console.log('Five themes, search, CLI/image clipboard, PNG download, five viewport sizes, local assets and private-preview state passed.');
+  console.log('Five themes, search, CLI/image clipboard, PNG download, five viewport sizes, local assets, publication state and support/privacy pages passed.');
 } finally {
   if (browser) await browser.close();
   server.close();

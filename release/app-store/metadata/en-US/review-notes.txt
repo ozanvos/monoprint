@@ -1,0 +1,12 @@
+Monoprint is a native macOS utility for turning source code into images. No account or sign-in is required. All core functionality works offline.
+
+To review:
+1. Launch the app; a sample TypeScript snippet appears on first use.
+2. Paste or type source code in the left editor, or use Open to select a UTF-8 source file.
+3. Choose a language and a theme, then adjust the frame settings in the right sidebar.
+4. Choose PNG, SVG or HTML and use Export to save a file through the native save dialog.
+5. PNG also supports Copy and dragging the image into another app.
+
+The light/dark switch in the theme section changes the exported image. The sun/moon button in the top bar changes the interface independently.
+
+Support: contact@7ea.st

@@ -1,0 +1,15 @@
+Monoprint turns source code into images on your Mac. Paste code or open a file,
+choose a language and theme, then export PNG, SVG or self-contained HTML.
+
+• Light and dark themes, including editor palettes.
+• Bundled coding fonts, custom TTF/OTF fonts, separate comment fonts and ligatures.
+• Adjustable width, padding, filename and line numbers.
+• Line and text highlights.
+• Themed, solid, lattice, halftone and transparent backgrounds.
+• PNG exports at 1× to 6×, clipboard copy and drag-out export.
+
+Syntax highlighting, previews and exports run locally without an account or
+internet connection. Your current snippet and settings are saved on your Mac.
+
+Supports TypeScript, JavaScript, Rust, Python, Swift, Go, Hem and other
+programming, markup and configuration languages.

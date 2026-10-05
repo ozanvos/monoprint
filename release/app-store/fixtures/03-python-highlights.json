@@ -1,0 +1,23 @@
+{
+  "source": "from dataclasses import dataclass\n\n@dataclass\nclass Palette:\n    name: str\n    dark: bool = True\n\ndef describe(palette: Palette) -> str:\n    return f\"{palette.name} at 2×\"\n\nprint(describe(Palette(\"Monoprint\")))",
+  "language": "python",
+  "theme": "dusk",
+  "light": false,
+  "transparent": false,
+  "background": "lattice",
+  "line_numbers": true,
+  "padding": "48",
+  "width": "640",
+  "title": "palette.py",
+  "highlights": "7-9",
+  "text_highlights": "",
+  "font_size": "17",
+  "ligatures": false,
+  "scale": 2,
+  "png_compression": "balanced",
+  "format": "Png",
+  "font_path": null,
+  "comment_font_path": null,
+  "font_id": "fira-code",
+  "comment_font_id": null
+}

@@ -1,0 +1,23 @@
+{
+  "source": "// A little code. A lasting impression.\ninterface Theme {\n  name: string;\n  dark: boolean;\n}\n\nfunction print(theme: Theme) {\n  return `${theme.name} at 2×`;\n}\n\nprint({ name: \"Monoprint\", dark: true });",
+  "language": "typescript",
+  "theme": "monoprint",
+  "light": false,
+  "transparent": false,
+  "background": "theme",
+  "line_numbers": true,
+  "padding": "48",
+  "width": "640",
+  "title": "hello.ts",
+  "highlights": "",
+  "text_highlights": "",
+  "font_size": "17",
+  "ligatures": false,
+  "scale": 2,
+  "png_compression": "balanced",
+  "format": "Png",
+  "font_path": null,
+  "comment_font_path": null,
+  "font_id": null,
+  "comment_font_id": null
+}

@@ -10,6 +10,9 @@ publish = false
 # Keep native UI dependencies out of the CLI, library and Node workspace.
 [workspace]
 
+[features]
+app-store = ["dep:gpui-macos", "gpui-macos/app-store"]
+
 [dependencies]
 gpui-kit = { version = "=0.6.6", features = ["tree-sitter-rust", "tree-sitter-typescript", "tree-sitter-tsx", "tree-sitter-javascript", "tree-sitter-python"] }
 monoprint = { path = "../..", default-features = false }
@@ -23,6 +26,7 @@ tempfile = "3"
 url = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
+gpui-macos = { package = "gpui-pre-macos", version = "=0.3.6", optional = true, default-features = false }
 objc2 = "0.6"
 objc2-app-kit = { version = "0.3", default-features = false, features = ["NSGraphics", "NSResponder", "NSView", "NSVisualEffectView"] }
 raw-window-handle = "0.6"
@@ -47,3 +51,4 @@ strip = true
 # Retain Select's native behavior while synchronizing its popup/shadow fade.
 [patch.crates-io]
 gpui-component = { path = "../../vendor/gpui-component" }
+gpui-pre-macos = { path = "../../vendor/gpui-pre-macos" }

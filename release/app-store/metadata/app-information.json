@@ -1,0 +1,14 @@
+{
+  "locale": "en-US",
+  "primaryCategory": "Developer Tools",
+  "secondaryCategory": "Graphics & Design",
+  "bundleIdentifier": "app.monoprint.studio",
+  "version": "0.1.0",
+  "supportEmail": "contact@7ea.st",
+  "supportURL": "https://monoprint.7ea.st/support/",
+  "privacyPolicyURL": "https://monoprint.7ea.st/privacy/",
+  "marketingURL": "https://monoprint.7ea.st/",
+  "copyright": null,
+  "suggestedSKU": "monoprint-macos",
+  "signInRequired": false
+}

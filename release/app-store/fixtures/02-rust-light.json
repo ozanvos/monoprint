@@ -1,0 +1,23 @@
+{
+  "source": "// Small details, clear results.\nstruct Palette {\n    name: String,\n    dark: bool,\n}\n\nfn main() {\n    let palette = Palette {\n        name: \"Monoprint\".into(),\n        dark: false,\n    };\n    println!(\"{}\", palette.name);\n}",
+  "language": "rust",
+  "theme": "github-default",
+  "light": true,
+  "transparent": false,
+  "background": "solid",
+  "line_numbers": true,
+  "padding": "48",
+  "width": "640",
+  "title": "palette.rs",
+  "highlights": "",
+  "text_highlights": "",
+  "font_size": "17",
+  "ligatures": false,
+  "scale": 2,
+  "png_compression": "balanced",
+  "format": "Png",
+  "font_path": null,
+  "comment_font_path": null,
+  "font_id": "jetbrains-mono",
+  "comment_font_id": null
+}

@@ -13,7 +13,8 @@ import tomllib
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--debug', action='store_true', help='Use the faster development build')
-parser.add_argument('--sign-identity', default='-', help='Developer ID Application identity; defaults to local ad-hoc signing')
+parser.add_argument('--app-store', action='store_true', help='Compile out audited private macOS APIs; does not configure App Store signing or sandboxing')
+parser.add_argument('--sign-identity', default='-', help='Code signing identity; defaults to local ad-hoc signing')
 parser.add_argument('--notary-profile', help='Existing notarytool keychain profile; requires Developer ID signing')
 parser.add_argument('--sign-keychain', type=Path)
 parser.add_argument('--notary-keychain', type=Path)
@@ -24,10 +25,12 @@ if sys.platform != 'darwin':
     parser.error('This bundle script is for macOS; use cargo run on other platforms.')
 if args.notary_profile and (args.sign_identity == '-' or args.debug):
     parser.error('Notarization requires a release build and --sign-identity')
+if args.app_store and args.notary_profile:
+    parser.error('--app-store cannot be combined with Developer ID notarization')
 gui = Path(__file__).resolve().parents[1]
 root = gui.parents[1]
 sys.path.insert(0, str(root / 'scripts'))
-from macos_release import sign_app, notarize_app, zip_app, source_digest
+from macos_release import sign_app, notarize_app, zip_app, source_digest, verify_app_store_apis
 commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
 dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root, text=True).strip())
 source_hash = source_digest(root)
@@ -35,16 +38,21 @@ if args.archive_dir and args.archive_dir.exists():
     parser.error('--archive-dir must be a fresh directory')
 if args.archive_dir and dirty and not args.local:
     parser.error('Distribution archives require clean source; use --local for verification-only artifacts')
-target = root / 'target/gui'
+target = root / ('target/gui-app-store' if args.app_store else 'target/gui')
 manifest = gui / 'Cargo.toml'
+feature_args = ['--features', 'app-store'] if args.app_store else []
 subprocess.run(['cargo', 'build', '--locked', '--manifest-path', str(manifest),
-                '--target-dir', str(target), *([] if args.debug else ['--release'])], check=True)
+                '--target-dir', str(target), *feature_args, *([] if args.debug else ['--release'])], check=True)
+if args.app_store:
+    verify_app_store_apis(target / ('debug' if args.debug else 'release') / 'monoprint-gui')
 # The shortcuts use a stable bundled executable, never the interactive shell's PATH.
 subprocess.run(['cargo', 'build', '--locked', '--manifest-path', str(root / 'Cargo.toml'),
                 '--bin', 'monoprint', '--target-dir', str(target), *([] if args.debug else ['--release'])], check=True)
+if args.app_store:
+    verify_app_store_apis(target / ('debug' if args.debug else 'release') / 'monoprint')
 host = next(line.removeprefix('host: ') for line in subprocess.check_output(['rustc', '-vV'], text=True).splitlines() if line.startswith('host: '))
 metadata = json.loads(subprocess.check_output(['cargo', 'metadata', '--locked', '--offline',
-    '--manifest-path', str(manifest), '--format-version', '1', '--filter-platform', host]))
+    '--manifest-path', str(manifest), '--format-version', '1', '--filter-platform', host, *feature_args]))
 version = next(p['version'] for p in metadata['packages'] if p['name'] == 'monoprint-gui')
 bundle = target / 'Monoprint.app'
 # Assemble a fresh bundle: stale signed files/resources must not survive rebuilds.
@@ -101,12 +109,13 @@ notices = []
 lock = tomllib.loads((gui / 'Cargo.lock').read_text())
 checksums = {(p['name'], p['version']): p.get('checksum') for p in lock['package']}
 for package in sorted(metadata['packages'], key=lambda p: (p['name'], p['version'])):
-    if not package.get('source'):
-        continue
     source = Path(package['manifest_path']).parent
+    if not package.get('source') and not source.is_relative_to(root / 'vendor'):
+        continue
     files = sorted(p for p in source.rglob('*') if p.is_file() and p.name.upper().startswith(('LICENSE', 'LICENCE', 'COPYING', 'NOTICE')))
     record = {k: package[k] for k in ['name', 'version', 'license', 'repository']} | {
-        'source': f"https://crates.io/api/v1/crates/{package['name']}/{package['version']}/download",
+        'source': (f"https://crates.io/api/v1/crates/{package['name']}/{package['version']}/download"
+                   if package.get('source') else str(source.relative_to(root))),
         'notice_files': [str(p.relative_to(source)) for p in files],
     }
     if package.get('license') in ('EUPL-1.2', 'MPL-2.0'):
@@ -148,13 +157,14 @@ shutil.move(str(assembled), str(bundle))
 staging.cleanup()
 if args.archive_dir:
     args.archive_dir.mkdir(parents=True)
-    name = f'Monoprint-{version}-{host}.zip'
+    name = f'Monoprint-{version}-{host}{"-app-store" if args.app_store else ""}.zip'
     archive = args.archive_dir / name
     # The final archive is created after stapling; the submission ZIP is temporary.
     zip_app(bundle, archive)
     checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
     (args.archive_dir / (name + '.sha256')).write_text(f'{checksum}  {name}\n')
     receipt = {'version': version, 'commit': commit, 'target': host,
+        'appStore': args.app_store,
         'release': not args.local and not args.debug, 'dirty': final_dirty,
         'inputHash': source_hash,
         'signed': args.sign_identity != '-', 'notarization': notary,
