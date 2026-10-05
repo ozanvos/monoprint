@@ -28,6 +28,12 @@ export function validatePolicy(policy, evidence) {
     assert.ok(digest(entry.sha256) && digest(entry.metadataSha256), `Missing input hashes: ${entry.name}`);
     assert.ok(pinned(entry.source), `Unpinned grammar source: ${entry.name}`);
     assert.ok(entry.scopeName, `Missing scope: ${entry.name}`);
+    if (entry.localFile) {
+      assert.equal(entry.localFile, `assets/grammars/${entry.name}.json`, 'Invalid local grammar path');
+      assert.equal(entry.metadata?.name, entry.name, 'Local grammar metadata name differs');
+      assert.equal(entry.metadata.scopeName, entry.scopeName, 'Local grammar metadata scope differs');
+      assert.equal(sha256(JSON.stringify(entry.metadata)), entry.metadataSha256, 'Local grammar metadata changed');
+    }
     if (entry.status === 'excluded') {
       assert.ok(entry.reason, `Missing exclusion reason: ${entry.name}`);
       continue;
@@ -58,6 +64,9 @@ export async function loadReview() {
   const evidence = JSON.parse(await fs.readFile(EVIDENCE, 'utf8'));
   validatePolicy(policy, evidence);
   for (const entry of policy.entries) {
+    if (entry.localFile) {
+      assert.equal(sha256(await fs.readFile(entry.localFile)), entry.sha256, `Local grammar changed: ${entry.name}`);
+    }
     for (const source of entry.correspondingSource ?? []) {
       assert.equal(sha256(await fs.readFile(source.file)), source.sha256, `Corresponding source changed: ${source.file}`);
       if (source.file.endsWith(`/${entry.name}.json`)) assert.equal(source.sha256, entry.sha256);
@@ -72,14 +81,15 @@ export async function checkInputs(root, { policy }) {
   assert.equal(sha256(await fs.readFile(index)), policy.collection.indexSha256, 'Collection index changed; review the new revision');
   const { grammars, injections } = await import(pathToFileURL(index));
   const metadata = new Map([...grammars, ...injections].map(g => [g.name, g]));
-  assert.deepEqual([...metadata.keys()].sort(), policy.entries.map(e => e.name).sort(), 'Unreviewed metadata entries');
+  const collectionEntries = policy.entries.filter(e => !e.localFile);
+  assert.deepEqual([...metadata.keys()].sort(), collectionEntries.map(e => e.name).sort(), 'Unreviewed metadata entries');
   const files = (await fs.readdir(path.join(directory, 'grammars'))).filter(p => p.endsWith('.json')).sort();
-  assert.deepEqual(files, policy.entries.map(e => `${e.name}.json`).sort(), 'Unreviewed grammar files');
+  assert.deepEqual(files, collectionEntries.map(e => `${e.name}.json`).sort(), 'Unreviewed grammar files');
   const excludedScopes = new Set(policy.entries.filter(e => e.status === 'excluded').map(e => e.scopeName));
   for (const entry of policy.entries) {
-    const bytes = await fs.readFile(path.join(directory, 'grammars', `${entry.name}.json`));
+    const bytes = await fs.readFile(entry.localFile ?? path.join(directory, 'grammars', `${entry.name}.json`));
     assert.equal(sha256(bytes), entry.sha256, `Grammar changed; review ${entry.name}`);
-    const info = metadata.get(entry.name);
+    const info = entry.localFile ? entry.metadata : metadata.get(entry.name);
     assert.equal(sha256(JSON.stringify(info)), entry.metadataSha256, `Metadata changed; review ${entry.name}`);
     assert.equal(!Boolean(info.embeddedIn), entry.public, `Public/injection mismatch: ${entry.name}`);
     const grammar = JSON.parse(bytes);
@@ -98,7 +108,7 @@ export async function checkInputs(root, { policy }) {
     visit(grammar);
     assert.deepEqual([...missing].sort(), entry.unavailableEmbeddedScopes ?? [], `Unreviewed missing embedded grammar: ${entry.name}`);
   }
-  return grammars;
+  return [...grammars, ...policy.entries.filter(e => e.localFile && e.public).map(e => e.metadata)];
 }
 
 export function generatedNotice({ policy, evidence, collectionLicense }) {
@@ -110,6 +120,8 @@ export function generatedNotice({ policy, evidence, collectionLicense }) {
     + 'The collection normalizes/patches upstream grammars; Monoprint compiles that\n'
     + 'JSON into Giallo data without further grammar edits. Exact inputs, original\n'
     + 'sources and changes are recorded in grammar-policy.json and maintenance docs.\n'
+    + 'Additional local grammars and their pinned upstream sources are recorded in\n'
+    + 'the same policy; their source JSON is supplied in assets/grammars.\n'
     + 'MPL-covered source is supplied in licenses/grammar-sources under MPL-2.0.\n'
     + 'Ship these notices and corresponding sources with software distributions.\n\n'
     + 'COLLECTION LICENSE\n\n' + collectionLicense;
@@ -139,6 +151,9 @@ export async function registryReceipt({ policy }) {
     'licenses/editor-themes-provenance.json'];
   const checksums = {};
   for (const file of files) checksums[file] = sha256(await fs.readFile(file));
+  for (const entry of included.filter(e => e.localFile)) {
+    checksums[entry.localFile] = sha256(await fs.readFile(entry.localFile));
+  }
   for (const name of (await fs.readdir('assets/themes')).filter(n => n.endsWith('.json')).sort()) {
     const file = `assets/themes/${name}`;
     checksums[file] = sha256(await fs.readFile(file));

@@ -9,7 +9,7 @@ const pairs = await readJson(path.join(root, 'assets/editor/pairs.json'));
 const themes = [...new Set([...Object.keys({ ...await readJson(path.join(root, 'assets/removed-frames/themes.json')),
   ...await readJson(path.join(root, 'assets/editor/themes.json')) }), ...pairs.map(pair => pair.id)])].sort();
 const languages = (await readJson(path.join(root, 'assets/grammar-metadata.json')))
-  .map(g => g.name).filter(n => n !== 'typescript' && n !== 'tex').concat('plain').sort();
+  .map(g => g.name).filter(n => n !== 'tex').concat('plain').sort();
 const union = values => values.map(v => `  | ${JSON.stringify(v)}`).join('\n');
 await fs.writeFile(path.join(directory, 'js/catalog-types.ts'),
   `// Generated from the reviewed Rust assets by scripts/build.mjs.\nexport type ThemeId =\n${union(themes)};\n\nexport type LanguageId =\n${union(languages)};\n`);

@@ -12,6 +12,9 @@ mod document;
 #[allow(dead_code, unused_imports)]
 #[path = "../src/handoff.rs"]
 mod handoff;
+#[allow(dead_code, unused_imports)]
+#[path = "../src/language_picker.rs"]
+mod language_picker;
 #[cfg(target_os = "macos")]
 #[allow(dead_code)] // The production raw-window adapter is unavailable on the test platform.
 #[path = "../src/material.rs"]
@@ -1361,6 +1364,51 @@ mod macos {
             std::thread::sleep(Duration::from_millis(180));
             settle(&mut cx, handle, &studio);
             capture(&mut cx, handle, &format!("language-menu-{}", width as u32));
+            cx.update_window(handle.into(), |_, window, cx| {
+                assert!(window.try_find("more-languages").is_none());
+                window.input("typescript", cx);
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            capture(
+                &mut cx,
+                handle,
+                &format!("language-typescript-{}", width as u32),
+            );
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.press("enter", cx);
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.language, "typescript")
+            });
+            cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
+            header_control_click(&mut cx, handle, &studio, "source-language", 1);
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.input("angular-ts", cx)
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, cx| window.press("enter", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.language, "typescript")
+            });
+            cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
+            header_control_click(&mut cx, handle, &studio, "source-language", 1);
+            cx.update_window(handle.into(), |_, window, cx| window.input("tsx", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.update_window(handle.into(), |_, window, cx| window.press("enter", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| assert_eq!(s.document.language, "tsx"));
             cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
                 .unwrap();
             settle(&mut cx, handle, &studio);

@@ -1,0 +1,83 @@
+{
+  "name": "hem",
+  "scopeName": "source.hem",
+  "patterns": [
+    {
+      "include": "#comments"
+    },
+    {
+      "include": "#strings"
+    },
+    {
+      "include": "#numbers"
+    },
+    {
+      "include": "#keywords"
+    },
+    {
+      "include": "#types"
+    }
+  ],
+  "repository": {
+    "comments": {
+      "patterns": [
+        {
+          "match": "//.*$",
+          "name": "comment.line.double-slash.hem"
+        },
+        {
+          "begin": "/\\*",
+          "end": "\\*/",
+          "name": "comment.block.hem"
+        }
+      ]
+    },
+    "strings": {
+      "patterns": [
+        {
+          "begin": "\"",
+          "end": "\"",
+          "name": "string.quoted.double.hem"
+        },
+        {
+          "begin": "'",
+          "end": "'",
+          "name": "string.quoted.single.hem"
+        },
+        {
+          "begin": "`",
+          "end": "`",
+          "name": "string.template.hem"
+        }
+      ]
+    },
+    "numbers": {
+      "patterns": [
+        {
+          "match": "\\b(?:0x[\\da-fA-F]+|\\d+(?:\\.\\d+)?)n?\\b",
+          "name": "constant.numeric.hem"
+        }
+      ]
+    },
+    "keywords": {
+      "patterns": [
+        {
+          "match": "\\b(and|as|async|await|brand|break|catch|class|const|continue|defer|deriving|effect|else|error|export|extends|for|from|if|import|in|let|match|mut|new|override|raise|resource|return|service|static|throw|traced|try|use|var|while)\\b",
+          "name": "keyword.control.hem"
+        }
+      ]
+    },
+    "types": {
+      "patterns": [
+        {
+          "match": "\\b(?:boolean|bigint|never|number|string|unknown|void)\\b",
+          "name": "storage.type.hem"
+        },
+        {
+          "match": "\\b[A-Z][A-Za-z0-9_]*\\b",
+          "name": "entity.name.type.hem"
+        }
+      ]
+    }
+  }
+}

@@ -10,7 +10,7 @@ use gpui_kit::{
         menu::{DropdownMenu, PopupMenuItem},
         popover::Popover,
         scroll::Scrollbar,
-        select::Select,
+        select::{Select, SelectState},
         switch::Switch,
         tooltip::Tooltip,
         *,
@@ -1941,13 +1941,17 @@ fn highlight_button_style(cx: &App) -> ButtonCustomVariant {
 
 // Select styles apply to its trigger, while its outer element fills its parent.
 // Give that parent an explicit control height so toolbar centering and hit areas agree.
-fn dropdown(
+fn dropdown<D>(
     p: Palette,
     id: &'static str,
-    state: &Entity<Choices>,
+    state: &Entity<SelectState<D>>,
     label: &'static str,
     search: &'static str,
-) -> Div {
+) -> Div
+where
+    D: select::SelectDelegate + 'static,
+    <D::Item as select::SelectItem>::Value: PartialEq + Clone,
+{
     div().h(px(26.)).min_w_0().child(
         Select::new(state)
             .id(id)

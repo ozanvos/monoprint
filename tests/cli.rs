@@ -395,10 +395,29 @@ fn stripe_geometry_does_not_rewrite_source_text() {
 }
 
 #[test]
-fn typescript_module_extensions_use_tsx() {
+fn hem_files_infer_the_bundled_grammar_and_export_all_formats() {
     let w = Workspace::new();
-    let source = "const view = <div />;";
-    let expected = success(w.run(&["-l", "tsx", "-o", "-", "--format", "html"], source));
+    fs::write(
+        w.0.join("example.hem"),
+        "// Hem\neffect greet(): string { raise \"hello\" }\n",
+    )
+    .unwrap();
+    for format in ["html", "svg", "png"] {
+        let inferred = success(w.run(&["example.hem", "-o", "-", "--format", format], ""));
+        let explicit = success(w.run(
+            &["example.hem", "-l", "hem", "-o", "-", "--format", format],
+            "",
+        ));
+        assert_eq!(inferred, explicit, "{format}");
+        assert!(!inferred.is_empty());
+    }
+}
+
+#[test]
+fn typescript_and_tsx_use_distinct_grammars() {
+    let w = Workspace::new();
+    let source = "const value = <number>42;";
+    let expected = success(w.run(&["-l", "typescript", "-o", "-", "--format", "html"], source));
     for extension in ["ts", "mts", "cts"] {
         let name = format!("example.{extension}");
         fs::write(w.0.join(&name), source).unwrap();
@@ -411,6 +430,17 @@ fn typescript_module_extensions_use_tsx() {
             expected
         );
     }
+    let jsx = "const view = <div />;";
+    fs::write(w.0.join("component.tsx"), jsx).unwrap();
+    assert_eq!(
+        success(w.run(&["component.tsx", "-o", "-", "--format", "html"], "")),
+        success(w.run(&["-l", "tsx", "-o", "-", "--format", "html"], jsx)),
+    );
+    assert_ne!(
+        expected,
+        success(w.run(&["-l", "tsx", "-o", "-", "--format", "html"], source)),
+        "TypeScript angle-bracket assertions must not use the JSX grammar",
+    );
 }
 
 #[test]

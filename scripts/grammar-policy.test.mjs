@@ -10,6 +10,16 @@ const evidence = JSON.parse(await fs.readFile('licenses/grammar-license-evidence
 
 test('the checked-in review has complete license evidence', () => validatePolicy(policy, evidence));
 
+test('local grammars require exact paths and pinned metadata hashes', () => {
+  const copy = structuredClone(policy);
+  const hem = copy.entries.find(e => e.name === 'hem');
+  hem.localFile = '../hem.json';
+  assert.throws(() => validatePolicy(copy, evidence), /Invalid local grammar path/);
+  hem.localFile = 'assets/grammars/hem.json';
+  hem.metadata.displayName = 'Changed';
+  assert.throws(() => validatePolicy(copy, evidence), /Local grammar metadata changed/);
+});
+
 for (const license of ['GPL-3.0', 'LGPL-3.0', 'NOASSERTION', undefined]) {
   test(`rejects unapproved license ${license}`, () => {
     const copy = structuredClone(policy);
@@ -62,6 +72,12 @@ test('the importer rejects unreviewed files and changed inputs before compilatio
       { ...info, public: true, status: 'included', sha256: sha256(grammar), metadataSha256: sha256(JSON.stringify(info)) },
     ] } };
     await checkInputs(root, review);
+    review.policy.entries.push(structuredClone(policy.entries.find(e => e.name === 'hem')));
+    const imported = await checkInputs(root, review);
+    assert.ok(imported.some(g => g.name === 'hem'));
+    review.policy.entries.at(-1).sha256 = '0'.repeat(64);
+    await assert.rejects(checkInputs(root, review), /Grammar changed; review hem/);
+    review.policy.entries.pop();
     const extra = path.join(directory, 'grammars/unreviewed.json');
     await fs.writeFile(extra, grammar);
     await assert.rejects(checkInputs(root, review), /Unreviewed grammar files/);

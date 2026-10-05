@@ -4752,5 +4752,13 @@
     "sha": "9c7bb7631f3af99331475b633aaf5b70345c6713",
     "source": "https://github.com/ziglang/vscode-zig/blob/9c7bb7631f3af99331475b633aaf5b70345c6713/syntaxes/zig.tmLanguage.json",
     "sourceApi": "https://api.github.com/repos/ziglang/vscode-zig/contents/syntaxes/zig.tmLanguage.json?ref=9c7bb7631f3af99331475b633aaf5b70345c6713"
+  },
+  {
+    "name": "hem",
+    "displayName": "Hem",
+    "scopeName": "source.hem",
+    "source": "https://github.com/ozanvos/hem/blob/f6cece8001badb319d1e668a4d81b4f35dd5e59f/site/astro.config.mjs",
+    "license": "Apache-2.0",
+    "licenseUrl": "https://raw.githubusercontent.com/ozanvos/hem/f6cece8001badb319d1e668a4d81b4f35dd5e59f/LICENSE"
   }
 ]

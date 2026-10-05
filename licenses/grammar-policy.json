@@ -3181,6 +3181,26 @@
       "license": "MIT",
       "notice": "d847c2d8f8bb86bb",
       "licenseSource": "https://raw.githubusercontent.com/ziglang/vscode-zig/9c7bb7631f3af99331475b633aaf5b70345c6713/LICENSE"
+    },
+    {
+      "name": "hem",
+      "public": true,
+      "sha256": "186a82d9d0740ff76beb7db00bb64f21650d34c08a55b6003ee223573bd739ad",
+      "metadataSha256": "7a3b9ff9cfa05cd343fe5c43b8ab76216d89c420d516f37de40fbc8a4c7baa91",
+      "source": "https://github.com/ozanvos/hem/blob/f6cece8001badb319d1e668a4d81b4f35dd5e59f/site/astro.config.mjs",
+      "scopeName": "source.hem",
+      "status": "included",
+      "license": "Apache-2.0",
+      "notice": "11a7f61caacbe7cb",
+      "licenseSource": "https://raw.githubusercontent.com/ozanvos/hem/f6cece8001badb319d1e668a4d81b4f35dd5e59f/LICENSE",
+      "localFile": "assets/grammars/hem.json",
+      "metadata": {
+        "name": "hem",
+        "displayName": "Hem",
+        "scopeName": "source.hem",
+        "source": "https://github.com/ozanvos/hem/blob/f6cece8001badb319d1e668a4d81b4f35dd5e59f/site/astro.config.mjs"
+      },
+      "reviewNote": "Extracted the hemLanguage object from the pinned Hem documentation config without changing patterns. The repository Apache-2.0 license applies; no NOTICE file or grammar-specific exception exists in that revision."
     }
   ]
 }

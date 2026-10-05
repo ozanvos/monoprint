@@ -11,7 +11,7 @@ use gpui_kit::{
             EditorState, InputEvent, InputState, RopeExt, TextDecoration, TextDecorationCollection,
         },
         resizable::ResizableState,
-        select::{SearchableVec, SelectEvent, SelectItem, SelectState},
+        select::{SearchableVec, SelectDelegate, SelectEvent, SelectItem, SelectState},
     },
     *,
 };
@@ -55,11 +55,22 @@ impl SelectItem for Choice {
         self.menu_item(cx)
     }
     fn matches(&self, query: &str) -> bool {
-        let q = query.to_lowercase();
-        self.name.to_lowercase().contains(&q) || self.id.contains(&q)
+        let q = query.trim().to_lowercase();
+        if self.name.to_lowercase().contains(&q) || self.id.contains(&q) {
+            return true;
+        }
+        self.preview.is_none()
+            && self.id.parse::<Language>().is_ok_and(|language| {
+                language
+                    .aliases()
+                    .any(|alias| alias.to_lowercase().contains(&q))
+                    || q.trim_start_matches('.').parse::<Language>().ok() == Some(language)
+                    || q == "react" && matches!(language.id(), "jsx" | "tsx")
+            })
     }
 }
 pub type Choices = SelectState<SearchableVec<Choice>>;
+pub type LanguageChoices = SelectState<crate::language_picker::LanguageList>;
 
 #[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
 pub enum CopyState {
@@ -133,7 +144,7 @@ pub struct Studio {
     pub width: Entity<InputState>,
     pub padding: Entity<InputState>,
     pub font_size: Entity<InputState>,
-    pub language: Entity<Choices>,
+    pub language: Entity<LanguageChoices>,
     pub code_typeface: Entity<Choices>,
     pub comment_typeface: Entity<Choices>,
     pub theme_search: Entity<InputState>,
@@ -203,15 +214,10 @@ impl Studio {
         let width = input(&document.width, "Auto", window, cx);
         let padding = input(&document.padding, "64", window, cx);
         let font_size = input(&document.font_size, "15", window, cx);
-        let mut languages = Language::all()
-            .map(|l| Choice {
-                id: l.id().into(),
-                name: l.name().into(),
-                preview: None,
-            })
-            .collect::<Vec<_>>();
-        languages.sort_by_key(|a| a.name.to_lowercase());
-        let language = choices(languages, &document.language, window, cx);
+        let languages = crate::language_picker::LanguageList::new();
+        let selected = languages.position(&document.language);
+        let language =
+            cx.new(|cx| SelectState::new(languages, selected, window, cx).searchable(true));
         let code_typeface = choices(
             typeface_items(&document, false),
             document.typeface_selection(false),

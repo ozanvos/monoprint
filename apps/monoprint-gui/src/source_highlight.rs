@@ -285,6 +285,10 @@ mod tests {
                 ),
                 ("ruby", "# Comment\ndef greet\n  puts \"hello\"\nend"),
                 ("shellscript", "# Comment\necho \"hello\""),
+                (
+                    "hem",
+                    "// Comment\neffect greet(): string { raise \"hello\" }",
+                ),
             ] {
                 let runs = highlight(source, language, light).unwrap();
                 let colors = runs

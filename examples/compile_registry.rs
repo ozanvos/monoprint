@@ -34,10 +34,14 @@ fn main() -> Result<()> {
         .iter()
         .filter(|entry| entry["status"] == "included")
         .map(|entry| {
-            Ok(root.join("packages/tm-grammars/grammars").join(format!(
-                "{}.json",
-                entry["name"].as_str().context("grammar name")?
-            )))
+            Ok(if let Some(file) = entry["localFile"].as_str() {
+                Path::new(file).to_owned()
+            } else {
+                root.join("packages/tm-grammars/grammars").join(format!(
+                    "{}.json",
+                    entry["name"].as_str().context("grammar name")?
+                ))
+            })
         })
         .collect::<Result<_>>()?;
     paths.sort();

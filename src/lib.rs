@@ -342,6 +342,41 @@ mod tests {
     }
 
     #[test]
+    fn hem_keywords_use_their_own_grammar_scopes() {
+        let renderer = Renderer::new();
+        let registry = renderer.registry().unwrap();
+        let code = registry
+            .highlight(
+                "effect resource use defer raise match greeting string \"hello\" // café",
+                &giallo::HighlightOptions::new(
+                    "hem",
+                    giallo::ThemeVariant::Single("editor-github-dark-default"),
+                )
+                .merge_whitespace(false),
+            )
+            .unwrap();
+        let foreground = |word: &str| {
+            let token = code
+                .tokens
+                .iter()
+                .flatten()
+                .find(|token| token.text.trim() == word)
+                .unwrap_or_else(|| panic!("missing Hem token {word}"));
+            let giallo::ThemeVariant::Single(style) = token.style else {
+                panic!("expected a single theme")
+            };
+            style.foreground
+        };
+        let keyword = foreground("effect");
+        for word in ["resource", "use", "defer", "raise", "match"] {
+            assert_eq!(foreground(word), keyword, "{word}");
+        }
+        assert_ne!(keyword, foreground("greeting"));
+        assert_ne!(keyword, foreground("\"hello\""));
+        assert_ne!(keyword, foreground("// café"));
+    }
+
+    #[test]
     fn embedded_registry_obeys_the_grammar_license_policy() {
         let renderer = Renderer::new();
         let registry = renderer.registry().unwrap();

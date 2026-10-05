@@ -128,8 +128,8 @@ impl fmt::Display for Theme {
 
 /// A bundled language, independent of Giallo's internal grammar types.
 ///
-/// Parse an ID or alias, or infer from a filename. TypeScript aliases select
-/// TSX, matching legacy frames. Unspecified input defaults to [`Language::PLAIN`].
+/// Parse an ID or alias, or infer from a filename. TypeScript and TSX are
+/// distinct choices. Unspecified input defaults to [`Language::PLAIN`].
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Language(pub(crate) &'static str);
 impl Default for Language {
@@ -141,12 +141,11 @@ impl Language {
     /// Unhighlighted plain text; line numbers are always hidden.
     pub const PLAIN: Self = Self("plain");
     /// Every selectable language and plain text. No renderer is initialized.
-    /// TypeScript and TeX are represented by TSX and LaTeX respectively,
-    /// matching the CLI-compatible parsing aliases.
+    /// TeX is represented by LaTeX, matching the parsing alias.
     pub fn all() -> impl Iterator<Item = Self> {
         assets::grammars()
             .iter()
-            .filter(|g| !matches!(g.name.as_str(), "typescript" | "tex"))
+            .filter(|g| g.name != "tex")
             .map(|g| Self(&g.name))
             .chain([Self::PLAIN])
     }
@@ -164,13 +163,7 @@ impl Language {
     ///
     /// Parsing also accepts conventional file extensions such as `rs` and `mts`.
     pub fn aliases(self) -> impl Iterator<Item = &'static str> {
-        let extra: &[&str] = if self.0 == "tsx" {
-            &["typescript", "ts", "mts", "cts"]
-        } else if self.0 == "latex" {
-            &["tex"]
-        } else {
-            &[]
-        };
+        let extra: &[&str] = if self.0 == "latex" { &["tex"] } else { &[] };
         self.data()
             .map(|g| g.aliases.as_slice())
             .unwrap_or(&[])
@@ -201,7 +194,7 @@ impl FromStr for Language {
     fn from_str(id: &str) -> Result<Self, Error> {
         let lower = id.to_ascii_lowercase();
         let candidate = match lower.as_str() {
-            "typescript" | "ts" | "mts" | "cts" => "tsx",
+            "ts" | "mts" | "cts" => "typescript",
             "js" => "javascript",
             "rs" => "rust",
             "py" => "python",

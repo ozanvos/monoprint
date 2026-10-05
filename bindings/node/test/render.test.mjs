@@ -91,12 +91,12 @@ test('styles are reusable snapshots and explicit auto/null restore defaults', as
 
 test('catalog discovery is immutable, canonical, and follows reviewed grammar exclusions', () => {
   assert.equal(getThemes().length, 54);
-  assert.equal(getLanguages().length, 230);
+  assert.equal(getLanguages().length, 232);
   assert.deepEqual(getThemes().find(t => t.id === 'removed-frame').appearances, ['dark']);
-  assert.ok(getLanguages().some(l => l.id === 'tsx' && l.aliases.includes('typescript')));
+  assert.ok(getLanguages().some(l => l.id === 'typescript' && l.aliases.includes('ts')));
   assert.ok(!getLanguages().some(l => l.id === 'nginx'));
   assert.equal(languageForFileName('src/main.rs'), 'rust');
-  assert.equal(languageForFileName('example.mts'), 'tsx');
+  assert.equal(languageForFileName('example.mts'), 'typescript');
   assert.equal(languageForFileName('Dockerfile'), 'docker');
   assert.equal(languageForFileName('unknown.xyzzy'), undefined);
   assert.ok(Object.isFrozen(getThemes()[0].appearances));
