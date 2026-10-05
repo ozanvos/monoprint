@@ -68,6 +68,15 @@ def signed_entitlements(template, credentials, destination):
     return Path(destination)
 
 
+def clear_bundle_quarantine(bundle):
+    """Remove download quarantine from assembled Store payloads before signing.
+
+    copy2/copytree preserve extended attributes, including those on downloaded
+    provisioning profiles. Keep source files and all other attributes intact.
+    """
+    subprocess.run(['xattr', '-drs', 'com.apple.quarantine', str(bundle)], check=True)
+
+
 def package_app(bundle, destination, installer_identity=None, keychain=None):
     destination = Path(destination)
     if destination.exists():

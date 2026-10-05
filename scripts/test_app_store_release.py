@@ -4,6 +4,9 @@ from datetime import datetime, timedelta, timezone
 import hashlib
 from pathlib import Path
 import plistlib
+import shutil
+import subprocess
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -81,6 +84,30 @@ class StoreReleaseTests(unittest.TestCase):
                 store.package_app('/tmp/Monoprint.app', destination)
             run.assert_not_called()
             self.assertEqual(destination.read_bytes(), b'keep')
+
+    @unittest.skipUnless(sys.platform == 'darwin', 'macOS extended attributes')
+    def test_store_bundle_removes_copied_quarantine_without_changing_source(self):
+        with tempfile.TemporaryDirectory() as folder:
+            source = Path(folder) / 'downloaded.provisionprofile'
+            source.write_bytes(b'profile contents')
+            subprocess.run(['xattr', '-w', 'com.apple.quarantine', '0081;download', str(source)], check=True)
+            bundle = Path(folder) / 'Monoprint.app'
+            contents = bundle / 'Contents'
+            contents.mkdir(parents=True)
+            embedded = contents / 'embedded.provisionprofile'
+            shutil.copy2(source, embedded)
+            for path in [bundle, contents]:
+                subprocess.run(['xattr', '-w', 'com.apple.quarantine', '0081;download', str(path)], check=True)
+            subprocess.run(['xattr', '-w', 'com.monoprint.test', 'preserve', str(embedded)], check=True)
+            attributes = lambda path: subprocess.check_output(['xattr', str(path)], text=True)
+            self.assertIn('com.apple.quarantine', attributes(embedded))
+            store.clear_bundle_quarantine(bundle)
+            store.clear_bundle_quarantine(bundle)  # Also handles clean payloads.
+            for path in [bundle, *bundle.rglob('*')]:
+                self.assertNotIn('com.apple.quarantine', attributes(path))
+            self.assertEqual(embedded.read_bytes(), source.read_bytes())
+            self.assertEqual(subprocess.check_output(['xattr', '-p', 'com.monoprint.test', str(embedded)], text=True).strip(), 'preserve')
+            self.assertIn('com.apple.quarantine', attributes(source))
 
 
 if __name__ == '__main__':

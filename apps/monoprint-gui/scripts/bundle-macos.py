@@ -43,7 +43,7 @@ gui = Path(__file__).resolve().parents[1]
 root = gui.parents[1]
 sys.path.insert(0, str(root / 'scripts'))
 from macos_release import sign_app, notarize_app, zip_app, source_digest, verify_app_store_apis
-from app_store_release import prepare_credentials, signed_entitlements, package_app
+from app_store_release import prepare_credentials, signed_entitlements, package_app, clear_bundle_quarantine
 credentials = prepare_credentials(args.app_store_profile, 'app.monoprint.studio', args.sign_identity,
                                   args.installer_identity, args.sign_keychain) if args.app_store_profile else None
 commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
@@ -164,6 +164,8 @@ helpers = gui / 'assets/app-store-helper.entitlements' if args.app_store else No
 if credentials:
     shutil.copy2(args.app_store_profile, contents / 'embedded.provisionprofile')
     entitlements = signed_entitlements(entitlements, credentials, Path(staging.name) / 'store.entitlements')
+if args.app_store:
+    clear_bundle_quarantine(assembled)
 sign_app(assembled, credentials['application'] if credentials else args.sign_identity,
          args.sign_keychain, entitlements, helpers)
 notary = notarize_app(assembled, args.notary_profile, args.notary_keychain) if args.notary_profile else None
