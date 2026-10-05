@@ -8,6 +8,7 @@ mod language_picker;
 #[cfg(target_os = "macos")]
 mod material;
 mod preview;
+mod sandbox;
 mod selection;
 mod source_highlight;
 mod source_lines;
@@ -64,6 +65,8 @@ fn main() {
         gpui_kit::init(cx);
         appearance::init(cx);
         cx.on_action(|_: &Quit, cx| cx.quit());
+        cx.on_action(|_: &OpenPrivacy, cx| cx.open_url("https://monoprint.7ea.st/privacy/"));
+        cx.on_action(|_: &OpenSupport, cx| cx.open_url("https://monoprint.7ea.st/support/"));
         cx.bind_keys([
             KeyBinding::new("secondary-q", Quit, None),
             KeyBinding::new("secondary-o", OpenSource, Some("Monoprint")),
@@ -76,7 +79,7 @@ fn main() {
             MenuItem::action("Open Source…", OpenSource),
             MenuItem::action("Export Image…", ExportImage),
         ];
-        if cfg!(target_os = "macos") {
+        if cfg!(all(target_os = "macos", not(feature = "app-store"))) {
             file_items.extend([
                 MenuItem::separator(),
                 MenuItem::action("Set Up Shortcuts…", ShowShortcuts),
@@ -115,6 +118,14 @@ fn main() {
                     "Toggle Light / Dark Interface",
                     ToggleUiAppearance,
                 )],
+            },
+            Menu {
+                disabled: false,
+                name: "Help".into(),
+                items: vec![
+                    MenuItem::action("Monoprint Support", OpenSupport),
+                    MenuItem::action("Privacy Policy", OpenPrivacy),
+                ],
             },
         ]);
         let bounds = Bounds::centered(None, size(px(1440.), px(900.)), cx);

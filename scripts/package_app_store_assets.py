@@ -107,8 +107,7 @@ figure{margin:0}figure img{width:100%;display:block;border-radius:12px}figcaptio
 pre{white-space:pre-wrap;font:inherit;max-width:760px}small{color:#7c7c77}@media(max-width:560px){body{margin:16px}.gallery{display:block}}
 </style></head><body><main><header><img src="icon/Monoprint-1024.png" alt="Monoprint icon">
 <div><h1>Monoprint</h1><p>Code images, made on your Mac</p></div></header>
-<p>Local App Store asset pack · en-US · native 2880 × 1800 captures</p>
-<p><small>Public URLs, copyright owner, review contact details and final Store build remain to be completed. Nothing has been published.</small></p>
+<p>App Store screenshots and listing text (en-US).</p>
 <p><a href="README.md">Submission guide</a> · <a href="pages/support.html">Support page</a> · <a href="pages/privacy.html">Privacy policy</a></p>
 <div class="gallery">''' + cards + '</div><h2>Listing description</h2><pre>' + description + '</pre></main></body></html>\n')
 
@@ -123,7 +122,7 @@ pre{white-space:pre-wrap;font:inherit;max-width:760px}small{color:#7c7c77}@media
         'screenshots': screenshots, 'metadataValidation': counts,
         'screenshotProcessing': 'Native window capture without shadow; ICC-managed conversion to sRGB; flatten corner alpha; RGB PNG; half-size copies use Lanczos downsampling. No UI repainting or marketing overlays.',
         'icon': 'Existing Icon Composer source and compiled assets. Mac App Store icon is carried in the uploaded build. Standalone PNGs are references.',
-        'publication': 'local only',
+        'publication': 'Submission assets local; website public; App Store release pending',
     }
     manifest['files'] = {str(path.relative_to(assets)): hashlib.sha256(path.read_bytes()).hexdigest()
                          for path in sorted(assets.rglob('*')) if path.is_file() and path.name != 'manifest.json'}

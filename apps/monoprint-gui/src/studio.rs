@@ -27,6 +27,8 @@ gpui_kit::actions!(
         PasteSource,
         ShowShortcuts,
         ToggleUiAppearance,
+        OpenPrivacy,
+        OpenSupport,
         Quit
     ]
 );
@@ -922,17 +924,20 @@ impl Studio {
                         async move { document::FontCache::default().load(Some(&path)) }
                     })
                     .await?;
-                Ok::<_, anyhow::Error>(Some(path))
+                let bookmark = crate::sandbox::font_bookmark(&path)?;
+                Ok::<_, anyhow::Error>(Some((path, bookmark)))
             }
             .await;
             let _ = this.update_in(cx, |this, window, cx| match result {
-                Ok(Some(path)) => {
+                Ok(Some((path, bookmark))) => {
                     if comments {
                         this.document.comment_font_id = None;
                         this.document.comment_font_path = Some(path);
+                        this.document.comment_font_bookmark = bookmark;
                     } else {
                         this.document.font_id = None;
                         this.document.font_path = Some(path);
+                        this.document.font_bookmark = bookmark;
                     }
                     this.sync_typeface(comments, window, cx);
                     this.changed(cx);

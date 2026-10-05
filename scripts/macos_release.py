@@ -15,6 +15,8 @@ def source_digest(root):
               'apps/monoprint-gui/Cargo.toml', 'apps/monoprint-gui/Cargo.lock',
               'LICENSE', 'THIRD_PARTY_NOTICES.md']
     inputs += ['vendor/takumi-raster/Cargo.toml', 'vendor/takumi-svg/Cargo.toml']
+    inputs += ['apps/monoprint-gui/assets/app-store.entitlements',
+               'apps/monoprint-gui/assets/app-store-helper.entitlements']
     directories = ['src', 'assets', 'licenses', 'vendor/takumi-raster/src', 'vendor/takumi-svg/src',
                    'vendor/gpui-component', 'vendor/gpui-pre-macos',
                    'apps/monoprint-gui/src', 'apps/monoprint-gui/scripts',
@@ -46,12 +48,14 @@ def verify_app_store_apis(binary):
         raise RuntimeError(f'App Store build contains private macOS API names: {", ".join(found)}')
 
 
-def sign_code(path, identity='-', keychain=None):
+def sign_code(path, identity='-', keychain=None, entitlements=None):
     command = ['codesign', '--force', '--sign', identity]
     if keychain:
         command += ['--keychain', str(keychain)]
     if identity != '-':
         command += ['--options', 'runtime', '--timestamp']
+    if entitlements:
+        command += ['--entitlements', str(entitlements), '--generate-entitlement-der']
     # Sign each Mach-O explicitly. --deep is only appropriate for verification.
     subprocess.run([*command, str(path)], check=True)
 
@@ -80,7 +84,7 @@ def zip_app(bundle, archive):
                     str(bundle), str(archive)], check=True)
 
 
-def sign_app(bundle, identity='-', keychain=None):
+def sign_app(bundle, identity='-', keychain=None, entitlements=None, helper_entitlements=None):
     bundle = Path(bundle)
     info = plistlib.loads((bundle / 'Contents/Info.plist').read_bytes())
     main = bundle / 'Contents/MacOS' / info['CFBundleExecutable']
@@ -96,8 +100,8 @@ def sign_app(bundle, identity='-', keychain=None):
         with path.open('rb') as stream:
             if stream.read(4) not in magic and path.parent != bundle / 'Contents/MacOS':
                 continue
-        sign_code(path, identity, keychain)
-    sign_code(bundle, identity, keychain)
+        sign_code(path, identity, keychain, helper_entitlements)
+    sign_code(bundle, identity, keychain, entitlements)
     verify_code(bundle)
 
 

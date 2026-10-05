@@ -26,6 +26,9 @@ mod material;
 #[path = "../src/preview.rs"]
 mod preview;
 #[allow(dead_code, unused_imports)]
+#[path = "../src/sandbox.rs"]
+mod sandbox;
+#[allow(dead_code, unused_imports)]
 #[path = "../src/selection.rs"]
 mod selection;
 #[allow(dead_code, unused_imports)]

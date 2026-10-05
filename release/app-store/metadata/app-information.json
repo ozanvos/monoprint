@@ -8,7 +8,13 @@
   "supportURL": "https://monoprint.7ea.st/support/",
   "privacyPolicyURL": "https://monoprint.7ea.st/privacy/",
   "marketingURL": "https://monoprint.7ea.st/",
-  "copyright": null,
+  "copyright": "2026 Seven East",
   "suggestedSKU": "monoprint-macos",
-  "signInRequired": false
+  "signInRequired": false,
+  "price": {
+    "amount": "0.00",
+    "model": "free"
+  },
+  "territories": "all-available",
+  "releaseOption": "manual"
 }

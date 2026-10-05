@@ -88,14 +88,8 @@ impl PreviewWorker {
                         .err()
                         .map(|e| e.to_string());
                     let result = (|| -> anyhow::Result<Preview> {
-                        let font = fonts.load_selection(
-                            document.font_id.as_deref(),
-                            document.font_path.as_deref(),
-                        )?;
-                        let comments = comment_fonts.load_selection(
-                            document.comment_font_id.as_deref(),
-                            document.comment_font_path.as_deref(),
-                        )?;
+                        let font = fonts.load_document(&document, false)?;
+                        let comments = comment_fonts.load_document(&document, true)?;
                         let (snippet, style) = document.prepare(font, comments)?;
                         let raster = renderer.bgra(&snippet, &style, Scale::X2)?;
                         let (width, height) = (raster.width(), raster.height());

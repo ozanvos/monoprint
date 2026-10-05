@@ -4,9 +4,11 @@ use monoprint::{
     Scale, Snippet, Style, Theme,
 };
 use serde::{Deserialize, Serialize};
+#[cfg(not(all(target_os = "macos", feature = "app-store")))]
+use std::io::Write;
 use std::{
     fs,
-    io::{Read, Write},
+    io::Read,
     path::{Path, PathBuf},
     sync::Mutex,
 };
@@ -66,6 +68,9 @@ pub struct Document {
     pub format: Format,
     pub font_path: Option<PathBuf>,
     pub comment_font_path: Option<PathBuf>,
+    /// Persistent read-only access to user-selected fonts in sandboxed builds.
+    pub font_bookmark: Option<Vec<u8>>,
+    pub comment_font_bookmark: Option<Vec<u8>>,
     pub font_id: Option<String>,
     pub comment_font_id: Option<String>,
 }
@@ -91,6 +96,8 @@ impl Default for Document {
             format: Format::Png,
             font_path: None,
             comment_font_path: None,
+            font_bookmark: None,
+            comment_font_bookmark: None,
             font_id: None,
             comment_font_id: None,
         }
@@ -143,9 +150,11 @@ impl Document {
         if comments {
             self.comment_font_id = id;
             self.comment_font_path = None;
+            self.comment_font_bookmark = None;
         } else {
             self.font_id = id;
             self.font_path = None;
+            self.font_bookmark = None;
         }
     }
 
@@ -309,6 +318,10 @@ pub(crate) fn highlight_ranges(value: &str, lines: usize) -> Result<Vec<(usize, 
 }
 
 pub fn read_source(path: &Path) -> Result<String> {
+    crate::sandbox::with_file_access(path, None, read_source_contents)
+}
+
+fn read_source_contents(path: &Path) -> Result<String> {
     let mut source = String::new();
     fs::File::open(path)
         .with_context(|| format!("Could not open {}", path.display()))?
@@ -327,6 +340,27 @@ pub struct FontCache {
     current: Option<(PathBuf, std::time::SystemTime, u64, Font)>,
 }
 impl FontCache {
+    pub fn load_document(&mut self, document: &Document, comments: bool) -> Result<Option<Font>> {
+        let (id, path, bookmark) = if comments {
+            (
+                &document.comment_font_id,
+                &document.comment_font_path,
+                &document.comment_font_bookmark,
+            )
+        } else {
+            (
+                &document.font_id,
+                &document.font_path,
+                &document.font_bookmark,
+            )
+        };
+        if id.is_some() || path.is_none() {
+            return self.load_selection(id.as_deref(), path.as_deref());
+        }
+        crate::sandbox::with_file_access(path.as_deref().unwrap(), bookmark.as_deref(), |path| {
+            self.load(Some(path))
+        })
+    }
     pub fn load_selection(
         &mut self,
         id: Option<&str>,
@@ -361,12 +395,8 @@ impl FontCache {
 }
 
 pub fn export(renderer: &Renderer, document: &Document, format: Format) -> Result<Vec<u8>> {
-    let font = FontCache::default()
-        .load_selection(document.font_id.as_deref(), document.font_path.as_deref())?;
-    let comments = FontCache::default().load_selection(
-        document.comment_font_id.as_deref(),
-        document.comment_font_path.as_deref(),
-    )?;
+    let font = FontCache::default().load_document(document, false)?;
+    let comments = FontCache::default().load_document(document, true)?;
     let (snippet, style) = document.prepare(font, comments)?;
     Ok(match format {
         Format::Png => renderer.png(
@@ -401,23 +431,33 @@ pub fn export_path(mut path: PathBuf, format: Format) -> Result<PathBuf> {
 }
 
 pub fn write_atomic(path: &Path, bytes: &[u8]) -> Result<()> {
-    let parent = path
-        .parent()
-        .filter(|p| !p.as_os_str().is_empty())
-        .unwrap_or(Path::new("."));
-    let mut file = tempfile::NamedTempFile::new_in(parent)?;
-    file.write_all(bytes)?;
-    file.as_file().sync_all()?;
-    file.persist(path)
-        .map_err(|e| e.error)
-        .with_context(|| format!("Could not save {}", path.display()))?;
-    Ok(())
+    #[cfg(all(target_os = "macos", feature = "app-store"))]
+    {
+        crate::sandbox::write_atomic(path, bytes)
+    }
+    #[cfg(not(all(target_os = "macos", feature = "app-store")))]
+    {
+        let parent = path
+            .parent()
+            .filter(|p| !p.as_os_str().is_empty())
+            .unwrap_or(Path::new("."));
+        let mut file = tempfile::NamedTempFile::new_in(parent)?;
+        file.write_all(bytes)?;
+        file.as_file().sync_all()?;
+        file.persist(path)
+            .map_err(|e| e.error)
+            .with_context(|| format!("Could not save {}", path.display()))?;
+        Ok(())
+    }
 }
 
 pub fn session_path() -> Option<PathBuf> {
     if let Some(path) = std::env::var_os("MONOPRINT_SESSION") {
         return (path != "off").then(|| PathBuf::from(path));
     }
+    #[cfg(all(target_os = "macos", feature = "app-store"))]
+    let home = crate::sandbox::home_directory();
+    #[cfg(not(all(target_os = "macos", feature = "app-store")))]
     let home = std::env::var_os("HOME")?;
     #[cfg(target_os = "macos")]
     let dir = PathBuf::from(home).join("Library/Application Support/Monoprint");
@@ -827,6 +867,8 @@ mod tests {
             ligatures: true,
             font_path: Some("code.ttf".into()),
             comment_font_path: Some("comments.otf".into()),
+            font_bookmark: Some(vec![0, 1, 255]),
+            comment_font_bookmark: Some(vec![2, 0, 128]),
             ..Default::default()
         };
         save_session(&path, &d).unwrap();
@@ -840,6 +882,8 @@ mod tests {
         assert!(restored.ligatures);
         assert_eq!(restored.font_path, d.font_path);
         assert_eq!(restored.comment_font_path, d.comment_font_path);
+        assert_eq!(restored.font_bookmark, d.font_bookmark);
+        assert_eq!(restored.comment_font_bookmark, d.comment_font_bookmark);
         let old: Document = serde_json::from_str(r#"{"source":"old draft"}"#).unwrap();
         assert_eq!(old.font_size, "15");
         assert_eq!(old.png_compression, "balanced");
@@ -848,11 +892,15 @@ mod tests {
         assert!(old.text_highlights.is_empty());
         assert!(old.font_id.is_none());
         assert!(old.comment_font_id.is_none());
+        assert!(old.font_bookmark.is_none());
+        assert!(old.comment_font_bookmark.is_none());
         let mut named = restored;
         named.select_typeface(false, "fira-code");
         named.select_typeface(true, "inter");
         assert!(named.font_path.is_none());
         assert!(named.comment_font_path.is_none());
+        assert!(named.font_bookmark.is_none());
+        assert!(named.comment_font_bookmark.is_none());
         save_session(&path, &named).unwrap();
         let named = load_session(&path).unwrap();
         assert_eq!(named.typeface_selection(false), "fira-code");
