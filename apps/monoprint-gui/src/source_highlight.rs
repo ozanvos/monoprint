@@ -1,13 +1,13 @@
 //! Giallo tokens projected into GPUI's editor, independent of the export theme.
 use giallo::{HighlightOptions, Registry, ThemeVariant};
 use gpui_kit::{
-    Context, FontStyle, FontWeight, HighlightStyle, SharedString, StrikethroughStyle, Task,
+    Context, FontStyle, FontWeight, HighlightStyle, Rgba, SharedString, StrikethroughStyle, Task,
     UnderlineStyle, Window,
     component::input::{
         EditorState, FoldRange, HighlightStyleResolver, InputEdit, InputHighlighter,
         InputHighlighterFactory, Rope,
     },
-    px, rgb,
+    px,
 };
 use std::{cell::RefCell, ops::Range, rc::Rc, sync::OnceLock, time::Duration};
 
@@ -39,18 +39,27 @@ impl InputHighlighter for SourceHighlighter {
 
     fn update(
         &mut self,
-        _: Option<InputEdit>,
+        edit: Option<InputEdit>,
         text: &Rope,
         _: bool,
         _: &mut Window,
         cx: &mut Context<EditorState>,
     ) {
-        // Dropping the previous task cancels its apply step, including when the
-        // user switches languages. Never paint old byte offsets onto a new edit.
+        // Cancel stale parsing, but keep the last colors aligned with this edit
+        // while the debounced replacement is being computed.
         self.task = None;
-        self.runs.borrow_mut().clear();
         if text.len() > monoprint::MAX_SOURCE_BYTES || self.language == "plain" {
+            self.runs.borrow_mut().clear();
             return;
+        }
+        if let Some(edit) = edit {
+            apply_edit(
+                &mut self.runs.borrow_mut(),
+                edit.start_byte..edit.old_end_byte,
+                edit.new_end_byte,
+            );
+        } else {
+            self.runs.borrow_mut().clear();
         }
         let text = text.clone();
         let language = self.language.clone();
@@ -62,24 +71,10 @@ impl InputHighlighter for SourceHighlighter {
                 .await;
             let result = cx
                 .background_executor()
-                .spawn(async move { highlight(&text.to_string(), &language) })
+                .spawn(async move { highlight(&text.to_string(), &language, light) })
                 .await;
             match result {
-                Ok(mut result) => {
-                    if light {
-                        for (_, style) in &mut result {
-                            style.color = Some(
-                                if style.color == Some(rgb(0x909090).into()) {
-                                    rgb(0x7C7C77)
-                                } else if style.color == Some(rgb(0xB8B8B8).into()) {
-                                    rgb(0x4A4A47)
-                                } else {
-                                    rgb(0x2A2A28)
-                                }
-                                .into(),
-                            );
-                        }
-                    }
+                Ok(result) => {
                     *runs.borrow_mut() = result;
                     let _ = editor.update(cx, |_, cx| cx.notify());
                 }
@@ -97,7 +92,41 @@ impl InputHighlighter for SourceHighlighter {
     }
 }
 
-fn highlight(source: &str, language: &str) -> anyhow::Result<Runs> {
+fn apply_edit(runs: &mut Runs, replaced: Range<usize>, new_end: usize) {
+    let inherited = runs
+        .iter()
+        .find(|(range, _)| range.contains(&replaced.start))
+        .or_else(|| {
+            runs.iter()
+                .rev()
+                .find(|(range, _)| range.end <= replaced.start)
+        })
+        .map(|(_, style)| *style)
+        .unwrap_or_default();
+    let mut adjusted = Vec::with_capacity(runs.len() + 1);
+    for (range, style) in runs.iter() {
+        if range.start >= replaced.start {
+            break;
+        }
+        adjusted.push((range.start..range.end.min(replaced.start), *style));
+    }
+    // Newly typed text inherits its local style until Giallo resolves its syntax.
+    if new_end > replaced.start {
+        adjusted.push((replaced.start..new_end, inherited));
+    }
+    for (range, style) in runs.iter() {
+        if range.end > replaced.end {
+            adjusted.push((
+                (range.start.max(replaced.end) - replaced.end + new_end)
+                    ..(range.end - replaced.end + new_end),
+                *style,
+            ));
+        }
+    }
+    *runs = adjusted;
+}
+
+fn highlight(source: &str, language: &str, light: bool) -> anyhow::Result<Runs> {
     // The same reviewed grammar/theme artifact used by Monoprint's renderer.
     // Load once, off the UI thread; no grammar downloads or extra language set.
     static REGISTRY: OnceLock<Result<Registry, String>> = OnceLock::new();
@@ -108,8 +137,13 @@ fn highlight(source: &str, language: &str) -> anyhow::Result<Runs> {
         })
         .as_ref()
         .map_err(|error| anyhow::anyhow!(error.clone()))?;
-    let options = HighlightOptions::new(language, ThemeVariant::Single("ink-mono-dark"))
-        .merge_whitespace(false);
+    let theme = if light {
+        "editor-github-light-default"
+    } else {
+        "editor-github-dark-default"
+    };
+    let options =
+        HighlightOptions::new(language, ThemeVariant::Single(theme)).merge_whitespace(false);
     let code = registry.highlight(source, &options)?;
     let mut result = Vec::new();
     let mut offset = 0;
@@ -137,14 +171,8 @@ fn highlight(source: &str, language: &str) -> anyhow::Result<Runs> {
 }
 
 fn editor_style(style: giallo::Style) -> HighlightStyle {
-    let hex = style.foreground.as_hex();
-    // Mono's #666 comments suit a black export, but need more contrast on our
-    // dark editor. Preserve its three tonal roles with a readable comment floor.
-    let color = match hex.as_str() {
-        "#666666" => rgb(0x909090),
-        "#A7A7A7" => rgb(0xb8b8b8),
-        _ => rgb(0xeeeeee),
-    };
+    let color = Rgba::try_from(style.foreground.as_hex().as_str())
+        .expect("Giallo emits valid RGBA hex colors");
     let font = style.font_style;
     HighlightStyle {
         color: Some(color.into()),
@@ -198,40 +226,92 @@ fn visible_runs(runs: &[(Range<usize>, HighlightStyle)], range: &Range<usize>) -
 #[cfg(test)]
 mod tests {
     use super::*;
+    use gpui_kit::rgb;
 
     #[test]
-    fn giallo_covers_languages_beyond_the_kit_grammars_in_monochrome() {
-        for (language, source) in [
-            ("rust", "// Comment\nfn main() { let x = \"hello\"; }"),
-            (
-                "typescript",
-                "// Comment\nfunction greet() { return \"hello\"; }",
-            ),
-            ("ruby", "# Comment\ndef greet\n  puts \"hello\"\nend"),
-            ("shellscript", "# Comment\necho \"hello\""),
-        ] {
-            let runs = highlight(source, language).unwrap();
-            let colors = runs
-                .iter()
-                .map(|(_, style)| style.color.unwrap())
-                .collect::<Vec<_>>();
-            assert!(colors.iter().all(|color| color.s == 0.));
-            assert!(
-                colors.iter().any(|color| *color != colors[0]),
-                "{language} must have tonal syntax"
+    fn pending_edits_keep_colors_and_unicode_ranges_aligned() {
+        let mut source = "// café 🦀\r\nlet café = \"日本語\";\r\n// fin".to_owned();
+        let mut runs = highlight(&source, "rust", false).unwrap();
+        let replace = |source: &mut String, runs: &mut Runs, range: Range<usize>, text: &str| {
+            let tail = source.rfind("// fin").unwrap();
+            let styles = |runs: &Runs, tail, end| {
+                visible_runs(runs, &(tail..end))
+                    .into_iter()
+                    .map(|(range, style)| (range.start - tail..range.end - tail, style))
+                    .collect::<Runs>()
+            };
+            let before = styles(runs, tail, source.len());
+            apply_edit(runs, range.clone(), range.start + text.len());
+            source.replace_range(range, text);
+            for (range, _) in runs.iter() {
+                assert!(source.get(range.clone()).is_some());
+                assert!(!range.is_empty());
+            }
+            for pair in runs.windows(2) {
+                assert!(pair[0].0.end <= pair[1].0.start);
+            }
+            assert_eq!(
+                styles(runs, source.rfind("// fin").unwrap(), source.len()),
+                before
             );
-            assert_eq!(runs.last().unwrap().0.end, source.len());
+            assert!(
+                runs.iter()
+                    .any(|(_, style)| style.color.is_some_and(|color| color.s > 0.3))
+            );
+        };
+        replace(&mut source, &mut runs, 0..0, "// 新\r\n");
+        let offset = source.find("café =").unwrap() + 3;
+        replace(&mut source, &mut runs, offset..offset, "🦀");
+        let offset = source.find("日本語").unwrap();
+        replace(
+            &mut source,
+            &mut runs,
+            offset..offset + "日本語".len(),
+            "hello",
+        );
+        replace(&mut source, &mut runs, 0.."// 新\r\n".len(), "");
+        apply_edit(&mut runs, 0..source.len(), 0);
+        assert!(runs.is_empty());
+    }
+
+    #[test]
+    fn giallo_colors_languages_beyond_the_kit_grammars_in_both_appearances() {
+        for light in [false, true] {
+            for (language, source) in [
+                ("rust", "// Comment\nfn main() { let x = \"hello\"; }"),
+                (
+                    "typescript",
+                    "// Comment\nfunction greet() { return \"hello\"; }",
+                ),
+                ("ruby", "# Comment\ndef greet\n  puts \"hello\"\nend"),
+                ("shellscript", "# Comment\necho \"hello\""),
+            ] {
+                let runs = highlight(source, language, light).unwrap();
+                let colors = runs
+                    .iter()
+                    .map(|(_, style)| style.color.unwrap())
+                    .collect::<Vec<_>>();
+                assert!(
+                    colors.iter().any(|color| color.s > 0.3),
+                    "{language} must have colored syntax in light={light}"
+                );
+                assert!(
+                    colors.iter().any(|color| *color != colors[0]),
+                    "{language} must distinguish syntax in light={light}"
+                );
+                assert_eq!(runs.last().unwrap().0.end, source.len());
+            }
         }
     }
 
     #[test]
     fn unicode_and_original_line_endings_keep_correct_byte_ranges() {
         let source = "// café 🦀\r\n\r\nlet café = \"日本語\";\r// fin\n";
-        let runs = highlight(source, "rust").unwrap();
+        let runs = highlight(source, "rust", false).unwrap();
         let comment = source.find("// fin").unwrap();
         assert!(
             runs.iter().any(|(range, style)| range.start == comment
-                && style.color == Some(rgb(0x909090).into()))
+                && style.color == Some(rgb(0x8b949e).into()))
         );
         for (range, _) in &runs {
             assert!(source.get(range.clone()).is_some());

@@ -88,6 +88,94 @@ mod macos {
         }
     }
 
+    fn source_colored_pixels(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) -> usize {
+        let (bounds, viewport) = cx
+            .update_window(handle.into(), |_, window, cx| {
+                window.render_frame(cx);
+                (
+                    studio.read(cx).editor.read(cx).input_bounds(),
+                    window.viewport_size(),
+                )
+            })
+            .unwrap();
+        let pixels = cx.capture_screenshot(handle.into()).unwrap();
+        let scale = pixels.width() as f32 / f32::from(viewport.width);
+        let left = (f32::from(bounds.left()) * scale) as u32;
+        let right = (f32::from(bounds.right()) * scale) as u32;
+        let top = (f32::from(bounds.top()) * scale) as u32;
+        let bottom = (f32::from(bounds.bottom()) * scale) as u32;
+        let mut colored = 0;
+        for y in top..bottom.min(pixels.height()) {
+            for x in left..right.min(pixels.width()) {
+                let [r, g, b, _] = pixels.get_pixel(x, y).0;
+                if r.max(g).max(b) - r.min(g).min(b) > 25 {
+                    colored += 1;
+                }
+            }
+        }
+        colored
+    }
+
+    fn assert_source_syntax_colored(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        let deadline = Instant::now() + Duration::from_secs(5);
+        loop {
+            settle(cx, handle, studio);
+            let colored = source_colored_pixels(cx, handle, studio);
+            if colored > 100 {
+                return;
+            }
+            assert!(
+                Instant::now() < deadline,
+                "source editor must visibly render colored syntax; found {colored} colored pixels"
+            );
+            std::thread::sleep(Duration::from_millis(10));
+        }
+    }
+
+    fn assert_syntax_survives_typing(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        assert_source_syntax_colored(cx, handle, studio);
+        let original = cx.read_entity(studio, |s, _| s.document.source.clone());
+        let offset = original.find("scale").unwrap() + "scale".len();
+        cx.update_window(handle.into(), |_, window, cx| {
+            let editor = studio.read(cx).editor.clone();
+            editor.update(cx, |editor, cx| {
+                editor.set_selected_range(offset..offset, cx);
+                editor.focus(window, cx);
+            });
+        })
+        .unwrap();
+        for text in ["_", "c", "a", "f", "é"] {
+            cx.update_window(handle.into(), |_, window, cx| window.input(text, cx))
+                .unwrap();
+            // Inspect the immediate frame, before advancing the debounce clock.
+            assert!(
+                source_colored_pixels(cx, handle, studio) > 100,
+                "typing must not clear source syntax colors"
+            );
+        }
+        assert_source_syntax_colored(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            let editor = studio.read(cx).editor.clone();
+            editor.update(cx, |editor, cx| {
+                editor.replace_all(original, window, cx);
+            });
+        })
+        .unwrap();
+        assert_source_syntax_colored(cx, handle, studio);
+    }
+
     fn assert_handoffs(
         cx: &mut HeadlessAppContext,
         handle: WindowHandle<Root>,
@@ -768,12 +856,15 @@ mod macos {
             })
             .unwrap();
         // The headless renderer clears to opaque black. Compare two backing
-        // colors to verify the real painted layers transmit the material below.
+        // colors to verify only the preview transmits the material below.
         let positions = [
             point(source_width + px(20.), px(70.)),
             point(viewport.width - px(5.), px(100.)),
             point(px(20.), px(70.)),
             copy_button,
+            point(source_width + px(20.), px(20.)),
+            point(px(20.), px(20.)),
+            point(viewport.width - px(5.), px(20.)),
         ];
         let mut samples = Vec::new();
         for backing in [0x000000, 0xFFFFFF] {
@@ -802,15 +893,21 @@ mod macos {
             })
             .unwrap();
         settle(cx, handle, studio);
-        for index in 0..2 {
-            assert!(
-                samples[1][index][0].abs_diff(samples[0][index][0]) > 40,
-                "preview and inspector must expose the material at {:?}",
+        assert!(
+            samples[1][0][0].abs_diff(samples[0][0][0]) > 40,
+            "preview must expose the material at {:?}",
+            positions[0]
+        );
+        assert_eq!(samples[0][1], samples[1][1], "inspector stays opaque");
+        assert_eq!(samples[0][2], samples[1][2], "editor stays opaque");
+        assert_eq!(samples[0][3], samples[1][3], "controls stay opaque");
+        for index in 4..7 {
+            assert_eq!(
+                samples[0][index], samples[1][index],
+                "top bar stays opaque at {:?}",
                 positions[index]
             );
         }
-        assert_eq!(samples[0][2], samples[1][2], "editor stays opaque");
-        assert_eq!(samples[0][3], samples[1][3], "controls stay opaque");
     }
 
     fn click(
@@ -1034,6 +1131,12 @@ mod macos {
             });
             capture(&mut cx, handle, &format!("studio-{}", width as u32));
             assert_material_visible(&mut cx, handle, &studio);
+            assert_source_syntax_colored(&mut cx, handle, &studio);
+
+            for _ in 0..2 {
+                assert_syntax_survives_typing(&mut cx, handle, &studio);
+                header_control_click(&mut cx, handle, &studio, "ui-appearance", 1);
+            }
 
             let revision = cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.open_sections, [true, false, true, true]);
@@ -1279,6 +1382,7 @@ mod macos {
             header_control_click(&mut cx, handle, &studio, "ui-appearance", 1);
             cx.update(|cx| assert!(appearance::palette(cx).light));
             assert_material_visible(&mut cx, handle, &studio);
+            assert_source_syntax_colored(&mut cx, handle, &studio);
             capture(
                 &mut cx,
                 handle,
@@ -1729,7 +1833,7 @@ mod macos {
             });
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
-                    s.install_source("greet.rb".into(), "# Monochrome, using Giallo\ndef greet(name)\n  puts \"Hello, #{name}!\"\nend\n".into(), window, cx)
+                    s.install_source("greet.rb".into(), "# Syntax colors, using Giallo\ndef greet(name)\n  puts \"Hello, #{name}!\"\nend\n".into(), window, cx)
                 });
             }).unwrap();
             settle(&mut cx, handle, &studio);

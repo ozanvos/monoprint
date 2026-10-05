@@ -74,12 +74,13 @@ impl Palette {
         material_tint(self.stage, if self.light { 0.22 } else { 0.24 })
     }
     pub fn inspector_background(self) -> Rgba {
-        material_tint(self.raised, if self.light { 0.26 } else { 0.12 })
+        rgb(self.raised)
     }
 }
 
-// AppKit supplies the actual frosting and contrast. These light tints leave it
-// visible; platforms without the native material keep their opaque surfaces.
+// AppKit supplies the preview's frosting and contrast. These light tints leave
+// it visible; the source and inspector sidebars keep opaque reading surfaces.
+// Platforms without the native material keep all surfaces opaque.
 fn material_tint(color: u32, opacity: f32) -> Rgba {
     rgb(color).opacity(if cfg!(target_os = "macos") {
         opacity

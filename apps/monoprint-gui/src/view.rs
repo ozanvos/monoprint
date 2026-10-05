@@ -853,7 +853,7 @@ impl Studio {
                     .px(px(13.))
                     .border_b_1()
                     .border_color(rgb(p.border))
-                    .bg(p.chrome())
+                    .bg(rgb(p.surface))
                     .window_control_area(WindowControlArea::Drag)
                     .gap(px(7.))
                     .child(div().flex_1())
