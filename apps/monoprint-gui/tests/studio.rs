@@ -13,6 +13,9 @@ mod document;
 #[path = "../src/handoff.rs"]
 mod handoff;
 #[allow(dead_code, unused_imports)]
+#[path = "../src/interaction_motion.rs"]
+mod interaction_motion;
+#[allow(dead_code, unused_imports)]
 #[path = "../src/language_picker.rs"]
 mod language_picker;
 #[cfg(target_os = "macos")]
@@ -1051,6 +1054,240 @@ mod macos {
         settle(cx, handle, studio);
     }
 
+    fn assert_interaction_motion(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        let frame = |cx: &mut HeadlessAppContext| {
+            cx.update_window(handle.into(), |_, window, cx| window.render_frame(cx))
+                .unwrap();
+        };
+        let bounds = |cx: &mut HeadlessAppContext, id: &'static str| {
+            cx.update_window(handle.into(), |_, window, _| window.find(id).bounds())
+                .unwrap()
+        };
+        let sample = |cx: &mut HeadlessAppContext, position: Point<Pixels>| {
+            let image = cx.capture_screenshot(handle.into()).unwrap();
+            let size = cx
+                .update_window(handle.into(), |_, window, _| window.viewport_size())
+                .unwrap();
+            let scale = image.width() as f32 / f32::from(size.width);
+            image
+                .get_pixel(
+                    (f32::from(position.x) * scale) as u32,
+                    (f32::from(position.y) * scale) as u32,
+                )
+                .0
+        };
+        let open = bounds(cx, "open-source");
+        let corner = open.origin + point(px(5.), px(5.));
+        let normal = sample(cx, corner);
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.hover("open-source", cx)
+        })
+        .unwrap();
+        frame(cx);
+        let start = sample(cx, corner);
+        cx.advance_clock(Duration::from_millis(40));
+        frame(cx);
+        let middle = sample(cx, corner);
+        cx.advance_clock(Duration::from_millis(120));
+        frame(cx);
+        let end = sample(cx, corner);
+        assert_eq!(start, normal, "hover begins at the current paint color");
+        assert_ne!(middle, start, "hover changes gradually");
+        assert_ne!(middle, end, "hover has an intermediate paint color");
+
+        let png = bounds(cx, "png");
+        let svg = bounds(cx, "svg");
+        let html = bounds(cx, "html");
+        let center = |cx: &mut HeadlessAppContext| {
+            let image = cx.capture_screenshot(handle.into()).unwrap();
+            let (size, p) = cx
+                .update_window(handle.into(), |_, window, cx| {
+                    (window.viewport_size(), appearance::palette(cx))
+                })
+                .unwrap();
+            let scale = image.width() as f32 / f32::from(size.width);
+            let color = [
+                (p.control_on >> 16) as u8,
+                (p.control_on >> 8) as u8,
+                p.control_on as u8,
+            ];
+            let y = (f32::from(png.top() + px(3.)) * scale) as u32;
+            let matches = ((f32::from(png.left()) * scale) as u32
+                ..(f32::from(html.right()) * scale) as u32)
+                .filter(|x| image.get_pixel(*x, y).0[..3] == color)
+                .collect::<Vec<_>>();
+            assert!(
+                !matches.is_empty(),
+                "one selection backdrop remains visible"
+            );
+            (*matches.first().unwrap() + *matches.last().unwrap()) as f32 / (2. * scale)
+        };
+        let from = center(cx);
+        cx.update_window(handle.into(), |_, window, cx| window.click("svg", cx))
+            .unwrap();
+        frame(cx);
+        assert!(
+            (center(cx) - from).abs() < 2.,
+            "the backdrop starts at the previous tab"
+        );
+        cx.advance_clock(Duration::from_millis(40));
+        frame(cx);
+        let midway = center(cx);
+        let to = f32::from(svg.center().x);
+        assert!(
+            midway > from + 2. && midway < to - 2.,
+            "selection slides between tabs: {from} → {midway} → {to}"
+        );
+        cx.advance_clock(Duration::from_millis(180));
+        frame(cx);
+        assert!(
+            (center(cx) - to).abs() < 2.,
+            "selection lands on the new tab"
+        );
+
+        cx.update(|cx| cx.set_reduce_motion(true));
+        cx.update_window(handle.into(), |_, window, cx| window.click("png", cx))
+            .unwrap();
+        frame(cx);
+        assert!(
+            (center(cx) - f32::from(png.center().x)).abs() < 2.,
+            "reduced motion switches selection immediately"
+        );
+        cx.update(|cx| cx.set_reduce_motion(false));
+        settle(cx, handle, studio);
+        capture(cx, handle, "interaction-motion-settled");
+    }
+
+    fn assert_dropdown_motion(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        // The popup uses GPUI's wall-clock animation. Observe an early native
+        // frame and compare the visible shadow ring with the panel's opacity.
+        let mode = cx
+            .update_window(handle.into(), |_, _, cx| {
+                if appearance::palette(cx).light {
+                    "light"
+                } else {
+                    "dark"
+                }
+            })
+            .unwrap();
+        let closed = cx.capture_screenshot(handle.into()).unwrap();
+        let mut attempts = 0;
+        let popup = loop {
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.click("source-language", cx);
+                window.render_frame(cx);
+            })
+            .unwrap();
+            std::thread::sleep(Duration::from_millis(15));
+            let popup = cx
+                .update_window(handle.into(), |_, window, cx| {
+                    window.render_frame(cx);
+                    let color: Hsla = rgb(appearance::palette(cx).raised).into();
+                    let width = 240. * window.scale_factor();
+                    window
+                        .painted_quads()
+                        .into_iter()
+                        .find(|quad| {
+                            let Some(background) = quad.background.as_solid() else {
+                                return false;
+                            };
+                            (quad.bounds.size.width.0 - width).abs() < 1.
+                                && quad.bounds.size.height.0 > 80.
+                                && background.h == color.h
+                                && background.s == color.s
+                                && background.l == color.l
+                        })
+                        .expect("language popup surface is painted")
+                })
+                .unwrap();
+            let opacity = popup.background.as_solid().unwrap().a;
+            if opacity > 0.15 && opacity < 0.85 {
+                break popup;
+            }
+            // A busy machine may miss the short mid-fade interval. Close and
+            // reopen to observe it, rather than testing an already settled menu.
+            attempts += 1;
+            assert!(
+                attempts < 8,
+                "could not observe a mid-fade popup frame: {opacity}"
+            );
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.press("escape", cx);
+                window.render_frame(cx);
+            })
+            .unwrap();
+        };
+        let opacity = popup.background.as_solid().unwrap().a;
+        let early = cx.capture_screenshot(handle.into()).unwrap();
+        capture(cx, handle, &format!("language-popup-fading-{mode}"));
+        // The 1px ring is the most visible shadow layer in either appearance.
+        // Sample its straight left edge, outside the translucent panel.
+        let x = (popup.bounds.left().0 - 1.).floor() as u32;
+        let y = popup.bounds.center().y.0.floor() as u32;
+        let inside_x = (popup.bounds.right().0 - 8.).floor() as u32;
+        let underlying = closed.get_pixel(inside_x, y).0[0] as f32;
+        let surface = cx
+            .update_window(handle.into(), |_, _, cx| {
+                (appearance::palette(cx).raised >> 16) as f32
+            })
+            .unwrap();
+        let expected = underlying + (surface - underlying) * opacity;
+        let actual = early.get_pixel(inside_x, y).0[0] as f32;
+        assert!(
+            (actual - expected).abs() < 4.,
+            "shadow ink stays outside the fading panel: actual={actual}, expected={expected}"
+        );
+        let baseline = closed.get_pixel(x, y).0[0] as f32;
+        let rising = early.get_pixel(x, y).0[0] as f32 - baseline;
+        std::thread::sleep(Duration::from_millis(170));
+        cx.update_window(handle.into(), |_, window, cx| window.render_frame(cx))
+            .unwrap();
+        let settled = cx.capture_screenshot(handle.into()).unwrap();
+        let resting = settled.get_pixel(x, y).0[0] as f32 - baseline;
+        assert!(
+            resting.abs() > 5.,
+            "the popup's shadow ring remains visible: {resting}"
+        );
+        let ratio = rising / resting;
+        assert!(
+            ratio > opacity * 0.6 && ratio < opacity * 1.5,
+            "shadow fades with the panel instead of arriving later: shadow={ratio}, panel={opacity}"
+        );
+        cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
+            .unwrap();
+        settle(cx, handle, studio);
+
+        cx.update(|cx| cx.set_reduce_motion(true));
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.click("source-language", cx);
+            window.render_frame(cx);
+            let popup = window
+                .painted_quads()
+                .into_iter()
+                .find(|quad| {
+                    (quad.bounds.size.width.0 - 240. * window.scale_factor()).abs() < 1.
+                        && quad.bounds.size.height.0 > 80.
+                        && quad.background.as_solid().is_some()
+                })
+                .expect("reduced-motion popup is painted on its first frame");
+            assert_eq!(popup.background.as_solid().unwrap().a, 1.);
+        })
+        .unwrap();
+        capture(cx, handle, &format!("language-popup-reduced-motion-{mode}"));
+        cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
+            .unwrap();
+        cx.update(|cx| cx.set_reduce_motion(false));
+        settle(cx, handle, studio);
+    }
+
     pub fn run() {
         // Headless pixels cannot capture the WindowServer backdrop. Exercise the
         // actual AppKit view's material, blending, ownership and resizing instead.
@@ -1141,6 +1378,11 @@ mod macos {
                 header_control_click(&mut cx, handle, &studio, "ui-appearance", 1);
             }
 
+            assert_interaction_motion(&mut cx, handle, &studio);
+            assert_dropdown_motion(&mut cx, handle, &studio);
+            header_control_click(&mut cx, handle, &studio, "ui-appearance", 1);
+            assert_dropdown_motion(&mut cx, handle, &studio);
+            header_control_click(&mut cx, handle, &studio, "ui-appearance", 1);
             let revision = cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.open_sections, [true, false, true, true]);
                 s.revision

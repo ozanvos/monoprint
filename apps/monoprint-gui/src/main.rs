@@ -3,6 +3,7 @@ mod assets;
 mod canvas_resize;
 mod document;
 mod handoff;
+mod interaction_motion;
 mod language_picker;
 #[cfg(target_os = "macos")]
 mod material;

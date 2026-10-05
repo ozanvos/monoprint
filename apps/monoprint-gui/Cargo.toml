@@ -43,3 +43,7 @@ opt-level = 2
 [profile.release]
 lto = "thin"
 strip = true
+
+# Retain Select's native behavior while synchronizing its popup/shadow fade.
+[patch.crates-io]
+gpui-component = { path = "../../vendor/gpui-component" }

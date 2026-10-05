@@ -1,3 +1,4 @@
+use crate::interaction_motion::{HoverStyle, MotionSegments, SmoothHover, hover_text};
 use crate::{
     appearance::*, canvas_resize::ResizeEdge, document::Format, studio::*, viewport::PreviewZoom,
 };
@@ -203,9 +204,12 @@ impl Studio {
                     })
                     .disabled(self.exporting)
                     .tooltip("Save an image · ⌘S")
-                    .on_click(cx.listener(|this, _, window, cx| {
-                        this.export_file(&ExportImage, window, cx)
-                    })),
+                    .on_click(
+                        cx.listener(|this, _, window, cx| {
+                            this.export_file(&ExportImage, window, cx)
+                        }),
+                    )
+                    .smooth_hover(p, HoverStyle::Primary),
             )
             .child(
                 Button::new("copy-image")
@@ -231,7 +235,8 @@ impl Studio {
                     .tooltip("Copy PNG at the selected scale · ⌘⇧C")
                     .on_click(
                         cx.listener(|this, _, window, cx| this.copy_image(&CopyImage, window, cx)),
-                    ),
+                    )
+                    .smooth_hover(p, HoverStyle::Control),
             )
     }
 
@@ -288,7 +293,8 @@ impl Studio {
                         "Preparing PNG…"
                     } else {
                         "Drag PNG into another app at the selected scale"
-                    }),
+                    })
+                    .smooth_hover(p, HoverStyle::Control),
             )
     }
     fn source_panel(&self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
@@ -328,9 +334,12 @@ impl Studio {
                             .child(Icon::new(IconName::FolderOpen).size(px(16.)))
                             .accessibility_label("Open source file")
                             .tooltip("Open source file · ⌘O")
-                            .on_click(cx.listener(|this, _, window, cx| {
-                                this.open(&OpenSource, window, cx)
-                            })),
+                            .on_click(
+                                cx.listener(|this, _, window, cx| {
+                                    this.open(&OpenSource, window, cx)
+                                }),
+                            )
+                            .smooth_hover(p, HoverStyle::Control),
                     )
                     .child(
                         Button::new("paste-source")
@@ -346,7 +355,8 @@ impl Studio {
                             .tooltip("Replace code with clipboard text")
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.paste(&PasteSource, window, cx)
-                            })),
+                            }))
+                            .smooth_hover(p, HoverStyle::Control),
                     )
                     .when(highlighted, |view| {
                         view.child(
@@ -361,7 +371,8 @@ impl Studio {
                                 .child(Icon::new(IconName::Eraser).size(px(16.)))
                                 .accessibility_label("Clear all highlights")
                                 .tooltip("Clear all line and text highlights")
-                                .on_click(cx.listener(|this, _, _, cx| this.clear_highlights(cx))),
+                                .on_click(cx.listener(|this, _, _, cx| this.clear_highlights(cx)))
+                                .smooth_hover(p, HoverStyle::Control),
                         )
                     })
                     .child(
@@ -402,7 +413,8 @@ impl Studio {
                                     editor.set_soft_wrap(this.wrap, window, cx)
                                 });
                                 cx.notify();
-                            })),
+                            }))
+                            .smooth_hover(p, HoverStyle::Control),
                     ),
             )
             .child(
@@ -540,7 +552,8 @@ impl Studio {
                                 } else {
                                     this.highlight_selection(false, cx);
                                 }
-                            })),
+                            }))
+                            .smooth_hover(p, HoverStyle::Overlay),
                     )
                     .when(!clicked, |view| {
                         view.child(
@@ -559,7 +572,8 @@ impl Studio {
                                     cx.listener(|this, _, _, cx| {
                                         this.highlight_selection(true, cx)
                                     }),
-                                ),
+                                )
+                                .smooth_hover(p, HoverStyle::Overlay),
                         )
                     }),
             )
@@ -915,7 +929,8 @@ impl Studio {
                             .tooltip("Toggle interface appearance · ⌘⇧L")
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.toggle_ui_appearance(&ToggleUiAppearance, window, cx)
-                            })),
+                            }))
+                            .smooth_hover(p, HoverStyle::Control),
                     ),
             )
             .child(
@@ -981,7 +996,6 @@ impl Studio {
             .items_center()
             .gap(px(6.))
             .text_color(rgb(p.muted))
-            .hover(|style| style.text_color(rgb(p.ink)))
             .child(
                 Icon::new(if open {
                     IconName::ChevronDown
@@ -998,6 +1012,7 @@ impl Studio {
             )
             .child(div().text_size(px(11.)).truncate().child(detail.into()))
             .on_change(move |open, _, window, cx| on_change(&open, window, cx))
+            .map(|trigger| hover_text(trigger, p))
     }
 
     fn theme_settings(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -1079,7 +1094,8 @@ impl Studio {
                             .tooltip("Browse themes")
                             .on_click(
                                 cx.listener(|this, _, window, cx| this.browse_themes(window, cx)),
-                            ),
+                            )
+                            .smooth_hover(p, HoverStyle::Ghost),
                     )
                     .children(self.theme_appearance(cx)),
             )
@@ -1175,7 +1191,8 @@ impl Studio {
                                     .tooltip("Back to settings (Esc)")
                                     .on_click(cx.listener(|this, _, window, cx| {
                                         this.close_theme_browser(window, cx)
-                                    })),
+                                    }))
+                                    .smooth_hover(p, HoverStyle::Ghost),
                             )
                             .child(
                                 segments(p).children(
@@ -1239,7 +1256,8 @@ impl Studio {
                                                 this.theme_search.update(cx, |input, cx| {
                                                     input.replace_all("", window, cx)
                                                 });
-                                            })),
+                                            }))
+                                            .smooth_hover(p, HoverStyle::Ghost),
                                     ),
                             )
                         }),
@@ -1324,6 +1342,7 @@ impl Studio {
             .accessibility_label(format!("{} theme", theme.name()))
             .tooltip(theme.name())
             .on_click(cx.listener(move |this, _, window, cx| this.select_theme(theme, window, cx)))
+            .smooth_hover(p, HoverStyle::Ghost)
     }
 
     fn typography_settings(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -1423,6 +1442,7 @@ impl Studio {
                                         state.replace_all(next.to_string(), window, cx);
                                     });
                                 }))
+                                .smooth_hover(p, HoverStyle::Control)
                         }),
                     ),
             )
@@ -1493,13 +1513,12 @@ impl Studio {
                                 } else {
                                     "Use theme typeface"
                                 })
-                                .on_click(cx.listener(
-                                    move |this, _, window, cx| {
-                                        this.document.select_typeface(comments, "");
-                                        this.sync_typeface(comments, window, cx);
-                                        this.changed(cx);
-                                    },
-                                )),
+                                .on_click(cx.listener(move |this, _, window, cx| {
+                                    this.document.select_typeface(comments, "");
+                                    this.sync_typeface(comments, window, cx);
+                                    this.changed(cx);
+                                }))
+                                .smooth_hover(p, HoverStyle::Ghost),
                             )
                         },
                     ),
@@ -1531,6 +1550,7 @@ impl Studio {
                             .child(Icon::new(IconName::ChevronDown).size(px(14.)))
                             .accessibility_label("Padding presets")
                             .tooltip("Choose padding or type an exact value")
+                            .smooth_hover(p, HoverStyle::Ghost)
                             .dropdown_menu_with_anchor(Anchor::TopRight, move |mut menu, _, cx| {
                                 let selected = input.read(cx).value().parse::<u32>().ok();
                                 for padding in [0u32, 16, 32, 64, 96] {
@@ -1567,7 +1587,8 @@ impl Studio {
                     .p_0()
                     .child(Icon::new(IconName::SlidersHorizontal).size(px(16.)))
                     .accessibility_label("Advanced export settings")
-                    .tooltip("Advanced export settings"),
+                    .tooltip("Advanced export settings")
+                    .smooth_hover(p, HoverStyle::Ghost),
             )
             .child(
                 div()
@@ -1700,7 +1721,8 @@ impl Studio {
                                                 .on_click(cx.listener(|this, _, _, cx| {
                                                     this.document.line_numbers = None;
                                                     this.changed(cx);
-                                                })),
+                                                }))
+                                                .smooth_hover(p, HoverStyle::Ghost),
                                         )
                                     })
                                     .child(
@@ -1831,7 +1853,8 @@ impl Studio {
                                 .ghost()
                                 .xsmall()
                                 .label("Show last export in folder")
-                                .on_click(move |_, _, cx| cx.reveal_path(&path)),
+                                .on_click(move |_, _, cx| cx.reveal_path(&path))
+                                .smooth_hover(p, HoverStyle::Ghost),
                         )
                     }),
             )
@@ -1906,17 +1929,20 @@ fn settings_section(p: Palette) -> Collapsible {
         .border_color(rgb(p.border))
 }
 
-fn segments(p: Palette) -> Div {
-    div()
-        .flex()
-        .flex_shrink_0()
-        .h(px(26.))
-        .p(px(2.))
-        .gap(px(2.))
-        .rounded(px(4.))
-        .border_1()
-        .border_color(rgb(p.strong))
-        .bg(rgb(p.control))
+fn segments(p: Palette) -> MotionSegments {
+    MotionSegments::new(
+        div()
+            .flex()
+            .flex_shrink_0()
+            .h(px(26.))
+            .p(px(2.))
+            .gap(px(2.))
+            .rounded(px(4.))
+            .border_1()
+            .border_color(rgb(p.strong))
+            .bg(rgb(p.control)),
+        p,
+    )
 }
 
 fn segment(p: Palette, id: impl Into<ElementId>) -> Button {
