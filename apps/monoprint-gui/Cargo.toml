@@ -14,7 +14,7 @@ publish = false
 app-store = ["dep:gpui-macos", "gpui-macos/app-store", "dep:objc2-foundation"]
 
 [dependencies]
-gpui-kit = { version = "=0.6.6", features = ["tree-sitter-rust", "tree-sitter-typescript", "tree-sitter-tsx", "tree-sitter-javascript", "tree-sitter-python"] }
+gpui-kit = { version = "=0.7.1", features = ["tree-sitter-rust", "tree-sitter-typescript", "tree-sitter-tsx", "tree-sitter-javascript", "tree-sitter-python"] }
 monoprint = { path = "../..", default-features = false }
 giallo = { version = "=0.5.2", features = ["dump"] }
 anyhow = "1"
@@ -26,14 +26,14 @@ tempfile = "3"
 url = "2"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-gpui-macos = { package = "gpui-pre-macos", version = "=0.3.6", optional = true, default-features = false }
+gpui-macos = { package = "gpui-pre-macos", version = "=0.3.8", optional = true, default-features = false }
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", optional = true, default-features = false, features = ["std", "NSArray", "NSData", "NSError", "NSString", "NSURL", "NSPathUtilities"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["NSGraphics", "NSResponder", "NSView", "NSVisualEffectView"] }
 raw-window-handle = "0.6"
 
 [dev-dependencies]
-gpui-kit = { version = "=0.6.6", features = ["test-support"] }
+gpui-kit = { version = "=0.7.1", features = ["test-support"] }
 
 [[test]]
 name = "studio"

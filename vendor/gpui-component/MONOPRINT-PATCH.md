@@ -1,8 +1,8 @@
 # Monoprint popup fade patch
 
-Source: crates.io `gpui-component` 0.6.6, unchanged except `src/popover.rs`.
+Source: crates.io `gpui-component` 0.7.1, unchanged except `src/popover.rs`.
 The published crate archive is pinned by Cargo's original checksum:
-`0cf6c72516b44bb2e66a1bd2ccf77a122ecd1b54a75559ac299bb296bfcb5bb7`.
+`bc8b7def8e74b0d822d3e96f6b28fb5a2c20eb7a83d30d22fa59ca8088d1159b`.
 
 The dropdown panel already applies animated opacity to its full subtree,
 including shadows. Its additional cubic shadow ramp made the ring and shadow

@@ -1,12 +1,12 @@
 use std::rc::Rc;
 
-use crate::ThemeStyled as _;
 use crate::{
     ActiveTheme, Colorize as _, Disableable, Icon, Placement, RoleOverride, Selectable, Sizable,
     Size, StyleSized, StyledExt,
     button::ButtonIcon,
     h_flex,
     select::Caret,
+    styled::{FocusLine, focus_style},
     tooltip::{ManagedTooltipExt as _, Tooltip},
 };
 use gpui::{
@@ -15,6 +15,10 @@ use gpui::{
     StatefulInteractiveElement as _, StyleRefinement, Styled, Window, div,
     prelude::FluentBuilder as _, relative, transparent_white,
 };
+
+/// Ink of the focus line a filled button draws inside its fill: its own
+/// foreground, which the theme already keeps legible against that fill.
+const FOCUS_LINE_OPACITY: f32 = 0.6;
 
 #[derive(Default, Clone, Copy)]
 pub enum ButtonRounded {
@@ -193,6 +197,10 @@ pub struct Button {
     children: Vec<AnyElement>,
     disabled: bool,
     pub(crate) selected: bool,
+    /// Held by the popover, menu or dropdown this button triggers, for as long
+    /// as it is open. Kept apart from `selected` because the two states mean
+    /// different things, even though they paint the same today.
+    open: bool,
     toggled: Option<bool>,
     role: RoleOverride,
     variant: ButtonVariant,
@@ -242,6 +250,7 @@ impl Button {
             children: Vec::new(),
             disabled: false,
             selected: false,
+            open: false,
             toggled: None,
             role: RoleOverride::default(),
             variant: ButtonVariant::default(),
@@ -282,6 +291,11 @@ impl Button {
 
     pub(crate) fn variant(&self) -> ButtonVariant {
         self.variant
+    }
+
+    #[cfg(test)]
+    pub(crate) fn is_compact(&self) -> bool {
+        self.compact
     }
 
     /// Presentation supplied by a styled compound control. Standalone buttons
@@ -485,6 +499,13 @@ impl Button {
         self
     }
 
+    /// Whether the button paints its selected styling, which is what both a
+    /// caller-set selection and an open popup look like today.
+    #[inline]
+    fn shows_selected_style(&self) -> bool {
+        self.selected || self.open
+    }
+
     /// Whether the button responds to the pointer at all.
     ///
     /// A loading button is as inert as a disabled one, it just keeps looking
@@ -527,12 +548,25 @@ impl Selectable for Button {
     fn is_selected(&self) -> bool {
         self.selected
     }
+
+    fn open(mut self, open: bool) -> Self {
+        self.open = open;
+        self
+    }
+
+    fn is_open(&self) -> bool {
+        self.open
+    }
 }
 
 impl Sizable for Button {
     fn with_size(mut self, size: impl Into<Size>) -> Self {
         self.size = size.into();
         self
+    }
+
+    fn prepare_for_toolbar(self) -> Self {
+        self.ghost().compact()
     }
 }
 
@@ -567,6 +601,7 @@ impl RenderOnce for Button {
         let interactive = self.interactive();
         let hoverable = self.hoverable();
         let disabled = self.disabled;
+        let selected = self.shows_selected_style();
         let loading = self.loading;
         let tooltip_placement = self.tooltip_placement;
         let hover_group = self.hover_group;
@@ -582,6 +617,14 @@ impl RenderOnce for Button {
             _ => self.size,
         });
         let has_content = self.icon.is_some() || self.label.is_some() || !children.is_empty();
+        // Only borderless variants use this; the others tint their border.
+        let focus_line = if style.no_padding() {
+            FocusLine::Outside
+        } else if style.is_ghost() {
+            FocusLine::Edge
+        } else {
+            FocusLine::Inside(normal_style.fg.opacity(FOCUS_LINE_OPACITY))
+        };
 
         let focus_handle = window
             .use_keyed_state(self.id.clone(), cx, |_, cx| cx.focus_handle())
@@ -659,7 +702,7 @@ impl RenderOnce for Button {
                     .when(self.border_edges.top, |this| this.border_t_1())
                     .when(self.border_edges.bottom, |this| this.border_b_1())
             })
-            .when(!self.disabled && !self.selected, |this| {
+            .when(!self.disabled && !selected, |this| {
                 this.border_color(normal_style.border)
                     .bg(normal_style.bg)
                     .text_color(normal_style.fg)
@@ -738,7 +781,7 @@ impl RenderOnce for Button {
                 Role::Button
             }
         }))
-        .selected(self.selected)
+        .selected(selected)
         .disabled(disabled)
         // Base layers semantic states over the builder chain, so the caller's
         // own style is replayed inside each state to keep it the closest layer.
@@ -833,7 +876,7 @@ impl RenderOnce for Button {
             }
         })
         .when(is_focused && self.focus_ring_enabled, |this| {
-            this.focus_ring_style(window, cx)
+            focus_style(this, focus_line, window, cx)
         })
     }
 }
@@ -1614,6 +1657,24 @@ mod tests {
         assert!(button.tab_stop);
         assert!(!button.dropdown_caret);
         assert!(matches!(button.rounded, ButtonRounded::Medium));
+    }
+
+    /// A button paints an open popup the way it paints a selection, but the
+    /// two states are stored apart, so a caller can read back which one it set
+    /// and a later design can tell them apart visually.
+    #[test]
+    fn an_open_trigger_is_stored_apart_from_a_selected_one() {
+        let open = Button::new("trigger").open(true);
+        assert!(open.is_open());
+        assert!(!open.is_selected());
+        assert!(open.shows_selected_style());
+
+        let selected = Button::new("trigger").selected(true);
+        assert!(selected.is_selected());
+        assert!(!selected.is_open());
+        assert!(selected.shows_selected_style());
+
+        assert!(!Button::new("trigger").shows_selected_style());
     }
 
     #[test]

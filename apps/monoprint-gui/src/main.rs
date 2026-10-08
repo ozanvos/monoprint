@@ -7,6 +7,7 @@ mod interaction_motion;
 mod language_picker;
 #[cfg(target_os = "macos")]
 mod material;
+mod platform_keys;
 mod preview;
 mod sandbox;
 mod selection;
@@ -63,6 +64,7 @@ fn main() {
     });
     application.run(move |cx| {
         gpui_kit::init(cx);
+        platform_keys::init(cx);
         appearance::init(cx);
         cx.on_action(|_: &Quit, cx| cx.quit());
         cx.on_action(|_: &OpenPrivacy, cx| cx.open_url("https://monoprint.7ea.st/privacy/"));

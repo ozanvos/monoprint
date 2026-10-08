@@ -22,6 +22,8 @@ mod language_picker;
 #[allow(dead_code)] // The production raw-window adapter is unavailable on the test platform.
 #[path = "../src/material.rs"]
 mod material;
+#[path = "../src/platform_keys.rs"]
+mod platform_keys;
 #[allow(dead_code, unused_imports)] // Standard-harness preview tests are not run by this binary.
 #[path = "../src/preview.rs"]
 mod preview;
@@ -1291,6 +1293,104 @@ mod macos {
         settle(cx, handle, studio);
     }
 
+    fn assert_platform_keys(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        // Dispatch keys through the rendered control's focus context, rather
+        // than calling editing actions directly. Include a multibyte character.
+        macro_rules! check {
+            ($window:ident, $app:ident, $state:expr, $cases:expr) => {{
+                let state = $state;
+                let original = state.read($app).value().to_string();
+                let selection = state.read($app).selected_range();
+                for (keys, source, cursor, expected_range, expected_text) in $cases {
+                    state.update($app, |state, $app| {
+                        state.replace_all(source, $window, $app);
+                        state.set_selected_range(cursor..cursor, $app);
+                        state.focus($window, $app);
+                    });
+                    $window.render_frame($app);
+                    for key in keys.split_whitespace() {
+                        $window.dispatch_event(
+                            KeyDownEvent {
+                                keystroke: Keystroke::parse(key).unwrap(),
+                                is_held: false,
+                                prefer_character_input: false,
+                            }
+                            .to_platform_input(),
+                            $app,
+                        );
+                    }
+                    assert_eq!(state.read($app).selected_range(), expected_range, "{keys}");
+                    assert_eq!(state.read($app).value().as_ref(), expected_text, "{keys}");
+                }
+                state.update($app, |state, $app| {
+                    state.replace_all(original, $window, $app);
+                    state.set_selected_range(selection, $app);
+                });
+            }};
+        }
+        cx.update_window(handle.into(), |_, window, cx| {
+            let horizontal = || {
+                let text = "ab界cd";
+                let after_character = text.find('c').unwrap();
+                [
+                    ("ctrl-b", text, after_character, 2..2, text),
+                    ("ctrl-f", text, 2, after_character..after_character, text),
+                    (
+                        "ctrl-shift-b",
+                        text,
+                        after_character,
+                        2..after_character,
+                        text,
+                    ),
+                    ("ctrl-shift-f", text, 2, 2..after_character, text),
+                    ("ctrl-h", text, after_character, 2..2, "abcd"),
+                    ("ctrl-d", text, 2, 2..2, "abcd"),
+                    (
+                        "ctrl-h cmd-z",
+                        text,
+                        after_character,
+                        after_character..after_character,
+                        text,
+                    ),
+                    ("ctrl-d cmd-z", text, 2, 2..2, text),
+                    ("ctrl-a", text, after_character, 0..0, text),
+                    ("ctrl-e", text, 2, text.len()..text.len(), text),
+                ]
+            };
+            check!(window, cx, studio.read(cx).editor.clone(), horizontal());
+            check!(window, cx, studio.read(cx).title.clone(), horizontal());
+            let text = "abcd\nefgh\nijkl";
+            check!(
+                window,
+                cx,
+                studio.read(cx).editor.clone(),
+                [
+                    ("ctrl-p", text, 7, 2..2, text),
+                    ("ctrl-n", text, 7, 12..12, text),
+                    ("ctrl-shift-p", text, 7, 2..7, text),
+                    ("ctrl-shift-n", text, 7, 7..12, text),
+                    ("cmd-left", text, 7, 5..5, text),
+                    ("cmd-right", text, 7, 9..9, text),
+                    ("cmd-up", text, 7, 0..0, text),
+                    ("cmd-down", text, 7, 14..14, text),
+                    ("alt-left", text, 7, 5..5, text),
+                    ("alt-right", text, 7, 9..9, text),
+                ]
+            );
+            let focus = studio.read(cx).focus.clone();
+            window.focus(&focus, cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        println!(
+            "macOS Control movement, selection, UTF-8 deletion/undo and Command/Option navigation passed"
+        );
+    }
+
     pub fn run() {
         // Headless pixels cannot capture the WindowServer backdrop. Exercise the
         // actual AppKit view's material, blending, ownership and resizing instead.
@@ -1341,6 +1441,7 @@ mod macos {
             );
             cx.update(|cx| {
                 gpui_kit::init(cx);
+                platform_keys::init(cx);
                 appearance::init(cx);
                 cx.bind_keys([KeyBinding::new(
                     "escape",
@@ -1375,6 +1476,8 @@ mod macos {
             capture(&mut cx, handle, &format!("studio-{}", width as u32));
             assert_material_visible(&mut cx, handle, &studio);
             assert_source_syntax_colored(&mut cx, handle, &studio);
+
+            assert_platform_keys(&mut cx, handle, &studio);
 
             for _ in 0..2 {
                 assert_syntax_survives_typing(&mut cx, handle, &studio);

@@ -18,6 +18,7 @@ use crate::{
     searchable_list::{
         SearchableListChange, SearchableListDelegate, SearchableListItem, SearchableListState,
     },
+    sizing::DROPDOWN_LIST_PADDING,
     v_flex,
 };
 use gpui_base::{GlobalState, Select as BaseSelect};
@@ -115,6 +116,8 @@ impl Default for SelectOptions {
 // MARK: SelectState
 
 /// State of the [`Select`] component.
+///
+/// Emits [`DismissEvent`] when an open menu closes, including after a selection is confirmed.
 pub struct SelectState<D: SearchableListDelegate + 'static>
 where
     <D::Item as SearchableListItem>::Value: PartialEq + Clone,
@@ -429,9 +432,13 @@ where
     }
 
     fn set_open(&mut self, open: bool, cx: &mut Context<Self>) {
+        let dismissed = self.state.open && !open;
         self.state.open = open;
         self.state.deferred_context = open.then(|| GlobalState::register_deferred_popover(cx));
 
+        if dismissed {
+            cx.emit(DismissEvent);
+        }
         cx.notify();
     }
 
@@ -606,7 +613,7 @@ where
                             v_flex()
                                 .occlude()
                                 .map(|this| match self.state.menu_width {
-                                    Length::Auto => this.w(bounds.size.width + px(2.)),
+                                    Length::Auto => this.w(bounds.size.width),
                                     Length::Definite(w) => this.w(w),
                                 })
                                 .popover_style(cx)
@@ -620,7 +627,7 @@ where
                                         )
                                         .with_size(self.state.size)
                                         .max_h(self.state.menu_max_h)
-                                        .paddings(Edges::all(px(4.))),
+                                        .paddings(Edges::all(DROPDOWN_LIST_PADDING)),
                                 )
                                 .on_mouse_down_out(cx.listener(|this, _, window, cx| {
                                     this.escape(&Cancel, window, cx);

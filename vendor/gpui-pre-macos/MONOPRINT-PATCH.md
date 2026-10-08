@@ -1,11 +1,11 @@
 # Monoprint App Store feature
 
-Source: crates.io `gpui-pre-macos` 0.3.6, upstream Zed revision
-`bcf6582ce3500df93a8a39366640173e6786cea6`.
+Source: crates.io `gpui-pre-macos` 0.3.8, upstream Zed revision
+`279fe070bb389b79652e52065b2f001edcc0b11b`.
 Original crate checksum:
-`951d17e41a72067ad2d35c60e08a62e8ad7fa9400b41c802e26cfb459f6c05da`.
+`0d756813ff1cd741a502af60fd18869e0677795936d7349642b41c49f43120c0`.
 Original Apache 2.0 license and source are retained. Changes are limited to
-`Cargo.toml` and `src/window.rs`.
+`Cargo.toml`, `Cargo.toml.orig` and `src/window.rs`.
 
 The opt-in `app-store` feature excludes private AppKit selectors, the private
 window-restoration class, the undocumented workspace-restoration default, and

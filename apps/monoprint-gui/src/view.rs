@@ -178,9 +178,6 @@ impl Render for Studio {
                 )
             })
             .children(self.selection_toolbar(cx))
-            .children(Root::render_dialog_layer(window, cx))
-            .children(Root::render_sheet_layer(window, cx))
-            .children(Root::render_notification_layer(window, cx))
     }
 }
 impl Studio {
