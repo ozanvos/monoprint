@@ -40,6 +40,9 @@ mod source_highlight;
 mod source_lines;
 #[path = "../src/studio.rs"]
 mod studio;
+#[allow(dead_code, unused_imports)]
+#[path = "../src/updates/mod.rs"]
+mod updates;
 #[path = "../src/view.rs"]
 mod view;
 #[allow(dead_code, unused_imports)]

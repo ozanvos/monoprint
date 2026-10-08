@@ -97,6 +97,11 @@ impl Render for Studio {
             .on_action(cx.listener(Self::paste))
             .on_action(cx.listener(Self::toggle_ui_appearance))
             .on_action(cx.listener(Self::show_shortcuts))
+            .on_action(cx.listener(Self::check_for_updates))
+            .on_action(cx.listener(Self::toggle_automatic_updates))
+            .on_action(cx.listener(Self::restart_to_update))
+            .on_action(cx.listener(Self::install_for_user))
+            .on_action(cx.listener(Self::uninstall_app))
             .on_drag_move(
                 cx.listener(|this, event: &DragMoveEvent<ExternalPaths>, _, cx| {
                     if this.incoming_source.is_none() {
@@ -177,6 +182,7 @@ impl Render for Studio {
                         })),
                 )
             })
+            .children(self.update_bar(cx))
             .children(self.selection_toolbar(cx))
     }
 }

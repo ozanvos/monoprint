@@ -455,20 +455,28 @@ pub fn session_path() -> Option<PathBuf> {
     if let Some(path) = std::env::var_os("MONOPRINT_SESSION") {
         return (path != "off").then(|| PathBuf::from(path));
     }
+    Some(data_directory()?.join("studio.json"))
+}
+
+pub fn data_directory() -> Option<PathBuf> {
     #[cfg(all(target_os = "macos", feature = "app-store"))]
     let home = crate::sandbox::home_directory();
-    #[cfg(not(all(target_os = "macos", feature = "app-store")))]
+    #[cfg(all(
+        not(target_os = "windows"),
+        not(all(target_os = "macos", feature = "app-store"))
+    ))]
     let home = std::env::var_os("HOME")?;
     #[cfg(target_os = "macos")]
     let dir = PathBuf::from(home).join("Library/Application Support/Monoprint");
     #[cfg(target_os = "windows")]
-    let dir = PathBuf::from(std::env::var_os("APPDATA").unwrap_or(home)).join("Monoprint");
+    let dir = PathBuf::from(std::env::var_os("APPDATA")?).join("Monoprint");
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     let dir = std::env::var_os("XDG_STATE_HOME")
         .map(PathBuf::from)
+        .filter(|path| path.is_absolute())
         .unwrap_or_else(|| PathBuf::from(home).join(".local/state"))
         .join("monoprint");
-    Some(dir.join("studio.json"))
+    Some(dir)
 }
 
 pub fn load_session(path: &Path) -> Result<Document> {
@@ -521,13 +529,13 @@ pub fn save_session(path: &Path, document: &Document) -> Result<()> {
 /// replace the final editing snapshot after application shutdown has begun.
 pub struct SessionStore {
     path: Option<PathBuf>,
-    saved_revision: Mutex<u64>,
+    saved_revision: Mutex<(u64, bool)>,
 }
 impl SessionStore {
     pub fn new(path: Option<PathBuf>) -> Self {
         Self {
             path,
-            saved_revision: Mutex::new(0),
+            saved_revision: Mutex::new((0, true)),
         }
     }
     pub fn save(&self, revision: u64, document: &Document) -> Result<()> {
@@ -535,12 +543,18 @@ impl SessionStore {
             return Ok(());
         };
         let mut saved = self.saved_revision.lock().unwrap();
-        if revision <= *saved {
+        if !saved.1 || revision <= saved.0 {
             return Ok(());
         }
         save_session(path, document)?;
-        *saved = revision;
+        saved.0 = revision;
         Ok(())
+    }
+
+    #[cfg(any(target_os = "linux", test))]
+    pub fn set_saving_enabled(&self, enabled: bool) {
+        // Wait for an in-flight preview save before removing saved user data.
+        self.saved_revision.lock().unwrap().1 = enabled;
     }
 }
 

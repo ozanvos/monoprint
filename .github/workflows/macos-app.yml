@@ -6,9 +6,16 @@ on:
         description: Sign, notarize and staple (requires private environment secrets)
         type: boolean
         default: false
+      updates:
+        description: Embed Sparkle using the configured feed and public key
+        type: boolean
+        default: false
   workflow_call:
     inputs:
       signed:
+        type: boolean
+        default: false
+      updates:
         type: boolean
         default: false
 permissions:
@@ -28,11 +35,26 @@ jobs:
         run: python3 apps/monoprint-gui/scripts/build-icon.py --output target/gui/icon-check
       - uses: dtolnay/rust-toolchain@1.98.1
       - run: cargo test --locked --manifest-path apps/monoprint-gui/Cargo.toml --target-dir target/gui --bin monoprint-gui
+      - name: Prepare the pinned updater SDK
+        if: ${{ inputs.updates }}
+        run: |
+          if [ "$SIGNED" != true ]; then echo 'Update-enabled distribution requires signing'; exit 1; fi
+          python3 apps/monoprint-gui/scripts/prepare-sparkle.py --output target/update-tools/sparkle
+        env:
+          SIGNED: ${{ inputs.signed }}
       - if: ${{ !inputs.signed }}
         run: python3 apps/monoprint-gui/scripts/bundle-macos.py --archive-dir output/macos-app
       - if: ${{ inputs.signed }}
-        run: python3 scripts/with-apple-signing.py -- python3 apps/monoprint-gui/scripts/bundle-macos.py --archive-dir output/macos-app
+        run: |
+          args=()
+          if [ "$UPDATES" = true ]; then
+            args+=(--updates --sparkle-sdk target/update-tools/sparkle --update-feed "$UPDATE_FEED" --update-public-key "$UPDATE_PUBLIC_KEY")
+          fi
+          python3 scripts/with-apple-signing.py -- python3 apps/monoprint-gui/scripts/bundle-macos.py --archive-dir output/macos-app "${args[@]}"
         env:
+          UPDATES: ${{ inputs.updates }}
+          UPDATE_FEED: ${{ vars.MONOPRINT_MACOS_UPDATE_FEED }}
+          UPDATE_PUBLIC_KEY: ${{ vars.MONOPRINT_SPARKLE_PUBLIC_KEY }}
           MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
           MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
           MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}

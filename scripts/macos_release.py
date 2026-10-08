@@ -13,7 +13,8 @@ def source_digest(root):
     root = Path(root)
     inputs = ['Cargo.toml', 'Cargo.lock', 'bindings/node/Cargo.toml',
               'apps/monoprint-gui/Cargo.toml', 'apps/monoprint-gui/Cargo.lock',
-              'LICENSE', 'THIRD_PARTY_NOTICES.md']
+              'LICENSE', 'THIRD_PARTY_NOTICES.md', 'apps/monoprint-gui/build.rs',
+              'release/updates.json', 'apps/monoprint-gui/assets/monoprint.svg']
     inputs += ['vendor/takumi-raster/Cargo.toml', 'vendor/takumi-svg/Cargo.toml']
     inputs += ['apps/monoprint-gui/assets/app-store.entitlements',
                'apps/monoprint-gui/assets/app-store-helper.entitlements']
@@ -39,6 +40,7 @@ def verify_app_store_apis(binary):
     forbidden = (
         b'_opaqueRectForWindowMoveWhenInTitlebar', b'_zoomFill:',
         b'_windowRestorationOptions', b'NSWindowRestorationOptions',
+        b'SPUStandardUpdaterController',
         b'_windowResizeNorthWestSouthEastCursor', b'_windowResizeNorthEastSouthWestCursor',
         b'CAChameleonLayer', b'NSWindowRestoresWorkspaceAtLaunch',
     )
@@ -95,6 +97,9 @@ def sign_app(bundle, identity='-', keychain=None, entitlements=None, helper_enti
              b'\xcf\xfa\xed\xfe', b'\xca\xfe\xba\xbe', b'\xbe\xba\xfe\xca',
              b'\xca\xfe\xba\xbf', b'\xbf\xba\xfe\xca'}
     for path in sorted(bundle.rglob('*'), key=lambda p: (-len(p.parts), str(p))):
+        if path.is_dir() and not path.is_symlink() and path.suffix in ('.app', '.xpc', '.framework'):
+            sign_code(path, identity, keychain, helper_entitlements)
+            continue
         if not path.is_file() or path.is_symlink() or path == main:
             continue
         with path.open('rb') as stream:

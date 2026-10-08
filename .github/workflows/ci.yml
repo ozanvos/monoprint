@@ -27,6 +27,7 @@ jobs:
       - run: node --test scripts/release.test.mjs
       - run: node --test scripts/package-receipts.test.mjs
       - run: python3 scripts/test_macos_release.py
+      - run: python3 scripts/test_desktop_updates.py
       - run: node --test scripts/grammar-policy.test.mjs
       - run: node scripts/import-grammar-metadata.mjs --check
       - run: node scripts/import-editor-themes.mjs --check

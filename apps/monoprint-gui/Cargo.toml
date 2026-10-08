@@ -25,6 +25,9 @@ image = { version = "0.25", default-features = false }
 tempfile = "3"
 url = "2"
 
+[target.'cfg(any(target_os = "windows", target_os = "linux"))'.dependencies]
+velopack = "=1.2.161"
+
 [target.'cfg(target_os = "macos")'.dependencies]
 gpui-macos = { package = "gpui-pre-macos", version = "=0.3.8", optional = true, default-features = false }
 objc2 = "0.6"

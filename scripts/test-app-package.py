@@ -29,6 +29,18 @@ with tempfile.TemporaryDirectory(prefix='monoprint-app-consumer-') as temporary:
     info = plistlib.loads((app / 'Contents/Info.plist').read_bytes())
     assert info['CFBundleShortVersionString'] == receipt['version']
     assert info['CFBundleIconName'] == 'Monoprint'
+    framework = app / 'Contents/Frameworks/Sparkle.framework'
+    if receipt.get('updates'):
+        assert not receipt.get('appStore')
+        assert info['SUFeedURL'] == receipt['updateFeed']
+        assert info['SUPublicEDKey'] and framework.is_dir()
+        assert (framework / 'Sparkle').is_symlink()
+        assert (framework / 'Versions/Current').is_symlink()
+        framework_info = plistlib.loads((framework / 'Resources/Info.plist').read_bytes())
+        assert framework_info['CFBundleShortVersionString'] == receipt['sparkleVersion']
+    else:
+        assert not framework.exists()
+        assert 'SUFeedURL' not in info and 'SUPublicEDKey' not in info
     resources = app / 'Contents/Resources'
     for name in ['Assets.car', 'Monoprint.icns', 'LICENSE', 'THIRD_PARTY_NOTICES.md',
                  'licenses/gui-dependencies.json', 'licenses/grammar-sources/hcl.json']:

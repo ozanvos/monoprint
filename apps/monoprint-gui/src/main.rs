@@ -14,6 +14,7 @@ mod selection;
 mod source_highlight;
 mod source_lines;
 mod studio;
+mod updates;
 mod view;
 mod viewport;
 use gpui_kit::{
@@ -22,6 +23,7 @@ use gpui_kit::{
 };
 use studio::*;
 fn main() {
+    updates::startup();
     let session = document::session_path();
     let (mut document, mut error) = match session
         .as_ref()
@@ -87,11 +89,27 @@ fn main() {
                 MenuItem::action("Set Up Shortcuts…", ShowShortcuts),
             ]);
         }
+        let mut app_items = Vec::new();
+        if !cfg!(feature = "app-store") {
+            app_items.extend([
+                MenuItem::action("Check for Updates…", CheckForUpdates),
+                MenuItem::action("Toggle Automatic Update Checks", ToggleAutomaticUpdates),
+                MenuItem::separator(),
+            ]);
+        }
+        if cfg!(target_os = "linux") {
+            app_items.extend([
+                MenuItem::action("Install for This User…", InstallForUser),
+                MenuItem::action("Uninstall Monoprint…", UninstallApp),
+                MenuItem::separator(),
+            ]);
+        }
+        app_items.push(MenuItem::action("Quit Monoprint", Quit));
         cx.set_menus(vec![
             Menu {
                 disabled: false,
                 name: "Monoprint".into(),
-                items: vec![MenuItem::action("Quit Monoprint", Quit)],
+                items: app_items,
             },
             Menu {
                 disabled: false,

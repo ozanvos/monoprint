@@ -10,7 +10,6 @@ import shutil
 import subprocess
 import sys
 import tempfile
-import tomllib
 
 parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--debug', action='store_true', help='Use the faster development build')
@@ -24,6 +23,10 @@ parser.add_argument('--sign-keychain', type=Path)
 parser.add_argument('--notary-keychain', type=Path)
 parser.add_argument('--archive-dir', type=Path, help='Fresh directory for final ZIP, checksums and receipt')
 parser.add_argument('--local', action='store_true', help='Allow dirty source; mark artifacts verification-only')
+parser.add_argument('--updates', action='store_true', help='Embed Sparkle and enable signed updates for direct downloads')
+parser.add_argument('--sparkle-sdk', type=Path, help='Checksum-verified SDK from prepare-sparkle.py')
+parser.add_argument('--update-feed', help='Override release/updates.json Sparkle feed URL')
+parser.add_argument('--update-public-key', help='Override release/updates.json Ed25519 public key (never the private key)')
 args = parser.parse_args()
 if sys.platform != 'darwin':
     parser.error('This bundle script is for macOS; use cargo run on other platforms.')
@@ -31,6 +34,12 @@ if args.notary_profile and (args.sign_identity == '-' or args.debug):
     parser.error('Notarization requires a release build and --sign-identity')
 if args.app_store and args.notary_profile:
     parser.error('--app-store cannot be combined with Developer ID notarization')
+if args.app_store and args.updates:
+    parser.error('App Store builds cannot include Sparkle')
+if (args.sparkle_sdk or args.update_feed or args.update_public_key) and not args.updates:
+    parser.error('Sparkle arguments require --updates')
+if args.updates and args.archive_dir and not args.local and not args.notary_profile:
+    parser.error('Distributable update archives require Developer ID signing and notarization')
 if (args.app_store_profile or args.installer_identity) and not args.app_store:
     parser.error('Store credentials require --app-store')
 if args.app_store and args.sign_identity != '-' and not (args.app_store_profile and args.installer_identity and args.archive_dir):
@@ -44,6 +53,14 @@ root = gui.parents[1]
 sys.path.insert(0, str(root / 'scripts'))
 from macos_release import sign_app, notarize_app, zip_app, source_digest, verify_app_store_apis
 from app_store_release import prepare_credentials, signed_entitlements, package_app, clear_bundle_quarantine
+from desktop_updates import sparkle_settings, configuration
+update_settings = sparkle_settings(args.update_feed, args.update_public_key) if args.updates else {}
+if args.updates:
+    if not args.sparkle_sdk or not (args.sparkle_sdk / 'Sparkle.framework').is_dir():
+        parser.error('--updates requires --sparkle-sdk from prepare-sparkle.py')
+    sdk_info = plistlib.loads((args.sparkle_sdk / 'Sparkle.framework/Resources/Info.plist').read_bytes())
+    if sdk_info['CFBundleShortVersionString'] != configuration()['sparkle']['version']:
+        parser.error('Sparkle SDK version does not match release/updates.json')
 credentials = prepare_credentials(args.app_store_profile, 'app.monoprint.studio', args.sign_identity,
                                   args.installer_identity, args.sign_keychain) if args.app_store_profile else None
 commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
@@ -77,6 +94,17 @@ contents = assembled / 'Contents'
 (contents / 'MacOS').mkdir(parents=True, exist_ok=True)
 resources = contents / 'Resources'
 resources.mkdir(exist_ok=True)
+if args.updates:
+    framework = contents / 'Frameworks/Sparkle.framework'
+    shutil.copytree(args.sparkle_sdk / 'Sparkle.framework', framework, symlinks=True)
+    # Development headers/modules are unnecessary inside the shipped application.
+    for name in ['Headers', 'Modules']:
+        path = framework / name
+        if path.is_symlink():
+            path.unlink()
+        versioned = framework / 'Versions/Current' / name
+        if versioned.exists():
+            shutil.rmtree(versioned)
 subprocess.run([sys.executable, str(gui / 'scripts/build-icon.py'),
                 '--output', str(resources)], check=True)
 shutil.copy2(target / ('debug' if args.debug else 'release') / 'monoprint-gui', contents / 'MacOS/monoprint-gui')
@@ -96,6 +124,7 @@ if not args.app_store:
     'CFBundleIconName': 'Monoprint', 'CFBundleShortVersionString': version,
     'CFBundleVersion': args.build_number or version, 'NSHighResolutionCapable': True,
     'LSMinimumSystemVersion': '12.0',
+    **update_settings,
     **({'LSApplicationCategoryType': 'public.app-category.developer-tools',
         'ITSAppUsesNonExemptEncryption': False,
         'NSHumanReadableCopyright': '2026 Seven East'} if args.app_store else {}),
@@ -109,6 +138,8 @@ if not args.app_store:
 for name in ['LICENSE', 'THIRD_PARTY_NOTICES.md']:
     shutil.copy2(root / name, resources / name)
 shutil.copytree(root / 'licenses', resources / 'licenses', dirs_exist_ok=True)
+if args.updates:
+    shutil.copy2(args.sparkle_sdk / 'LICENSE', resources / 'licenses/Sparkle-LICENSE')
 fonts = resources / 'licenses/fonts'
 fonts.mkdir(exist_ok=True)
 for path in (root / 'assets/fonts').glob('*-OFL.txt'):
@@ -121,43 +152,8 @@ for path in [fallback / 'manifest.json', fallback / 'NOTICE.txt', *fallback.rglo
     destination.parent.mkdir(parents=True, exist_ok=True)
     shutil.copy2(path, destination)
 # Additional native UI dependencies have their own lockfile and provenance.
-inventory = []
-notices = []
-lock = tomllib.loads((gui / 'Cargo.lock').read_text())
-checksums = {(p['name'], p['version']): p.get('checksum') for p in lock['package']}
-for package in sorted(metadata['packages'], key=lambda p: (p['name'], p['version'])):
-    source = Path(package['manifest_path']).parent
-    if not package.get('source') and not source.is_relative_to(root / 'vendor'):
-        continue
-    files = sorted(p for p in source.rglob('*') if p.is_file() and p.name.upper().startswith(('LICENSE', 'LICENCE', 'COPYING', 'NOTICE')))
-    record = {k: package[k] for k in ['name', 'version', 'license', 'repository']} | {
-        'source': (f"https://crates.io/api/v1/crates/{package['name']}/{package['version']}/download"
-                   if package.get('source') else str(source.relative_to(root))),
-        'notice_files': [str(p.relative_to(source)) for p in files],
-    }
-    if package.get('license') in ('EUPL-1.2', 'MPL-2.0'):
-        archive_name = f"{package['name']}-{package['version']}.crate"
-        archive = source.parents[2] / 'cache' / source.parent.name / archive_name
-        source_bytes = archive.read_bytes()
-        checksum = hashlib.sha256(source_bytes).hexdigest()
-        if checksum != checksums[(package['name'], package['version'])]:
-            raise RuntimeError(f'Corresponding source checksum mismatch: {archive_name}')
-        destination = resources / 'licenses/sources' / archive_name
-        destination.parent.mkdir(parents=True, exist_ok=True)
-        destination.write_bytes(source_bytes)
-        record['bundled_source'] = f'sources/{archive_name}'
-        record['sha256'] = checksum
-    inventory.append(record)
-    for path in files:
-        notices.append(f"\n{'=' * 72}\n{package['name']} {package['version']} — {path.relative_to(source)}\n{'=' * 72}\n" + path.read_text(errors='replace'))
-(resources / 'licenses/gui-dependencies.json').write_text(json.dumps(inventory, indent=2) + '\n')
-(resources / 'licenses/gui-dependency-notices.txt').write_text('Packaged notices from the optional GUI lockfile, including host build/test dependencies.\n' + ''.join(notices))
-(resources / 'licenses/sources/README.md').write_text(
-    '# Corresponding dependency source\n\nUnmodified Giallo (EUPL-1.2) and MPL-2.0 dependency source archives accompany this app. '
-    'Extract each `.crate` as a gzip-compressed tar archive. Versions, checksums and exact upstream source URLs are in '
-    '`../gui-dependencies.json`; license texts are in `../gui-dependency-notices.txt`. MPL grammar sources are in '
-    '`../grammar-sources/`. Original third-party licenses remain applicable.\n')
-shutil.copy2(manifest.parent / 'Cargo.lock', resources / 'gui-Cargo.lock')
+from gui_notices import package_notices
+package_notices(root, gui, resources, metadata)
 # Sign inner Mach-O executables first, then the enclosing app.
 entitlements = gui / 'assets/app-store.entitlements' if args.app_store else None
 helpers = gui / 'assets/app-store-helper.entitlements' if args.app_store else None
@@ -195,6 +191,9 @@ if args.archive_dir:
         (args.archive_dir / (package.name + '.sha256')).write_text(f'{hashlib.sha256(package.read_bytes()).hexdigest()}  {package.name}\n')
     receipt = {'version': version, 'commit': commit, 'target': host,
         'appStore': args.app_store,
+        'updates': bool(args.updates),
+        'updateFeed': update_settings.get('SUFeedURL'),
+        'sparkleVersion': configuration()['sparkle']['version'] if args.updates else None,
         'sandboxed': args.app_store,
         'storeDistributionSigned': bool(credentials),
         'installerPackage': package.name if package else None,

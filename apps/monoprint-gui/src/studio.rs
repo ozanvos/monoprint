@@ -29,6 +29,11 @@ gpui_kit::actions!(
         ToggleUiAppearance,
         OpenPrivacy,
         OpenSupport,
+        CheckForUpdates,
+        ToggleAutomaticUpdates,
+        RestartToUpdate,
+        InstallForUser,
+        UninstallApp,
         Quit
     ]
 );
@@ -134,6 +139,10 @@ impl InspectorSection {
 }
 
 pub struct Studio {
+    pub updates: Entity<crate::updates::Updates>,
+    pub(super) session: Arc<document::SessionStore>,
+    #[cfg(target_os = "linux")]
+    pub(super) installing: bool,
     pub document: Document,
     pub editor: Entity<EditorState>,
     pub title: Entity<InputState>,
@@ -417,7 +426,13 @@ impl Studio {
                 }
             })
         });
+        let updates = cx.new(crate::updates::Updates::new);
+        subscriptions.push(cx.observe(&updates, |_, _, cx| cx.notify()));
         let mut this = Self {
+            updates,
+            session,
+            #[cfg(target_os = "linux")]
+            installing: false,
             document,
             editor,
             title,

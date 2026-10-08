@@ -7,6 +7,10 @@ on:
         description: Use private Apple signing/notarization credentials
         type: boolean
         default: false
+      updates:
+        description: Include Sparkle in the signed direct-download macOS app
+        type: boolean
+        default: false
       publish:
         description: Publish publicly (also requires committed enablement)
         type: boolean
@@ -34,6 +38,7 @@ jobs:
         env:
           PUBLIC: ${{ inputs.publish }}
           SIGNED: ${{ inputs.signed }}
+          UPDATES: ${{ inputs.updates }}
           RELEASE_TAG: ${{ inputs.tag }}
           MONOPRINT_PUBLIC_PUBLISH: approved
           GITHUB_REPOSITORY_VISIBILITY: ${{ github.event.repository.private && 'private' || 'public' }}
@@ -41,6 +46,7 @@ jobs:
           node --input-type=module <<'JS'
           import { checkRelease } from './scripts/release-config.mjs';
           const publish = process.env.PUBLIC === 'true';
+          if (process.env.UPDATES === 'true' && process.env.SIGNED !== 'true') throw new Error('Sparkle distribution requires signing and notarization');
           if (publish && (process.env.SIGNED !== 'true' || !process.env.RELEASE_TAG)) throw new Error('Public distribution requires signing and an existing release tag');
           await checkRelease({ publicPublish: publish, tag: process.env.RELEASE_TAG || undefined });
           JS
@@ -61,6 +67,7 @@ jobs:
     uses: ./.github/workflows/macos-app.yml
     with:
       signed: ${{ inputs.signed }}
+      updates: ${{ inputs.updates }}
     secrets: inherit
   assemble:
     needs: [checks, cli, npm, app]

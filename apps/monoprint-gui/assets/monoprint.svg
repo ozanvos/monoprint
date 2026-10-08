@@ -1,0 +1,21 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024"><rect x="16" y="16" width="992" height="992" rx="215" fill="#24282d" /><g transform="translate(512 512) scale(1.2) translate(-512 -512)"><defs><linearGradient id="ivory-plane" x1="0" y1="0" x2="0.85" y2="1" gradientUnits="objectBoundingBox"><stop stop-color="#faf8f1" /><stop offset="1" stop-color="#f0ece5" /></linearGradient></defs><path d="M 220 448 L 493 263 Q 513 252 513 275 L 512 505 Q 512 515 502 522 L 220 720 Q 199 732 201 708 L 208 468 Q 208 457 220 448 Z" fill="url(#ivory-plane)" /><defs><linearGradient id="silver-plane" x1="0" y1="0" x2="0.85" y2="1" gradientUnits="objectBoundingBox"><stop stop-color="#d2d6dd" /><stop offset="1" stop-color="#b9bec9" /></linearGradient></defs><path d="M 499 598 L 781 407 Q 798 395 801 416 L 823 598 Q 826 613 813 621 L 625 735 Q 613 744 605 731 Z" fill="url(#silver-plane)" /><defs>
+    <linearGradient id="connector-plane" x1="0" y1="0" x2="0.85" y2="1" gradientUnits="objectBoundingBox">
+      <stop stop-color="#a5a7b0" /><stop offset="1" stop-color="#81848e" />
+    </linearGradient>
+    <clipPath id="connector-fold"><path d="M 510 381 L 620 522 L 499 598 L 465 548 Z" /></clipPath>
+    <radialGradient id="connector-ivory-shadow" cx="0" cy="0" r="28" gradientUnits="userSpaceOnUse" gradientTransform="translate(512 440) scale(1 4)">
+      <stop stop-color="#10131a" stop-opacity="0.30" />
+      <stop offset="0.25" stop-color="#10131a" stop-opacity="0.24" />
+      <stop offset="0.60" stop-color="#10131a" stop-opacity="0.10" />
+      <stop offset="1" stop-color="#10131a" stop-opacity="0" />
+    </radialGradient>
+    <linearGradient id="connector-silver-shadow" x1="570" y1="550" x2="557" y2="531" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#10131a" stop-opacity="0.26" /><stop offset="1" stop-color="#10131a" stop-opacity="0" />
+    </linearGradient>
+  </defs>
+  <path d="M 510 381 L 620 522 L 499 598 L 465 548 Z" fill="url(#connector-plane)" />
+  <g clip-path="url(#connector-fold)">
+    <path d="M 510 381 L 620 522 L 499 598 L 465 548 Z" fill="url(#connector-ivory-shadow)" />
+    <path d="M 499 598 L 625 513 L 610 491 L 484 576 Z" fill="url(#connector-silver-shadow)" />
+  </g>
+</g></svg>
