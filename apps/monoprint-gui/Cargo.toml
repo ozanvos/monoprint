@@ -35,6 +35,11 @@ objc2-foundation = { version = "0.3", optional = true, default-features = false,
 objc2-app-kit = { version = "0.3", default-features = false, features = ["NSGraphics", "NSResponder", "NSView", "NSVisualEffectView"] }
 raw-window-handle = "0.6"
 
+# Keep GPUI's default icons self-contained in development app bundles too.
+# Otherwise RustEmbed reads from the build machine's Cargo cache at runtime.
+[target.'cfg(not(target_family = "wasm"))'.dependencies]
+rust-embed = { version = "8", features = ["debug-embed"] }
+
 [dev-dependencies]
 gpui-kit = { version = "=0.7.1", features = ["test-support"] }
 

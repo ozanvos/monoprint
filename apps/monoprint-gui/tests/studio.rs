@@ -331,6 +331,7 @@ mod macos {
             assert_eq!(button.bounds().origin, image.origin + point(px(8.), px(8.)));
         })
         .unwrap();
+        capture(cx, handle, "drag-image");
         cx.update_window(handle.into(), |_, window, cx| {
             window.render_frame(cx);
             let position = window.find("drag-image-button").bounds().center();
