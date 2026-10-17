@@ -1,0 +1,9 @@
+.thermal-receipt{background:radial-gradient(ellipse at 50% 30%,#3a3836,#1d1c1a)}
+.Receipt__strip{position:relative;box-shadow:0 16px 24px #0007}
+.thermal-receipt .Original__paper{background:linear-gradient(90deg,#0000000a,transparent 8%,transparent 92%,#0000000f),#f5f2eb;padding-top:32px;padding-bottom:26px}
+.Receipt__head{text-align:center;margin-bottom:20px}
+.Receipt__head .Original__title{font-family:CodeMono;font-size:21px;line-height:29px;font-weight:700}
+.Receipt__body{border-top:1px dashed #151515;border-bottom:1px dashed #151515;padding:16px 0}
+.Receipt__foot{font-family:Inter;text-align:center;font-size:10px;margin-top:18px;color:#777}
+.Receipt__slot{position:absolute;z-index:3;left:-10px;right:-10px;top:-7px;height:10px;border-radius:0 0 5px 5px;background:linear-gradient(#060605,#2a2826);box-shadow:0 3px 6px #0007}
+.Receipt__tail{height:10px;background-repeat:repeat-x}

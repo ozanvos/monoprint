@@ -19,7 +19,11 @@ pub fn code(
     separate_comments: bool,
 ) -> Result<Highlighted> {
     let language = snippet.language.id().to_owned();
-    let theme_name = if theme.editor.is_some() {
+    let theme_name = if theme.original && theme.syntax.len() > 1 {
+        format!("original-{}-{mode}", theme.id)
+    } else if theme.original {
+        format!("original-{}", theme.id)
+    } else if theme.editor.is_some() {
         format!("editor-{}", theme.id)
     } else {
         format!("ink-{}-{mode}", theme.id)
@@ -52,12 +56,22 @@ pub fn code(
     let mut html = String::new();
     let mut offset = 0;
     for (index, tokens) in result.tokens.iter().enumerate() {
+        let selected = theme.study_id.is_some();
+        let empty = selected && tokens.iter().all(|token| token.text.trim().is_empty());
         let class = if marked.contains(&(index + 1)) {
             "line highlighted-line"
         } else {
             "line"
         };
-        write!(html, "<span class=\"{class}\" data-line=\"{}\">", index + 1)?;
+        let empty_class = if empty { " empty-line" } else { "" };
+        write!(
+            html,
+            "<span class=\"{class}{empty_class}\" data-line=\"{}\">",
+            index + 1
+        )?;
+        if selected {
+            html.push_str("<span class=\"lc\">");
+        }
         let mut runs: Vec<(Range<usize>, giallo::Style, bool)> = Vec::new();
         for token in tokens {
             let (style, comment) = match token.style {
@@ -83,7 +97,7 @@ pub fn code(
         for (range, style, comment) in runs {
             let foreground = style.foreground.as_hex();
             let mut css = format!("color:{foreground};");
-            if theme.editor.is_some() {
+            if theme.editor.is_some() || theme.original {
                 if style.background != default_background {
                     write!(css, "background-color:{};", style.background.as_hex())?;
                 }
@@ -97,7 +111,13 @@ pub fn code(
                 );
             }
             if style.font_style.contains(FontStyle::BOLD) {
-                css.push_str("font-weight:bold;");
+                // Monoprint uses a restrained function-name weight in each
+                // appearance; grammar scopes determine which tokens receive it.
+                css.push_str(match (theme.id.as_str(), mode) {
+                    ("monoprint", "dark") => "font-weight:560;",
+                    ("monoprint", _) => "font-weight:600;",
+                    _ => "font-weight:bold;",
+                });
             }
             if style.font_style.contains(FontStyle::ITALIC) {
                 css.push_str("font-style:italic;");
@@ -125,6 +145,9 @@ pub fn code(
             if position < range.end {
                 span(&mut html, &css, &source[position..range.end], false)?;
             }
+        }
+        if selected {
+            html.push_str("</span>");
         }
         html.push_str("</span>");
         if index + 1 < result.tokens.len() {

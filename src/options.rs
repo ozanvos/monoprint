@@ -295,7 +295,7 @@ impl Snippet {
 
 /// A reusable visual style. Clone it to derive variations for other images.
 ///
-/// Defaults: Candy, dark, opaque background, 64px padding, automatic width with
+/// Defaults: Monoprint, dark, opaque background, 32px padding, automatic width with
 /// a 520px minimum, theme-default line numbers, and the theme's bundled font at 15px.
 /// Setters are infallible; rendering validates the complete configuration.
 #[derive(Clone)]
@@ -334,7 +334,7 @@ impl Default for Style {
             theme: Theme::default(),
             appearance: Appearance::Dark,
             background: Background::Theme,
-            padding: 64,
+            padding: 32,
             width: None,
             font_size: 15,
             line_numbers: LineNumbers::Auto,

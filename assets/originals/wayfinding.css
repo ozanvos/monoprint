@@ -1,0 +1,7 @@
+.wayfinding .Original__paper{border:1px solid #30363c;border-radius:8px;background:linear-gradient(#181c20,#121518);padding-top:calc(var(--inset) + 14px);padding-bottom:calc(var(--inset) + 14px)}
+.wayfinding .Original__title{color:#adb5bd;margin-bottom:22px}
+.Wayfinding__route{padding-left:30px;border-left:2px solid #3a4047}
+.wayfinding .Editor__editor .line{border-left:4px solid transparent;padding-left:14px;margin-left:-18px;width:calc(100% + 18px)}
+.wayfinding .line:after{position:absolute;left:-28px;top:1px;width:19px;height:19px;border-radius:4px;text-align:center;font-family:Inter;font-size:9px;line-height:19px;font-weight:700;color:#111}
+
+.wayfinding .Editor__showLineNumbers .line:after{display:none}

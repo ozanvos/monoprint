@@ -1,0 +1,5 @@
+.single-ink .Original__paper{padding-top:32px;padding-bottom:0}
+.Ink__body{border-left:1px solid #121212;padding-left:var(--inset)}
+.Ink__mark{position:absolute;left:var(--inset);top:4px;width:10px;height:10px;background:#e2401b}
+.Ink__foot{border-top:1px solid #121212;margin-top:42px;margin-left:var(--inset);padding-top:9px;min-height:10px;text-align:right}
+.single-ink .Original__title{font-weight:600;letter-spacing:1px}

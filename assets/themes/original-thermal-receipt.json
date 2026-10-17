@@ -1,0 +1,71 @@
+{
+  "name": "original-thermal-receipt",
+  "type": "light",
+  "colors": {
+    "editor.foreground": "#151515",
+    "editor.background": "#f5f2eb"
+  },
+  "tokenColors": [
+    {
+      "scope": [
+        "keyword",
+        "storage"
+      ],
+      "settings": {
+        "foreground": "#151515",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.type",
+        "entity.name.class",
+        "support.type",
+        "support.class",
+        "entity.other.inherited-class"
+      ],
+      "settings": {
+        "foreground": "#151515",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.function",
+        "support.function",
+        "variable.function"
+      ],
+      "settings": {
+        "foreground": "#151515",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "string",
+        "markup.inline.raw"
+      ],
+      "settings": {
+        "foreground": "#3b3b3b"
+      }
+    },
+    {
+      "scope": [
+        "constant.numeric",
+        "constant.language"
+      ],
+      "settings": {
+        "foreground": "#151515"
+      }
+    },
+    {
+      "scope": [
+        "comment",
+        "string.quoted.docstring.multi"
+      ],
+      "settings": {
+        "foreground": "#777777"
+      }
+    }
+  ]
+}

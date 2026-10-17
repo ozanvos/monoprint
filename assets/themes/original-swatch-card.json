@@ -1,0 +1,70 @@
+{
+  "name": "original-swatch-card",
+  "type": "dark",
+  "colors": {
+    "editor.foreground": "#f6f1e7",
+    "editor.background": "#1d3557"
+  },
+  "tokenColors": [
+    {
+      "scope": [
+        "keyword",
+        "storage"
+      ],
+      "settings": {
+        "foreground": "#ffb070",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.type",
+        "entity.name.class",
+        "support.type",
+        "support.class",
+        "entity.other.inherited-class"
+      ],
+      "settings": {
+        "foreground": "#86d0ff"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.function",
+        "support.function",
+        "variable.function"
+      ],
+      "settings": {
+        "foreground": "#ff9bb0",
+        "fontStyle": "bold"
+      }
+    },
+    {
+      "scope": [
+        "string",
+        "markup.inline.raw"
+      ],
+      "settings": {
+        "foreground": "#bfe38a"
+      }
+    },
+    {
+      "scope": [
+        "constant.numeric",
+        "constant.language"
+      ],
+      "settings": {
+        "foreground": "#ffd166"
+      }
+    },
+    {
+      "scope": [
+        "comment",
+        "string.quoted.docstring.multi"
+      ],
+      "settings": {
+        "foreground": "#93a6bd"
+      }
+    }
+  ]
+}

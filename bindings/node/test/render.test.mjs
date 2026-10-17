@@ -90,7 +90,10 @@ test('styles are reusable snapshots and explicit auto/null restore defaults', as
 });
 
 test('catalog discovery is immutable, canonical, and follows reviewed grammar exclusions', () => {
-  assert.equal(getThemes().length, 54);
+  assert.equal(getThemes().length, 82);
+  const signature = getThemes().find(t => t.id === 'monoprint');
+  assert.equal(signature.name, 'Monoprint');
+  assert.deepEqual(signature.appearances, ['dark', 'light']);
   assert.equal(getLanguages().length, 232);
   assert.deepEqual(getThemes().find(t => t.id === 'removed-frame').appearances, ['dark']);
   assert.ok(getLanguages().some(l => l.id === 'typescript' && l.aliases.includes('ts')));

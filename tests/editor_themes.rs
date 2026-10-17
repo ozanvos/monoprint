@@ -114,7 +114,9 @@ fn curated_pairs_keep_legacy_palettes_and_switch_the_entire_frame() {
 #[test]
 fn every_editor_palette_renders_in_all_formats() {
     let renderer = Renderer::new();
-    let themes: Vec<_> = Theme::all().filter(|t| t.family() != "Monoprint").collect();
+    let themes: Vec<_> = Theme::all()
+        .filter(|t| !t.family().starts_with("Monoprint"))
+        .collect();
     assert_eq!(themes.len(), 21);
     let variants: Vec<_> = themes
         .into_iter()

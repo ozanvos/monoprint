@@ -21,7 +21,7 @@ pub struct Args {
     #[arg(long, value_enum)]
     pub format: Option<Format>,
     /// Theme ID; see --list-themes.
-    #[arg(long, default_value = "removed-frame")]
+    #[arg(long, default_value = "monoprint")]
     pub theme: String,
     /// Use the theme's light variant.
     #[arg(long, conflicts_with = "dark")]
@@ -35,7 +35,7 @@ pub struct Args {
     /// Outer canvas: theme, solid, lattice, halftone, or none.
     #[arg(long)]
     pub background: Option<monoprint::Background>,
-    #[arg(long, default_value_t = 64, value_parser = clap::value_parser!(u32).range(0..=512))]
+    #[arg(long, default_value_t = 32, value_parser = clap::value_parser!(u32).range(0..=512))]
     pub padding: u32,
     /// Outer image width in CSS pixels; code wraps to fit.
     #[arg(long, value_parser = clap::value_parser!(u32).range(80..=8192))]

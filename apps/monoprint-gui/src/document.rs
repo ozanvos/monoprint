@@ -79,12 +79,12 @@ impl Default for Document {
         Self {
             source: EXAMPLE.into(),
             language: "tsx".into(),
-            theme: "removed-frame".into(),
+            theme: Theme::default().to_string(),
             light: false,
             transparent: false,
             background: "theme".into(),
             line_numbers: None,
-            padding: "64".into(),
+            padding: "32".into(),
             width: "720".into(),
             title: "".into(),
             highlights: "".into(),
@@ -627,7 +627,7 @@ mod tests {
         };
         d.select_theme("removed-frame".parse().unwrap());
         assert!(!d.light);
-        d.width = "150".into();
+        d.width = "100".into();
         assert!(d.prepare(None, None).is_err());
         d.width.clear();
         assert!(d.prepare(None, None).is_ok());

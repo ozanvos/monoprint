@@ -11,6 +11,8 @@ monoprint = { path = "../monoprint", default-features = false }
 
 Adjust the path to your checkout. Rust 1.97+ and a C compiler are required. Disabling default features removes clap and the executable, while retaining all themes, grammars, and formats.
 
+The default style is **Monoprint**, a bordered Masthead composition with restrained oxide and umber syntax. It supports both dark (default) and light appearances under the `monoprint` ID. Use `Style::default().appearance(Appearance::Light)` for its light counterpart.
+
 The library is usable as a path dependency. **Registry publication is disabled** until the vendored raster and SVG changes are available in published dependencies (upstream or maintained forks). Monoprint directly depends on its patched backends; callers do not need a `[patch]` section. A root-only Cargo patch would silently lose the fixes downstream. Git distribution should also retain these path dependencies, but has not been tested against a published remote.
 
 ## One image
@@ -31,7 +33,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 }
 ```
 
-The default style is Candy dark, 64px padding, automatic width (at least 520px), the theme's font at a nominal 15px size, and its default line-number behavior. PNG scale is explicit; `Scale::default()` is 4×. `svg()` and `html()` accept only the snippet and style and return `String` at CSS dimensions.
+The default style is Monoprint dark, 32px padding, automatic width (at least 520px), the theme's font at a nominal 15px size, and its default line-number behavior. PNG scale is explicit; `Scale::default()` is 4×. `svg()` and `html()` accept only the snippet and style and return `String` at CSS dimensions.
 
 Passing a `Scale` uses Fast lossless compression, preserving existing output.
 For smaller final exports, pass `PngOptions` instead:
@@ -91,7 +93,7 @@ merge, and empty/reversed/out-of-bounds coordinates fail when rendered.
 
 The title is a label, not a filename hint. Use `Language::for_file_name()` explicitly; it does not read the file. Unknown filenames return `None`; parsing an unknown explicit language returns an error. TypeScript aliases (`ts`, `mts`, `cts`) select TypeScript; TSX remains separate. TeX selects LaTeX. `Language::all()` lists these unique selections (231 highlighting languages plus plain text, backed by 232 bundled named grammars).
 
-`Theme::all()` lists 54 curated presets; matching editor palettes appear once.
+`Theme::all()` lists 82 curated presets; matching light/dark appearances appear once.
 For example, `Style::new("ayu".parse()?).appearance(Appearance::Light)` selects
 Ayu Light, including its frame and background. Original IDs still work:
 `Style::new("ayu-light".parse()?)` keeps its light default. `Theme::aliases()`
@@ -228,7 +230,7 @@ use monoprint::{Error, InvalidOption, Renderer, Snippet, Style};
 let result = Renderer::new().svg(&Snippet::new("hello"), &Style::default().width(100));
 match result {
     Err(Error::InvalidOption(InvalidOption::Width { min, .. })) => {
-        assert_eq!(min, 177); // 2 × 64px padding + 49px for code
+        assert_eq!(min, 113); // 2 × 32px padding + 49px for code
     }
     other => panic!("unexpected result: {other:?}"),
 }
@@ -250,7 +252,7 @@ Run `cargo doc --no-default-features --no-deps --open` for the API reference and
 
 ## Editor palettes and backgrounds
 
-`Theme::all()` includes the 33 bundled frame presets and 31 editor palettes. `family()` groups related palettes; `default_appearance()` identifies a supported default. `Style::new(theme)` uses that default. `style.theme(theme)` preserves the appearance when supported, otherwise switches to the new theme’s preferred appearance; an explicit unsupported `appearance()` still fails on render.
+`Theme::all()` includes the Monoprint default, the Originals collection, bundled frame presets and curated editor palettes. `family()` groups related palettes; `default_appearance()` identifies a supported default. `Style::new(theme)` uses that default. `style.theme(theme)` preserves the appearance when supported, otherwise switches to the new theme’s preferred appearance; an explicit unsupported `appearance()` still fails on render.
 
 ```rust
 use monoprint::{Background, Style, Theme};

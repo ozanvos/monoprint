@@ -10,7 +10,7 @@ import { png } from 'monoprint';
 
 const image = await png('const answer = 42;', {
   language: 'typescript',
-  theme: 'removed-frame',
+  theme: 'monoprint',
   padding: 32,
   fontSize: 18,
   scale: 2,

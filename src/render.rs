@@ -1,6 +1,6 @@
 use crate::{
     Error, LineNumbers, Renderer, Scale, Snippet, Style, TextRole, assets, background,
-    editor_theme, effects, fallback::Fallbacks, highlight,
+    editor_theme, effects, fallback::Fallbacks, highlight, originals, selected_styles,
 };
 use anyhow::{Context, Result};
 use base64::{Engine, engine::general_purpose::STANDARD};
@@ -253,6 +253,7 @@ pub(crate) fn render(
             LineNumbers::Hide => false,
         };
     let weight = if theme.editor.is_none()
+        && !theme.original
         && style.font.is_none()
         && matches!(theme.font.as_str(), "jetbrains-mono" | "ibm-plex-mono")
     {
@@ -289,7 +290,16 @@ pub(crate) fn render(
         .find(|g| g.name == code.language || g.aliases.contains(&code.language))
         .map(|g| g.display_name.as_str())
         .unwrap_or("Plain Text");
-    let mut template = if theme.editor.is_some() {
+    let original = if theme.study_id.is_some() {
+        Some(selected_styles::frame(theme, style, code.line_count))
+    } else {
+        theme
+            .original
+            .then(|| originals::frame(theme, style, snippet, source))
+    };
+    let mut template = if let Some(frame) = &original {
+        frame.template.clone()
+    } else if theme.editor.is_some() {
         editor_theme::template(!snippet.title.is_empty(), style.background)
     } else {
         assets::templates()
@@ -298,9 +308,12 @@ pub(crate) fn render(
             .clone()
     };
     if template.contains("__TITLE__") {
-        let title_uses_code_font = matches!(theme.id.as_str(), "removed-frame" | "removed-frame");
+        let title_uses_code_font = matches!(
+            theme.id.as_str(),
+            "removed-frame" | "removed-frame" | "thermal-receipt" | "monoprint"
+        );
         let title_font = match theme.id.as_str() {
-            "removed-frame" | "removed-frame" => font,
+            "removed-frame" | "removed-frame" | "thermal-receipt" | "monoprint" => font,
             "removed-frame" => assets::font("ibm-plex-mono"),
             _ => assets::font("inter"),
         };
@@ -324,7 +337,9 @@ pub(crate) fn render(
         .map(|w| format!("width:{w}px"))
         .unwrap_or_else(|| "display:inline-block;min-width:520px".into());
     let editor_css;
-    let base_css = if theme.editor.is_some() {
+    let base_css = if let Some(frame) = &original {
+        &frame.css
+    } else if theme.editor.is_some() {
         editor_css = editor_theme::css(theme);
         &editor_css
     } else {
@@ -379,6 +394,19 @@ pub(crate) fn render(
                 ("__TITLE__", &assets::escape(&snippet.title)),
                 ("__SUBTITLE__", &assets::escape(&snippet.subtitle)),
                 ("__LANGUAGE__", &assets::escape(language_name)),
+                (
+                    "__LANGUAGE_SHORT__",
+                    &assets::escape(&code.language.to_uppercase()),
+                ),
+                ("__LINE_COUNT__", &code.line_count.to_string()),
+                (
+                    "__LINE_UNIT__",
+                    if code.line_count == 1 {
+                        "line"
+                    } else {
+                        "lines"
+                    },
+                ),
             ],
         )
     };
@@ -408,7 +436,7 @@ pub(crate) fn render(
     let mut stylesheet = parse_css(&css)?;
     let mut node =
         takumi::from_html(&html, FromHtmlOptions::default()).context("parsing frame markup")?;
-    if effects::needs_measurement(&theme.id) {
+    if effects::needs_measurement(&theme.id) || theme.id == "dither-light" {
         let fonts = renderer.fonts(style, secondary_font, fallbacks)?;
         let viewport =
             Viewport::new((style.width.map(|w| w * 2), None)).with_device_pixel_ratio(2.0);
@@ -422,6 +450,7 @@ pub(crate) fn render(
         )?;
         let effect = effects::prepare(&theme.id, style, size.width / 2.0, size.height / 2.0);
         css += &effect.css;
+        css += &originals::measured_css(style, size.width / 2.0, size.height / 2.0);
         // Adapt only trusted template markup, before inserting user text.
         let template =
             effects::adapt_template(&theme.id, template, size.width / 2.0, size.height / 2.0);

@@ -1,0 +1,278 @@
+{
+  "single-ink": {
+    "id": "single-ink",
+    "name": "Single Ink",
+    "font": "jetbrains-mono",
+    "original": true,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#121212",
+        "--ink-token-keyword": "#121212",
+        "--ink-token-type": "#121212",
+        "--ink-token-string": "#57534b",
+        "--ink-token-function": "#e2401b",
+        "--ink-token-comment": "#8c887f",
+        "--ink-token-number": "#121212",
+        "--ink-highlight": "#80808028"
+      }
+    },
+    "background": {
+      "to": "#f3f0e8",
+      "from": "#f3f0e8"
+    },
+    "surface": "#f3f0e8"
+  },
+  "swatch-card": {
+    "id": "swatch-card",
+    "name": "Swatch Card",
+    "font": "geist-mono",
+    "original": true,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#f6f1e7",
+        "--ink-token-keyword": "#ffb070",
+        "--ink-token-type": "#86d0ff",
+        "--ink-token-string": "#bfe38a",
+        "--ink-token-function": "#ff9bb0",
+        "--ink-token-comment": "#93a6bd",
+        "--ink-token-number": "#ffd166",
+        "--ink-highlight": "#80808028"
+      }
+    },
+    "background": {
+      "to": "#d6d2ca",
+      "from": "#d6d2ca"
+    },
+    "surface": "#1d3557"
+  },
+  "wayfinding": {
+    "id": "wayfinding",
+    "name": "Wayfinding",
+    "font": "jetbrains-mono",
+    "original": true,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#f2f2ec",
+        "--ink-token-keyword": "#ffffff",
+        "--ink-token-type": "#f4b400",
+        "--ink-token-string": "#9cc3ff",
+        "--ink-token-function": "#2ec4a0",
+        "--ink-token-comment": "#8a9099",
+        "--ink-token-number": "#ff9f7a",
+        "--ink-highlight": "#80808028"
+      }
+    },
+    "background": {
+      "to": "#0f1215",
+      "from": "#0f1215"
+    },
+    "surface": "#161a1e"
+  },
+  "highlighter-pass": {
+    "id": "highlighter-pass",
+    "name": "Highlighter Pass",
+    "font": "jetbrains-mono",
+    "original": true,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#0a0a0a",
+        "--ink-token-keyword": "#0a0a0a",
+        "--ink-token-type": "#0a0a0a",
+        "--ink-token-string": "#3d3d3d",
+        "--ink-token-function": "#0a0a0a",
+        "--ink-token-comment": "#7a7a7a",
+        "--ink-token-number": "#0a0a0a",
+        "--ink-highlight": "#d6ff26"
+      }
+    },
+    "background": {
+      "to": "#ffffff",
+      "from": "#ffffff"
+    },
+    "surface": "#ffffff"
+  },
+  "gallery-wall": {
+    "id": "gallery-wall",
+    "name": "Gallery Wall",
+    "font": "jetbrains-mono",
+    "original": true,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#23211e",
+        "--ink-token-keyword": "#8a2c38",
+        "--ink-token-type": "#24597a",
+        "--ink-token-string": "#476827",
+        "--ink-token-function": "#23211e",
+        "--ink-token-comment": "#8b8578",
+        "--ink-token-number": "#9c4f24",
+        "--ink-highlight": "#80808028"
+      }
+    },
+    "background": {
+      "to": "#ccc6bc",
+      "from": "#ccc6bc"
+    },
+    "surface": "#fbf9f4"
+  },
+  "departure-board": {
+    "id": "departure-board",
+    "name": "Departure Board",
+    "font": "jetbrains-mono",
+    "original": true,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#f1efe6",
+        "--ink-token-keyword": "#141414",
+        "--ink-token-type": "#ffffff",
+        "--ink-token-string": "#8fe3b0",
+        "--ink-token-function": "#141414",
+        "--ink-token-comment": "#999ca2",
+        "--ink-token-number": "#ffb15c",
+        "--ink-highlight": "#80808028"
+      }
+    },
+    "background": {
+      "to": "#080809",
+      "from": "#080809"
+    },
+    "surface": "#1b1c1f"
+  },
+  "dither-light": {
+    "id": "dither-light",
+    "name": "Dither Light",
+    "font": "geist-mono",
+    "original": true,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#000000",
+        "--ink-token-keyword": "#1d3cff",
+        "--ink-token-type": "#000000",
+        "--ink-token-string": "#3a3a3a",
+        "--ink-token-function": "#000000",
+        "--ink-token-comment": "#777777",
+        "--ink-token-number": "#000000",
+        "--ink-highlight": "#80808028"
+      }
+    },
+    "background": {
+      "to": "#ffffff",
+      "from": "#ffffff"
+    },
+    "surface": "#ffffff"
+  },
+  "cutting-mat": {
+    "id": "cutting-mat",
+    "name": "Cutting Mat",
+    "font": "commit-mono",
+    "original": true,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#1d2a22",
+        "--ink-token-keyword": "#0f5a3c",
+        "--ink-token-type": "#9a3412",
+        "--ink-token-string": "#4d6b16",
+        "--ink-token-function": "#1d2a22",
+        "--ink-token-comment": "#6f7c71",
+        "--ink-token-number": "#b45309",
+        "--ink-highlight": "#80808028"
+      }
+    },
+    "background": {
+      "to": "#1c4936",
+      "from": "#1c4936"
+    },
+    "surface": "#f5efdc"
+  },
+  "thermal-receipt": {
+    "id": "thermal-receipt",
+    "name": "Thermal Receipt",
+    "font": "space-mono",
+    "original": true,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#151515",
+        "--ink-token-keyword": "#151515",
+        "--ink-token-type": "#151515",
+        "--ink-token-string": "#3b3b3b",
+        "--ink-token-function": "#151515",
+        "--ink-token-comment": "#777777",
+        "--ink-token-number": "#151515",
+        "--ink-highlight": "#80808028"
+      }
+    },
+    "background": {
+      "to": "#242321",
+      "from": "#242321"
+    },
+    "surface": "#f5f2eb"
+  },
+  "proof-marks": {
+    "id": "proof-marks",
+    "name": "Proof Marks",
+    "font": "ibm-plex-mono",
+    "original": true,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#222222",
+        "--ink-token-keyword": "#1e1e1e",
+        "--ink-token-type": "#3b3b3b",
+        "--ink-token-string": "#5a5a5a",
+        "--ink-token-function": "#1e1e1e",
+        "--ink-token-comment": "#8a8a8a",
+        "--ink-token-number": "#5a5a5a",
+        "--ink-highlight": "#80808028"
+      }
+    },
+    "background": {
+      "to": "#fbf8f1",
+      "from": "#fbf8f1"
+    },
+    "surface": "#fbf8f1"
+  },
+  "monoprint": {
+    "id": "monoprint",
+    "name": "Monoprint",
+    "font": "jetbrains-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#2a2a28",
+        "--ink-token-keyword": "#a0452b",
+        "--ink-token-type": "#2a2a28",
+        "--ink-token-string": "#6e5a35",
+        "--ink-token-function": "#2a2a28",
+        "--ink-token-comment": "#6a6a65",
+        "--ink-token-number": "#6e5a35",
+        "--ink-highlight": "#a0452b20",
+        "--monoprint-stage": "#e8e8e5",
+        "--monoprint-surface": "#f7f7f5",
+        "--monoprint-footer": "#f0f0ee",
+        "--monoprint-border": "#b9b9b4",
+        "--monoprint-rule": "#d0d0cc",
+        "--monoprint-label": "#6b6b66"
+      },
+      "dark": {
+        "--ink-foreground": "#ecece8",
+        "--ink-token-keyword": "#e09a7e",
+        "--ink-token-type": "#ecece8",
+        "--ink-token-string": "#d4bf92",
+        "--ink-token-function": "#ecece8",
+        "--ink-token-comment": "#9e9e98",
+        "--ink-token-number": "#d4bf92",
+        "--ink-highlight": "#e09a7e28",
+        "--monoprint-stage": "#1b1b1a",
+        "--monoprint-surface": "#252524",
+        "--monoprint-footer": "#2c2c2b",
+        "--monoprint-border": "#4a4a47",
+        "--monoprint-rule": "#383836",
+        "--monoprint-label": "#9c9c96"
+      }
+    },
+    "background": {
+      "from": "#1b1b1a",
+      "to": "#1b1b1a"
+    },
+    "surface": "#252524"
+  }
+}

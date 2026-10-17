@@ -12,6 +12,10 @@ pub struct Theme {
     pub syntax: BTreeMap<String, BTreeMap<String, String>>,
     pub background: Option<Gradient>,
     pub editor: Option<EditorTheme>,
+    #[serde(default)]
+    pub original: bool,
+    pub surface: Option<String>,
+    pub study_id: Option<String>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -66,6 +70,18 @@ pub fn themes() -> &'static BTreeMap<String, Theme> {
             serde_json::from_str(include_str!("../assets/editor/themes.json"))
                 .expect("bundled editor theme manifest");
         for (id, theme) in editor {
+            assert!(themes.insert(id, theme).is_none(), "duplicate theme ID");
+        }
+        let originals: BTreeMap<String, Theme> =
+            serde_json::from_str(include_str!("../assets/originals/themes.json"))
+                .expect("bundled Monoprint originals");
+        for (id, theme) in originals {
+            assert!(themes.insert(id, theme).is_none(), "duplicate theme ID");
+        }
+        let selected: BTreeMap<String, Theme> =
+            serde_json::from_str(include_str!("../assets/selected/themes.json"))
+                .expect("bundled selected Monoprint styles");
+        for (id, theme) in selected {
             assert!(themes.insert(id, theme).is_none(), "duplicate theme ID");
         }
         themes

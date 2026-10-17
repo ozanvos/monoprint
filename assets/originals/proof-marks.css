@@ -1,0 +1,10 @@
+.proof-marks .Original__paper{padding:calc(var(--inset) + 8px)}
+.Proof__body{padding-left:var(--inset);border-left:1px solid #2222222e}
+.proof-marks .Original__title{margin-left:var(--inset);margin-top:24px;font-size:10px;color:#8a8a8a}
+.Proof__crop{position:absolute;width:16px;height:16px;border-color:#222}
+.Proof__crop.tl{left:0;top:0;border-left:1px solid;border-top:1px solid}
+.Proof__crop.tr{right:0;top:0;border-right:1px solid;border-top:1px solid}
+.Proof__crop.bl{left:0;bottom:0;border-left:1px solid;border-bottom:1px solid}
+.Proof__crop.br{right:0;bottom:0;border-right:1px solid;border-bottom:1px solid}
+
+.Original.proof-marks .highlighted-text{background-color:transparent;text-decoration:underline;text-decoration-color:#1f4fd1;text-decoration-thickness:1.5px;text-underline-offset:4px}

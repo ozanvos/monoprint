@@ -970,6 +970,81 @@ mod macos {
         settle(cx, handle, studio);
     }
 
+    fn assert_original_style_picker(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+        width: u32,
+    ) {
+        cx.update_window(handle.into(), |_, window, cx| {
+            studio.update(cx, |s, cx| {
+                s.document.select_background(monoprint::Background::Theme);
+                s.document.select_typeface(false, "");
+                s.document.select_typeface(true, "");
+                s.sync_typeface(false, window, cx);
+                s.sync_typeface(true, window, cx);
+                s.document.line_numbers = Some(false);
+                s.width.update(cx, |input, cx| input.replace_all("680", window, cx));
+                s.padding.update(cx, |input, cx| input.replace_all("72", window, cx));
+                s.font_size.update(cx, |input, cx| input.replace_all("20", window, cx));
+                s.install_source("user.ts".into(), "type User = { name: string };\n\nasync function getUser(id: string): Promise<User> {\n  const res = await fetch(`/api/users/${id}`);\n  return res.json();\n}".into(), window, cx);
+            });
+        }).unwrap();
+        settle(cx, handle, studio);
+        reveal_theme_gallery(cx, handle, studio);
+        inspector_click(cx, handle, studio, "themes-all");
+        for id in [
+            "single-ink",
+            "swatch-card",
+            "highlighter-pass",
+            "label-tape",
+            "ragged-block",
+            "holofoil",
+            "press-proof",
+        ] {
+            reveal_theme_gallery(cx, handle, studio);
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.theme_search
+                        .update(cx, |input, cx| input.replace_all(id, window, cx));
+                });
+            })
+            .unwrap();
+            settle(cx, handle, studio);
+            let index = cx.read_entity(studio, |s, _| {
+                assert_eq!(s.filtered_themes.len(), 1, "search {id}");
+                s.filtered_themes[0]
+            });
+            inspector_click(cx, handle, studio, ("theme-swatch", index));
+            cx.read_entity(studio, |s, _| {
+                assert_eq!(s.document.theme, id);
+                assert!(s.error.is_none(), "{id}: {:?}", s.error);
+                assert_eq!(s.preview_revision, s.revision);
+                assert_eq!(s.preview.as_ref().unwrap().width, 1360, "2x native preview");
+            });
+            click(cx, handle, studio, "close-theme-browser");
+            capture(cx, handle, &format!("original-{id}-{width}"));
+        }
+    }
+
+    fn reveal_theme_swatch(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+        index: usize,
+    ) {
+        cx.update_window(handle.into(), |_, _, cx| {
+            studio.update(cx, |s, cx| {
+                let position = s.filtered_themes.iter().position(|&i| i == index).unwrap();
+                s.theme_scroll
+                    .scroll_to_item(position / 3, ScrollStrategy::Center);
+                cx.notify();
+            });
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+    }
+
     fn gutter_click(
         cx: &mut HeadlessAppContext,
         handle: WindowHandle<Root>,
@@ -1478,6 +1553,27 @@ mod macos {
                 assert!(s.preview.is_some(), "{:?}", s.error)
             });
             capture(&mut cx, handle, &format!("studio-{}", width as u32));
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.theme, "monoprint");
+                assert_eq!(s.thumbnails[0].0.id(), "monoprint");
+                assert!(
+                    s.light_thumbnails
+                        .contains_key(&monoprint::Theme::default())
+                );
+            });
+            inspector_click(&mut cx, handle, &studio, "light-appearance");
+            cx.read_entity(&studio, |s, _| {
+                assert!(s.document.light);
+                assert!(s.error.is_none(), "{:?}", s.error);
+            });
+            capture(
+                &mut cx,
+                handle,
+                &format!("monoprint-light-{}", width as u32),
+            );
+            inspector_click(&mut cx, handle, &studio, "dark-appearance");
+            cx.read_entity(&studio, |s, _| assert!(!s.document.light));
+            capture(&mut cx, handle, &format!("monoprint-dark-{}", width as u32));
             assert_material_visible(&mut cx, handle, &studio);
             assert_source_syntax_colored(&mut cx, handle, &studio);
 
@@ -1878,6 +1974,7 @@ mod macos {
                     .position(|(theme, _)| theme.id() == "removed-frame")
                     .unwrap()
             });
+            reveal_theme_swatch(&mut cx, handle, &studio, candy_variant);
             cx.update_window(handle.into(), |_, window, cx| {
                 window.click(("theme-swatch", candy_variant), cx)
             })
@@ -1891,6 +1988,7 @@ mod macos {
             });
             inspector_click(&mut cx, handle, &studio, "themes-dark");
             reveal_theme_gallery(&mut cx, handle, &studio);
+            reveal_theme_swatch(&mut cx, handle, &studio, candy_variant);
             cx.update_window(handle.into(), |_, window, cx| {
                 window.click(("theme-swatch", candy_variant), cx)
             })
@@ -1989,7 +2087,7 @@ mod macos {
             settle(&mut cx, handle, &studio);
             reveal_theme_gallery(&mut cx, handle, &studio);
 
-            let (candy, last, initial_revision) = cx.read_entity(&studio, |s, _| {
+            let (candy, first, last, initial_revision) = cx.read_entity(&studio, |s, _| {
                 let mut bundled = s
                     .thumbnails
                     .iter()
@@ -2007,6 +2105,7 @@ mod macos {
                         .iter()
                         .position(|(theme, _)| theme.id() == "removed-frame")
                         .unwrap(),
+                    s.filtered_themes[0],
                     s.thumbnails.len() - 1,
                     s.revision,
                 )
@@ -2021,14 +2120,14 @@ mod macos {
                 })
                 .unwrap();
             cx.update_window(handle.into(), |_, window, cx| {
-                assert!(window.find(("theme-swatch", candy)).visible());
-                assert!(window.find(("theme-swatch", candy)).bounds().size.width <= px(128.));
+                assert!(window.find(("theme-swatch", first)).visible());
+                assert!(window.find(("theme-swatch", first)).bounds().size.width <= px(128.));
                 assert!(
                     window.try_find(("theme-swatch", last)).is_none(),
                     "offscreen themes should not build views"
                 );
                 window.scroll(
-                    ("theme-swatch", candy),
+                    ("theme-swatch", first),
                     ScrollDelta::Pixels(point(px(0.), px(-5000.))),
                     cx,
                 );
@@ -2040,7 +2139,7 @@ mod macos {
             });
             cx.update_window(handle.into(), |_, window, _| {
                 assert!(window.find(("theme-swatch", last)).visible());
-                assert!(window.try_find(("theme-swatch", candy)).is_none());
+                assert!(window.try_find(("theme-swatch", first)).is_none());
                 assert_eq!(window.find("close-theme-browser").bounds(), pinned_bounds.0);
                 assert_eq!(window.find("export-image").bounds(), pinned_bounds.1);
             })
@@ -2846,6 +2945,7 @@ mod macos {
             gutter_click(&mut cx, handle, &studio, 1);
             cx.read_entity(&studio, |s, _| assert!(s.document.highlights.is_empty()));
             assert_fallback_glyphs(&mut cx, handle, &studio, width as u32);
+            assert_original_style_picker(&mut cx, handle, &studio, width as u32);
             println!(
                 "Studio {}×{}: render, sidebar resizing, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, typography, automatic emoji/CJK fallback, interface appearance, canvas pan/pinch/drag/live resize, source selections, validation and recovery passed",
                 width, height

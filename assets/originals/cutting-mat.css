@@ -1,0 +1,6 @@
+.cutting-mat{background:linear-gradient(90deg,#dcf0cd30 1px,transparent 1px) 0 0/80px 80px,linear-gradient(#dcf0cd30 1px,transparent 1px) 0 0/80px 80px,linear-gradient(90deg,#dcf0cd12 1px,transparent 1px) 0 0/16px 16px,linear-gradient(#dcf0cd12 1px,transparent 1px) 0 0/16px 16px,#1c4936}
+.Cutting__card{position:relative;filter:drop-shadow(0 5px 7px #0005)}
+.cutting-mat .Original__paper{padding-top:calc(var(--inset) + 12px);padding-bottom:calc(var(--inset) + 12px);clip-path:polygon(6px 0,calc(100% - 6px) 0,100% 6px,100% calc(100% - 6px),calc(100% - 6px) 100%,6px 100%,0 calc(100% - 6px),0 6px)}
+.Cutting__top{position:absolute;left:0;right:0;top:-22px;height:12px;background:linear-gradient(90deg,#e9e2b8 1px,transparent 1px) 0 0/32px 12px repeat-x,linear-gradient(90deg,#e9e2b880 1px,transparent 1px) 0 0/8px 5px repeat-x}
+.Cutting__left{position:absolute;top:0;bottom:0;left:-22px;width:12px;background:linear-gradient(#e9e2b8 1px,transparent 1px) 0 0/12px 32px repeat-y,linear-gradient(#e9e2b880 1px,transparent 1px) 0 0/5px 8px repeat-y}
+.cutting-mat .Original__title{margin-top:20px;color:#6f7c71}

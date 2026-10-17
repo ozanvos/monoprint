@@ -17,11 +17,11 @@ export type Highlight = number | readonly [number, number];
 
 /** Reusable appearance. Values omitted from a render inherit renderer defaults. */
 export interface Style {
-  /** Candy by default. IDs and capabilities are discoverable with `getThemes()`. */
+  /** Monoprint by default. IDs and capabilities are discoverable with `getThemes()`. */
   theme?: ThemeId;
   /** The theme's preferred appearance by default; unsupported variants fail. */
   appearance?: Appearance;
-  /** Outer CSS pixels, 0–512. Defaults to 64. */
+  /** Outer CSS pixels, 0–512. Defaults to 32. */
   padding?: number;
   /** Nominal code size in CSS pixels, an integer from 8–72. Defaults to 15. */
   fontSize?: number;

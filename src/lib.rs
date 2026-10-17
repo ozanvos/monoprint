@@ -61,11 +61,14 @@ mod error;
 mod fallback;
 mod font;
 mod highlight;
+mod monoprint_theme;
 mod options;
+mod originals;
 mod pixels;
 mod raster;
 mod render;
 mod resample;
+mod selected_styles;
 
 pub use background::Background;
 pub use catalog::{Language, LineNumberPolicy, Theme};

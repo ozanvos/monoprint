@@ -1,0 +1,15 @@
+.Monoprint{background:var(--monoprint-stage);color:var(--ink-foreground)}
+.Monoprint__page{min-width:0;background:var(--monoprint-surface);border:1px solid var(--monoprint-border);border-radius:8px;overflow:hidden}
+.Monoprint__mast,.Monoprint__foot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:var(--masthead-label-padding) var(--masthead-label-inset);font-family:CodeMono;font-size:var(--masthead-label-size);line-height:1.5;color:var(--monoprint-label);overflow-wrap:anywhere}
+.Monoprint__mast{min-height:var(--masthead-mast-height);border-bottom:1px solid var(--monoprint-rule)}
+.Monoprint__file{flex:1;min-width:0;font-size:var(--masthead-file-size);font-weight:650;letter-spacing:-.02em;color:var(--ink-foreground)}
+.Monoprint__language{max-width:50%}
+.Monoprint__foot{min-height:var(--masthead-foot-height);padding-top:var(--masthead-foot-padding);padding-bottom:var(--masthead-foot-padding);background:var(--monoprint-footer);border-top:1px solid var(--monoprint-rule)}
+.Monoprint__body{padding:var(--masthead-body-padding) var(--masthead-inset)}
+.Monoprint .Editor__formatted{padding:0;font-size:var(--masthead-code-size);line-height:var(--masthead-leading);letter-spacing:0}
+.Monoprint .Editor__formatted>pre{max-width:100%;overflow-wrap:anywhere}
+.Monoprint .Editor__formatted>pre>code{white-space:normal}
+.Monoprint .Editor__editor .line{position:relative;display:block;width:100%;margin:0;padding:0;min-height:var(--masthead-leading);white-space:pre-wrap}
+.Monoprint .Editor__editor .line:before{display:none}
+.Monoprint .Editor__showLineNumbers .Editor__formatted{padding-left:var(--masthead-number-width)}
+.Monoprint .Editor__showLineNumbers .line:before{display:block;position:absolute;left:calc(-1 * var(--masthead-number-width));width:calc(var(--masthead-number-width) - var(--masthead-number-gap));margin:0;opacity:.65}

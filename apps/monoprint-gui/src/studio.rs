@@ -223,7 +223,7 @@ impl Studio {
             state.create_decorations_collection(Vec::new(), cx)
         });
         let width = input(&document.width, "Auto", window, cx);
-        let padding = input(&document.padding, "64", window, cx);
+        let padding = input(&document.padding, "32", window, cx);
         let font_size = input(&document.font_size, "15", window, cx);
         let languages = crate::language_picker::LanguageList::new();
         let selected = languages.position(&document.language);

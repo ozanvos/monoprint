@@ -26,7 +26,7 @@ Build with Rust 1.97 or newer and a C compiler:
 cargo build --locked --release --target-dir target
 ./target/release/monoprint example.rs -o example.png
 ./target/release/monoprint example.rs --theme nuxt --title example.rs -o example.svg
-printf 'const answer = 42;\n' | ./target/release/monoprint -l ts --theme candy -o example.html
+printf 'const answer = 42;\n' | ./target/release/monoprint -l ts -o example.html
 ```
 
 Use `--list-themes`, `--list-languages` and `--list-fonts` to see the available

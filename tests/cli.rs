@@ -59,6 +59,23 @@ fn failure(out: Output, message: &str) {
 }
 
 #[test]
+fn monoprint_is_the_cli_default_with_a_light_counterpart() {
+    let w = Workspace::new();
+    for appearance in ["--dark", "--light"] {
+        let args = ["-o", "-", "--format", "html", "-l", "ts", appearance];
+        let default = success(w.run(&args, "const answer = 42;"));
+        let mut explicit = args.to_vec();
+        explicit.extend(["--theme", "monoprint"]);
+        assert_eq!(default, success(w.run(&explicit, "const answer = 42;")));
+        assert!(
+            String::from_utf8(default)
+                .unwrap()
+                .contains("Monoprint__page")
+        );
+    }
+}
+
+#[test]
 fn png_compression_is_tunable_without_changing_defaults() {
     let w = Workspace::new();
     let source = "// Hello 👋\nlet answer = 42;";
@@ -480,7 +497,7 @@ fn auth0_subtitle_is_metadata_not_visible_text() {
     )))
     .unwrap();
     assert!(html.contains("data-value=\"🦀\""));
-    assert!(html.contains(">TSX</span>"));
+    assert!(html.contains(">TypeScript</span>"));
 }
 
 // The HTML text must preserve source exactly, including blank lines and strings
@@ -764,14 +781,14 @@ fn native_images_match_independent_browser_references() {
         },
         ReferenceCase {
             name: "removed-frame",
-            flags: &["--theme", "removed-frame"],
+            flags: &["--theme", "removed-frame", "--padding", "64"],
             input: source,
             reference: include_bytes!("visual/nuxt-dark.png"),
             tolerance: 1.6,
         },
         ReferenceCase {
             name: "removed-frame",
-            flags: &["--theme", "removed-frame"],
+            flags: &["--theme", "removed-frame", "--padding", "64"],
             input: source,
             reference: include_bytes!("visual/firecrawl-dark.png"),
             tolerance: 2.0,
@@ -852,6 +869,8 @@ fn nuxt_glow_survives_viewport_clipping_at_export_scales() {
                 "png",
                 "--theme",
                 "removed-frame",
+                "--padding",
+                "64",
                 "-l",
                 "ts",
                 "--scale",
@@ -918,6 +937,8 @@ fn partner_title_fonts_and_alignment_match_browser_references() {
                 &[
                     "--theme",
                     theme,
+                    "--padding",
+                    "64",
                     if light { "--light" } else { "--dark" },
                     "-l",
                     "ts",

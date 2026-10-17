@@ -117,7 +117,9 @@ fn empty_lines_and_line_numbers_follow_leading_across_frame_variants() {
 #[test]
 fn comments_line_numbers_and_highlights_share_scaled_layout() {
     let renderer = Renderer::new();
-    let source = format!("// {}\nlet total = 42;", "wide comment ".repeat(8));
+    // Keep the 72px auto-width fixture below the raster pixel budget with the
+    // default Monoprint frame's masthead, footer and proportional inner margins.
+    let source = format!("// {}\nlet total = 42;", "wide comment ".repeat(4));
     let snippet = Snippet::new(source).language("rust".parse().unwrap());
     let highlighted = snippet
         .clone()

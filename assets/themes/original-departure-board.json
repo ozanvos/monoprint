@@ -1,0 +1,73 @@
+{
+  "name": "original-departure-board",
+  "type": "dark",
+  "colors": {
+    "editor.foreground": "#f1efe6",
+    "editor.background": "#1b1c1f"
+  },
+  "tokenColors": [
+    {
+      "scope": [
+        "keyword",
+        "storage"
+      ],
+      "settings": {
+        "foreground": "#141414",
+        "fontStyle": "bold",
+        "background": "#f5c518"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.type",
+        "entity.name.class",
+        "support.type",
+        "support.class",
+        "entity.other.inherited-class"
+      ],
+      "settings": {
+        "foreground": "#ffffff",
+        "background": "#2563eb"
+      }
+    },
+    {
+      "scope": [
+        "entity.name.function",
+        "support.function",
+        "variable.function"
+      ],
+      "settings": {
+        "foreground": "#141414",
+        "fontStyle": "bold",
+        "background": "#f1efe6"
+      }
+    },
+    {
+      "scope": [
+        "string",
+        "markup.inline.raw"
+      ],
+      "settings": {
+        "foreground": "#8fe3b0"
+      }
+    },
+    {
+      "scope": [
+        "constant.numeric",
+        "constant.language"
+      ],
+      "settings": {
+        "foreground": "#ffb15c"
+      }
+    },
+    {
+      "scope": [
+        "comment",
+        "string.quoted.docstring.multi"
+      ],
+      "settings": {
+        "foreground": "#999ca2"
+      }
+    }
+  ]
+}

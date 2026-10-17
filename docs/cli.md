@@ -1,12 +1,12 @@
 # CLI reference
 
-Defaults: Candy dark, 15px code size, 64px outer padding, automatic width, 4× PNG, no title.
+Defaults: Monoprint dark, 15px code size, 32px outer padding, automatic width, 4× PNG, no title. Use `--light` for its paired light appearance.
 
 | Option | Behavior |
 | --- | --- |
 | `-o, --output image.png` | Required. Infer PNG, SVG, or HTML from the extension. |
 | `-o - --format svg` | Write to stdout; an explicit format is required. |
-| `--theme candy` | Choose a theme ID; `--list-themes` lists all variants. |
+| `--theme monoprint` | Choose a theme ID (Monoprint is the default); `--list-themes` lists all variants. |
 | `--light`, `--dark` | Override the preferred appearance; unsupported variants fail. Light-only palettes select light automatically. |
 | `--background theme` | Outer canvas: `theme`, `solid`, `lattice`, `halftone`, or `none`. Colors follow the selected palette. |
 | `--transparent` | Alias for `--background none`; cannot be combined with `--background`. Retains the code window. |

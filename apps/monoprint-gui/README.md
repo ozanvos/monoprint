@@ -24,6 +24,8 @@ macOS Apple Silicon is tested. Windows and Linux still need native validation.
 - Click the theme thumbnail to browse themes. Search and filter by appearance.
   The theme's light/dark switch changes the image; the top-bar switch changes
   the app interface.
+- New drafts start with **Monoprint**, the Masthead frame with Oxide syntax.
+  Its light and dark appearances share one theme and lead the theme browser.
 - Set the width, padding, title, background and line numbers. Leave Width blank
   for automatic sizing. Choose None for a transparent outer background.
 - Select text to highlight it, or click line numbers to highlight whole lines.

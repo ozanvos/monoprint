@@ -57,6 +57,11 @@ pub(crate) fn css(theme: &assets::Theme, appearance: Appearance, background: Bac
         .editor
         .as_ref()
         .map(|e| e.solid.as_str())
+        .or_else(|| {
+            theme.syntax[appearance.as_str()]
+                .get("--monoprint-stage")
+                .map(String::as_str)
+        })
         // These frame presets have no separate code-panel fill. Their manifest
         // gradient describes only the dark canvas; light mode paints white
         // through frame CSS instead. Custom backdrops replace that frame CSS,

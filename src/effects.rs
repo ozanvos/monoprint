@@ -267,6 +267,9 @@ fn raster_shadow_order(css: &str) -> String {
                 return declaration.to_owned();
             };
             let value = value.strip_suffix(';').unwrap_or(value);
+            // A final declaration need not have a semicolon. Do not reverse
+            // commas in the next rule (including font fallback lists).
+            let (value, suffix) = value.split_at(value.find('}').unwrap_or(value.len()));
             let mut depth = 0;
             let mut start = 0;
             let mut shadows = Vec::new();
@@ -284,7 +287,7 @@ fn raster_shadow_order(css: &str) -> String {
             shadows.push(value[start..].trim());
             shadows.reverse();
             format!(
-                "{before}box-shadow:{}{}",
+                "{before}box-shadow:{}{suffix}{}",
                 shadows.join(","),
                 if declaration.ends_with(';') { ";" } else { "" }
             )
@@ -324,4 +327,16 @@ pub fn native_css(css: &str, raster: bool) -> String {
             "content: \"\"",
             "content: \"\u{200b}\";font-size:0;line-height:0",
         )
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn shadow_order_stops_at_rule_boundaries_without_semicolons() {
+        let css =
+            ".a{box-shadow:inset 0 1px red,0 2px blue}.b{font-family:Code,Emoji;box-shadow:none}";
+        let expected =
+            ".a{box-shadow:0 2px blue,inset 0 1px red}.b{font-family:Code,Emoji;box-shadow:none}";
+        assert_eq!(super::raster_shadow_order(css), expected);
+    }
 }

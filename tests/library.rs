@@ -132,15 +132,15 @@ fn raw_pixels_match_png_at_odd_and_even_scales_and_retain_validation() {
 
 #[test]
 fn catalog_parsing_discovery_and_filename_inference() {
-    assert_eq!(Theme::all().len(), 54);
+    assert_eq!(Theme::all().len(), 82);
     assert_eq!(
         Theme::all()
             .filter(|t| t.supports(Appearance::Light))
             .count(),
-        42
+        59
     );
-    assert_eq!("CANDY".parse::<Theme>().unwrap(), Theme::default());
-    assert_eq!(Theme::default().to_string(), "removed-frame");
+    assert_eq!("MONOPRINT".parse::<Theme>().unwrap(), Theme::default());
+    assert_eq!(Theme::default().to_string(), "monoprint");
     assert!(matches!("missing".parse::<Theme>(), Err(Error::UnknownTheme(id)) if id == "missing"));
     assert!(matches!(
         "missing".parse::<Language>(),
@@ -201,7 +201,7 @@ fn invalid_requests_report_structured_errors_before_rendering() {
     }
     assert!(matches!(
         r.html(&snippet, &Style::default().width(100)),
-        Err(Error::InvalidOption(InvalidOption::Width { min: 177, .. }))
+        Err(Error::InvalidOption(InvalidOption::Width { min: 113, .. }))
     ));
     assert!(matches!(
         r.html(
@@ -395,6 +395,7 @@ fn fixed_width_tailwind_reports_png_budget_and_recovers() {
     let snippet = Snippet::new(source).language("rust".parse().unwrap());
     let style = Style::new("removed-frame".parse().unwrap())
         .width(896)
+        .padding(64)
         .line_numbers(LineNumbers::Show);
     // The frame's borders and gutter wrap these lines into a 22 MP canvas at 4x.
     // Reject before entering Takumi, whose root and SVG-source caps are 16 MP.

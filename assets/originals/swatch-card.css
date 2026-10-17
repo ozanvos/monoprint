@@ -1,0 +1,10 @@
+.Swatch__stack{position:relative}
+.Swatch__back{position:absolute;inset:8px -8px -5px 12px;transform:rotate(-3.2deg);border-radius:9px;background:#c4532f;box-shadow:0 8px 18px #281e1430}
+.swatch-card .Original__paper{padding:0;border-radius:9px;overflow:hidden;box-shadow:0 14px 26px #281e143d}
+.Swatch__field{position:relative;padding:calc(var(--inset) + 14px) var(--inset) var(--inset);background:#1d3557}
+.Swatch__field .Original__title{margin-bottom:16px;color:#93a6bd}
+.Swatch__hole{position:absolute;right:12px;top:10px;width:14px;height:14px;border-radius:50%;background:#d6d2ca;box-shadow:inset 0 2px 3px #0006}
+.Swatch__band{display:flex;flex-wrap:wrap;gap:12px;padding:18px var(--inset);background:#fff;color:#555}
+.Swatch__item{display:flex;flex-direction:column;gap:5px;flex:1;min-width:36px;font-size:8px;line-height:10px;font-family:Inter}
+.Swatch__item i{display:block;width:20px;height:20px;border-radius:3px;border:1px solid #0002}
+.Swatch__item b{font-size:8px;font-weight:500;color:#1a1a1a}

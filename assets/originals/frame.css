@@ -1,0 +1,10 @@
+.Original{position:relative;background:var(--outer);color:var(--editor-foreground)}
+.Original__paper{position:relative;background:var(--surface);padding:var(--inset);min-width:0}
+.Original__title{font-family:Inter;font-size:12px;line-height:18px;overflow-wrap:anywhere}
+.Original .Editor__formatted{padding:0}
+.Original .Editor__formatted>pre{max-width:100%;overflow-wrap:anywhere}
+.Original .Editor__editor .line{position:relative;width:100%;margin:0;padding:0;min-height:22.5px}
+.Original .Editor__showLineNumbers .Editor__formatted{padding-left:var(--line-number-padding)}
+.Original .Editor__showLineNumbers .line{width:100%;margin:0;padding:0}
+.Original .Editor__editor .line:before{position:absolute;left:0}
+.Original .Editor__showLineNumbers .line:before{left:0}

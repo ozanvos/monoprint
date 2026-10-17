@@ -3,12 +3,12 @@ use std::{collections::BTreeMap, fmt, path::Path, str::FromStr, sync::LazyLock};
 
 /// A bundled code-image theme. Parse an ID or discover themes with [`Theme::all`].
 ///
-/// IDs are case-insensitive when parsed. The default is Candy.
+/// IDs are case-insensitive when parsed. The default is Monoprint.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Hash)]
 pub struct Theme(pub(crate) &'static str);
 impl Default for Theme {
     fn default() -> Self {
-        Self("removed-frame")
+        Self("monoprint")
     }
 }
 impl Theme {
@@ -56,6 +56,9 @@ impl Theme {
     }
     /// Palette family, or `Monoprint` for the bundled frame presets.
     pub fn family(self) -> &'static str {
+        if self.data().original {
+            return "Monoprint Originals";
+        }
         self.data()
             .editor
             .as_ref()

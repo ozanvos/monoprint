@@ -1,0 +1,6 @@
+.gallery-wall{background:radial-gradient(ellipse at 50% 0,#f8efdb80,transparent 65%),linear-gradient(#d4cfc6,#c2bcb1)}
+.Gallery__frame{position:relative;border:9px solid #1e1c1a;background:#efebe2;padding:var(--inset);box-shadow:inset 0 3px 5px #0005,0 18px 28px -6px #281e1480}
+.Gallery__mat{background:#fbf9f4;border:2px solid #fdfbf6;box-shadow:0 0 0 1px #d6cfc1,inset 0 1px 3px #0002}
+.Gallery__lamp{position:absolute;left:40%;top:0;width:20%;height:6px;background:#2b2926;border-radius:0 0 3px 3px}
+.Gallery__label{position:relative;margin-top:18px;margin-left:auto;width:120px;padding:9px 11px;background:#fbfaf7;color:#6b665e;font-family:Inter;font-size:9px;line-height:14px;box-shadow:0 1px 2px #0003}
+.Gallery__label .Original__title{font-size:11px;font-weight:600;color:#23211e;margin-bottom:2px}

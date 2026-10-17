@@ -1,0 +1,9 @@
+.departure-board{background:radial-gradient(ellipse at 50% 45%,#16161a,#060607)}
+.Departure__housing{position:relative;border-radius:8px;background:#19191d;border:1px solid #2a2a2d;padding:var(--inset);box-shadow:0 20px 40px #0009}
+.Departure__lamps{display:flex;gap:8px;padding:0 0 18px}
+.Departure__lamps i{display:block;width:5px;height:5px;border-radius:50%;background:#f5c518;box-shadow:0 0 3px #f5c51860}
+.Departure__screw{position:absolute;width:5px;height:5px;border-radius:50%;background:#4a4a50;box-shadow:inset 0 -1px #111}
+.Departure__screw.tl{left:8px;top:8px}.Departure__screw.tr{right:8px;top:8px}.Departure__screw.bl{left:8px;bottom:8px}.Departure__screw.br{right:8px;bottom:8px}
+.departure-board .Original__paper{padding:10px;background:#222327;border:4px solid #0b0b0c}
+.departure-board .line{border-bottom:1px solid #080809}
+.departure-board .Original__title{color:#bbb;margin-bottom:12px}
