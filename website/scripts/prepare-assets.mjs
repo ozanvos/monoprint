@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { root, run, revision, isDirty, sha256 } from '../../bindings/node/scripts/shared.mjs';
 import { checkRelease } from '../../scripts/release-config.mjs';
-import { themes, source } from '../src/data/demo.mjs';
+import { showcases } from '../src/data/showcase.mjs';
 
 export const website = path.join(root, 'website');
 export async function prepareAssets(directory = path.join(website, '.generated/public'), cli = process.env.MONOPRINT_CLI ?? path.join(root, 'target/release/monoprint')) {
@@ -13,25 +13,17 @@ export async function prepareAssets(directory = path.join(website, '.generated/p
   for (const name of ['inter.ttf', 'inter-OFL.txt', 'jetbrains-mono.ttf', 'jetbrains-mono-OFL.txt']) await fs.copyFile(path.join(root, 'assets/fonts', name), path.join(assets, name));
   await fs.copyFile(path.join(website, 'assets/icon.png'), path.join(assets, 'icon.png'));
   await fs.copyFile(path.join(root, 'LICENSE'), path.join(directory, 'LICENSE'));
-  const input = path.join(directory, 'share.rs');
-  await fs.writeFile(input, source.join('\n'));
   const images = [];
-  try {
-    const samples = [
-      ...themes.map(theme => ({ ...theme, highlight: true, format: 'png' })),
-      { ...themes[3], id: 'catppuccin-plain', highlight: false, format: 'png' },
-      { ...themes[0], id: 'gruvbox-transparent', highlight: false, transparent: true, format: 'svg' },
-    ];
-    for (const sample of samples) {
-      const file = path.join(assets, `${sample.id}.${sample.format}`);
-      const flags = [input, '--theme', sample.cli, `--${sample.appearance}`, '--width', '640', '--padding', '64', '--scale', '2', '--font', 'jetbrains-mono', '--font-size', '15', '--ligatures', '--line-numbers', '--title', 'share.rs'];
-      if (sample.format === 'png') flags.push('--png-compression', 'balanced');
-      if (sample.highlight) flags.push('--highlight', '4');
-      if (sample.transparent) flags.push('--transparent');
-      run(path.resolve(cli), [...flags, '-o', file, '--force']);
-      images.push({ name: sample.id, theme: sample.cli, appearance: sample.appearance, format: sample.format, sha256: sha256(await fs.readFile(file)) });
-    }
-  } finally { await fs.unlink(input); }
+  for (const sample of showcases) {
+    const input = path.join(website, 'assets/examples', sample.source);
+    const file = path.join(assets, `${sample.id}.${sample.format}`);
+    const flags = [input, '--theme', sample.theme, `--${sample.appearance}`, '--width', '420', '--padding', '16', '--scale', '2', '--font', 'jetbrains-mono', '--font-size', '16', '--ligatures', '--line-numbers', '--title', sample.source];
+    if (sample.format === 'png') flags.push('--png-compression', 'balanced');
+    if (sample.highlight) flags.push('--highlight', sample.highlight);
+    if (sample.transparent) flags.push('--transparent');
+    run(path.resolve(cli), [...flags, '-o', file, '--force']);
+    images.push({ name: sample.id, source: sample.source, theme: sample.theme, appearance: sample.appearance, format: sample.format, highlight: sample.highlight ?? null, transparent: sample.transparent ?? false, sha256: sha256(await fs.readFile(file)) });
+  }
   const publicSite = config.websitePublishing === true;
   await fs.writeFile(path.join(directory, '_headers'), '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n' + (publicSite ? '' : '  X-Robots-Tag: noindex, nofollow\n'));
   await fs.writeFile(path.join(directory, 'robots.txt'), `User-agent: *\n${publicSite ? 'Allow' : 'Disallow'}: /\n`);

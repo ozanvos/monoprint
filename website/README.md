@@ -2,7 +2,10 @@
 
 Astro static site at [monoprint.7ea.st](https://monoprint.7ea.st), hosted with
 Cloudflare Workers Static Assets. Fonts and images are served locally.
-The demo switches between pre-rendered images; it does not render code in the browser.
+The hero uses a native macOS screenshot from the App Store captures. Astro generates
+responsive image sizes; the export examples are rendered by the Monoprint CLI
+from `assets/examples/`. Their themes, highlights and captions are defined in
+`src/data/showcase.mjs`.
 
 ## Development
 

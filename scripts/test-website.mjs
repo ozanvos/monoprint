@@ -12,7 +12,7 @@ if (args.length !== 4 || !args.includes('--from') || !args.includes('--out')) th
 const source = path.resolve(option('--from'));
 const out = path.resolve(option('--out'));
 await fs.mkdir(out, { recursive: true });
-const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.otf': 'font/otf' };
+const types = { '.html': 'text/html', '.css': 'text/css', '.js': 'text/javascript', '.png': 'image/png', '.webp': 'image/webp', '.svg': 'image/svg+xml', '.ttf': 'font/ttf', '.otf': 'font/otf' };
 const server = http.createServer(async (request, response) => {
   const file = path.resolve(source, '.' + new URL(request.url, 'http://localhost').pathname.replace(/\/$/, '/index.html'));
   if (!file.startsWith(source + path.sep)) { response.writeHead(403).end(); return; }
@@ -48,52 +48,27 @@ try {
   assert.equal(await page.getByRole('link', { name: /Download/i }).count(), 0);
   assert.equal(await page.getByRole('button', { name: 'Download', exact: true }).count(), 2);
   assert.equal(await page.locator('button:disabled').count(), 2);
-  const samples = [
-    ['Gruvbox Dark', 'gruvbox', 'gruvbox-medium'],
-    ['Ayu Light', 'ayu', 'ayu --light'],
-    ['Night Owl', 'nightowl', 'night-owl'],
-    ['Catppuccin Mocha', 'catppuccin', 'catppuccin'],
-    ['Solarized Light', 'solarized', 'solarized --light'],
-  ];
-  for (const [width, height] of [[1440, 1100], [1024, 900], [768, 1000], [390, 844], [320, 740]]) {
+  const screenshot = page.locator('.app-screenshot img');
+  assert.equal(await screenshot.count(), 1);
+  assert.match(await screenshot.getAttribute('alt'), /Monoprint for macOS/);
+  assert.equal(await screenshot.getAttribute('width'), '2880');
+  assert.equal(await screenshot.getAttribute('height'), '1800');
+  assert.ok(await screenshot.getAttribute('srcset'), 'Hero needs responsive image sizes');
+  for (const [width, height] of [[1440, 1100], [1024, 900], [768, 1000], [700, 1000], [390, 844], [320, 740]]) {
     await page.setViewportSize({ width, height });
-    for (const [label, id, cli] of samples) {
-      const button = page.getByRole('button', { name: label, exact: true });
-      await button.click();
-      assert.equal(await button.getAttribute('aria-pressed'), 'true');
-      assert.equal(await page.locator('.preview-image:visible').count(), 1);
-      assert.equal(await page.locator('.preview-image:visible').getAttribute('id'), `preview-${id}`);
-      assert.equal(await page.locator('#command-text').textContent(), `monoprint share.rs --theme ${cli} --highlight 4`);
-      assert.equal(await page.locator('#export-image').getAttribute('download'), `monoprint-${id}.png`);
-    }
+    const bounds = await screenshot.boundingBox();
+    assert.ok(Math.abs(bounds.width / bounds.height - 1.6) < 0.01, `Screenshot distorted at ${width}px`);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Overflow at ${width}px`);
-    await page.getByRole('button', { name: 'Night Owl', exact: true }).click();
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(out, `website-${width}.png`), fullPage: true });
+    await page.locator('.showcase').screenshot({ path: path.join(out, `showcase-${width}.png`) });
   }
   await page.setViewportSize({ width: 1440, height: 1100 });
-  await page.getByRole('searchbox').fill('AYU');
-  assert.equal(await page.locator('[data-theme]:visible').count(), 1);
-  await page.getByRole('button', { name: 'Ayu Light', exact: true }).click();
-  await page.getByRole('searchbox').fill('missing theme');
-  assert.equal(await page.locator('[data-theme]:visible').count(), 0);
-  assert.equal(await page.locator('#no-themes').isVisible(), true);
-  await page.getByRole('searchbox').fill('');
   const copy = page.getByRole('button', { name: 'Copy CLI command', exact: true });
   await copy.click();
   await page.waitForFunction(() => document.querySelector('#copy-command').title === 'Copied');
-  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'monoprint share.rs --theme ayu --light --highlight 4');
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'monoprint share.rs --theme night-owl --highlight 4');
   await page.waitForFunction(() => !document.querySelector('#copy-command').disabled);
-  const exportBefore = await page.locator('#export-image').boundingBox();
-  await page.getByRole('button', { name: 'Copy preview image', exact: true }).click();
-  await page.waitForFunction(() => document.querySelector('#copy-image').title === 'Copied');
-  assert.deepEqual(await page.locator('#export-image').boundingBox(), exportBefore, 'Copy feedback must not move Export');
-  assert.ok(await page.evaluate(async () => (await navigator.clipboard.read()).some(item => item.types.includes('image/png'))));
-  const downloading = page.waitForEvent('download');
-  await page.getByRole('link', { name: 'Export…', exact: true }).click();
-  const download = await downloading;
-  assert.equal(download.suggestedFilename(), 'monoprint-ayu.png');
-  assert.deepEqual(await fs.readFile(await download.path()), await fs.readFile(path.join(source, 'assets/ayu.png')));
   for (const name of ['Support', 'Privacy']) {
     await page.goto(`${url}/${name.toLowerCase()}/`);
     assert.equal(await page.getByRole('heading', { level: 1 }).textContent(), `Monoprint ${name === 'Support' ? 'support' : 'privacy policy'}`);
@@ -106,7 +81,7 @@ try {
   await context.close();
   assert.deepEqual(errors, []);
   assert.deepEqual(network, []);
-  console.log('Five themes, search, CLI/image clipboard, PNG download, five viewport sizes, local assets, publication state and support/privacy pages passed.');
+  console.log('Native hero screenshot, CLI clipboard, six viewport sizes, local assets, publication state and support/privacy pages passed.');
 } finally {
   if (browser) await browser.close();
   server.close();
