@@ -5,7 +5,8 @@ Cloudflare Workers Static Assets. Fonts and images are served locally.
 The hero uses a native macOS screenshot from the App Store captures. Astro generates
 responsive image sizes; the export examples are rendered by the Monoprint CLI
 from `assets/examples/`. Their themes, highlights and captions are defined in
-`src/data/showcase.mjs`.
+`src/data/showcase.mjs`. The theme picker samples and their CLI commands come
+from `src/data/demo.mjs`.
 
 ## Development
 
@@ -52,4 +53,4 @@ MONOPRINT_WEBSITE_PUBLISH=approved npm run deploy --prefix website
 `check:cloudflare` is a deployment dry run. `preview:cloudflare` serves the site
 locally with Cloudflare's asset headers and 404 handling. Set `CLOUDFLARE_ACCOUNT_ID` in your local environment to select the deployment
 account. Wrangler uses your authenticated credentials; keep them outside Git. See the
-[release guide](../docs/private-release-prep.md) for publication controls.
+[release guide](../docs/release.md) for publication controls.

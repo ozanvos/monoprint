@@ -1,13 +1,18 @@
 ---
 import AppScreenshot from '../components/AppScreenshot.astro';
 import Icon from '../components/Icon.astro';
-import { initialTheme } from '../data/demo.mjs';
+import { themes, initialTheme, command } from '../data/demo.mjs';
 import { showcases } from '../data/showcase.mjs';
 import release from '../../../release/config.json';
 import '../styles/site.css';
 const repository = `https://github.com/${release.repository}`;
 const docs = `${repository}/blob/main/README.md`;
 const cliDocs = `${repository}/blob/main/docs/cli.md`;
+const parts = [
+  { title: 'Studio', body: 'Live preview, line and text highlights, custom fonts, clipboard export and a saved local draft.', code: ['⌘O  Open source file', '⌘S  Export image', '⌘⇧C Copy image'] },
+  { title: 'CLI', body: 'Reads a file or stdin. The output extension picks the format; --list-themes shows every variant.', code: ['monoprint main.rs -o main.png', '  --theme nord --scale 4', 'pbpaste | monoprint -l ts -o a.svg'] },
+  { title: 'Library', body: 'Render in memory from Rust, or from Node.js 22+ with native packages for macOS, Linux and Windows.', code: ['Renderer::new().png(', '  &snippet, &Style::default(),', '  Scale::X2)?'] },
+];
 ---
 <!doctype html>
 <html lang="en">
@@ -24,25 +29,45 @@ const cliDocs = `${repository}/blob/main/docs/cli.md`;
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
     <div class="page">
-      <header class="masthead">
+      <header class="strip">
         <a class="brand" href="/">Monoprint</a>
-        <nav aria-label="Main">{release.publicPublishing && <><a href={docs}>Docs</a><a href={cliDocs}>CLI</a><a href={repository}>GitHub ↗</a></>}<button class="button strong" type="button" disabled title="Downloads are being prepared">Download</button></nav>
+        <nav aria-label="Main">{release.publicPublishing && <><a href={docs}>Docs</a><a href={cliDocs}>CLI</a><a href={repository}>GitHub ↗</a></>}<a href="/support/">Support</a><button class="button ink" type="button" disabled title="Downloads are being prepared">Download</button></nav>
       </header>
       <main id="main">
         <section class="hero" aria-labelledby="hero-title">
+          <p class="eyebrow">macOS app · CLI · Rust · TypeScript</p>
           <h1 id="hero-title">Code images.</h1>
-          <p>Turn source code into PNG, SVG or HTML on your Mac.</p>
-          <div class="hero-actions">
-            <button class="button strong hero-download" type="button" disabled title="Downloads are being prepared">Download</button>
-            <div class="cli-command" id="cli"><span class="prompt" aria-hidden="true">$</span><code id="command-text">monoprint share.rs --theme <span class="command-theme">{initialTheme.cli}</span> --highlight 4</code><button class="icon-button" id="copy-command" aria-label="Copy CLI command" title="Copy command" type="button"><Icon name="copy"/></button></div>
+          <p class="lede">Turn source code into PNG, SVG or HTML on your Mac. Fonts, themes and grammars are bundled, so nothing leaves the machine.</p>
+          <div class="actions">
+            <button class="button ink" type="button" disabled title="Downloads are being prepared">Download</button>
+            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id="command-text">{command(initialTheme)}</code><button class="icon-button" id="copy-command" aria-label="Copy CLI command" title="Copy command" type="button"><Icon name="copy"/></button></div>
           </div>
         </section>
-        <div class="app-section"><AppScreenshot /></div>
+
+        <section class="app-section" aria-label="App screenshot"><AppScreenshot /></section>
+
+        <section class="themes" aria-labelledby="themes-title">
+          <div class="picker">
+            <h2 id="themes-title">Themes</h2>
+            <p><code>--list-themes</code> lists every theme and appearance.</p>
+            <div class="options" role="radiogroup" aria-label="Theme">
+              {themes.map(theme => <label class="option"><input type="radio" name="theme" value={theme.id} checked={theme.id === initialTheme.id} data-command={command(theme)} /><span class="swatch" aria-hidden="true" style={`--bg:${theme.bg};--fg:${theme.accent}`}></span><span>{theme.name}</span><code>{theme.cli}</code></label>)}
+            </div>
+          </div>
+          <div class="stage lattice">
+            {themes.map(theme => <img src={`/assets/${theme.id}.png`} width="1280" height="666" alt={`Rust code in ${theme.name}, with line four highlighted`} data-theme={theme.id} hidden={theme.id !== initialTheme.id} />)}
+          </div>
+        </section>
+
+        <section class="parts" aria-label="Interfaces">
+          {parts.map(part => <article><h2>{part.title}</h2><p>{part.body}</p><pre>{part.code.join('\n')}</pre></article>)}
+        </section>
+
         <section class="showcase" aria-label="Export examples">
           {showcases.map(item => <figure><div class="showcase-tile"><img src={`/assets/${item.id}.${item.format}`} alt={item.alt} loading="lazy" /></div><figcaption><span>{item.name}</span><span>{item.detail}</span></figcaption></figure>)}
         </section>
       </main>
-      <footer><span>Monoprint</span><nav aria-label="Resources"><a href="/support/">Support</a><a href="/privacy/">Privacy</a><a href="mailto:contact@7ea.st">Contact</a>{release.publicPublishing && <><a href={docs}>Docs</a><a href={cliDocs}>CLI</a><a href={`${repository}/blob/main/docs/library.md`}>Rust</a><a href={`${repository}/tree/main/bindings/node`}>TypeScript</a><a href={repository}>Source on GitHub ↗</a></>}</nav></footer>
+      <footer class="strip foot"><span>Monoprint</span><nav aria-label="Resources"><a href="/support/">Support</a><a href="/privacy/">Privacy</a><a href="mailto:contact@7ea.st">Contact</a>{release.publicPublishing && <><a href={docs}>Docs</a><a href={cliDocs}>CLI</a><a href={`${repository}/blob/main/docs/library.md`}>Rust</a><a href={`${repository}/tree/main/bindings/node`}>TypeScript</a><a href={repository}>Source on GitHub ↗</a></>}</nav></footer>
     </div>
     <p class="sr-only" role="status" id="feedback" aria-live="polite"></p>
     <script src="../scripts/demo.ts"></script>
