@@ -19,7 +19,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     let light = style
         .clone()
-        .theme("removed-frame".parse()?)
+        .theme("monoprint".parse()?)
         .appearance(Appearance::Light);
     for (name, source) in [("one.rs", "let answer = 42;"), ("two.py", "answer = 42")] {
         let snippet = Snippet::new(source)

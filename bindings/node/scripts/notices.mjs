@@ -10,7 +10,7 @@ export async function prepareNotices(destination, targets, packageName = 'monopr
   for (const file of ['docs/grammar-licenses.md', 'docs/grammar-license-validation.json', 'docs/font-fallback.md', 'assets/fonts/manifest.json',
     'assets/fonts/fallback/manifest.json', 'assets/fonts/fallback/NOTICE.txt',
     ...(await fs.readdir(path.join(root, 'assets/fonts/fallback'))).filter(n => n.endsWith('-OFL.txt')).map(n => `assets/fonts/fallback/${n}`),
-    'assets/removed-frames/provenance.json', 'assets/editor/sources.json', 'assets/grammar-provenance.json', 'vendor/takumi-svg/PATCHES.md',
+    'assets/editor/sources.json', 'assets/grammar-provenance.json', 'vendor/takumi-svg/PATCHES.md',
     'vendor/takumi-svg/LICENSE-MIT', 'vendor/takumi-svg/LICENSE-APACHE',
     'vendor/takumi-raster/PATCHES.md', 'vendor/takumi-raster/LICENSE-MIT', 'vendor/takumi-raster/LICENSE-APACHE',
     ...(await fs.readdir(path.join(root, 'assets/fonts'))).filter(n => n.endsWith('-OFL.txt')).map(n => `assets/fonts/${n}`)]) {

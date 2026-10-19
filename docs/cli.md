@@ -15,7 +15,6 @@ Defaults: Monoprint dark, 15px code size, 32px outer padding, automatic width, 4
 | `--scale 2` | PNG pixel ratio, from 1 to 6. SVG/HTML retain CSS dimensions. |
 | `--png-compression balanced` | Lossless PNG compression: `fast` (default) or `balanced` (smaller files, more encoding time). PNG only. |
 | `--title example.rs` | Label where the theme has a title field. |
-| `--subtitle 'An example'` | Auth0 subtitle metadata; the frame displays the language label, so this does not change the visible image. |
 | `--line-numbers`, `--no-line-numbers` | Override line numbers for any theme; omit both flags to use its default. Plain text has no numbers. |
 | `--highlight 1,3-5` | Highlight source lines. |
 | `--highlight-text 2:5-2:12` | Highlight exact text; repeat for multiple ranges. End is exclusive. |
@@ -57,4 +56,4 @@ Source reads stop at 1 MiB; custom fonts are limited to 64 MiB. PNG layout is li
 - **SVG:** outlined text and vector geometry, with embedded raster textures/effects where needed. No external fonts or `foreignObject`.
 - **HTML:** selectable highlighted text, embedded fonts/assets, no JavaScript or external resource requests.
 
-See [validation](validation.md) for rendering checks and known limitations.
+See [maintenance](maintenance.md#verify) for rendering checks.

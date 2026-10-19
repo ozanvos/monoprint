@@ -13,10 +13,10 @@ fn png_compression_preserves_pixels_and_the_fast_default() {
         .title("example.rs")
         .highlight(2);
     for (theme, transparent, scale) in [
-        ("removed-frame", false, Scale::X1),
-        ("removed-frame", true, Scale::X2),
-        ("removed-frame", false, Scale::X3),
-        ("removed-frame", true, Scale::X2),
+        ("monoprint", false, Scale::X1),
+        ("monoprint", true, Scale::X2),
+        ("dusk", false, Scale::X3),
+        ("ground", true, Scale::X2),
     ] {
         let style = Style::new(theme.parse().unwrap())
             .width(480)
@@ -132,12 +132,12 @@ fn raw_pixels_match_png_at_odd_and_even_scales_and_retain_validation() {
 
 #[test]
 fn catalog_parsing_discovery_and_filename_inference() {
-    assert_eq!(Theme::all().len(), 82);
+    assert_eq!(Theme::all().len(), 69);
     assert_eq!(
         Theme::all()
             .filter(|t| t.supports(Appearance::Light))
             .count(),
-        59
+        37
     );
     assert_eq!("MONOPRINT".parse::<Theme>().unwrap(), Theme::default());
     assert_eq!(Theme::default().to_string(), "monoprint");
@@ -172,7 +172,7 @@ fn catalog_parsing_discovery_and_filename_inference() {
     assert_eq!(Language::for_file_name("unknown"), None);
     assert_eq!("rs".parse::<Language>().unwrap().name(), "Rust");
     assert!(matches!(
-        "removed-frame".parse::<Theme>().unwrap().line_numbers(),
+        "ordinal".parse::<Theme>().unwrap().line_numbers(),
         LineNumberPolicy::Toggleable { default: true }
     ));
 }
@@ -206,7 +206,7 @@ fn invalid_requests_report_structured_errors_before_rendering() {
     assert!(matches!(
         r.html(
             &snippet,
-            &Style::new("removed-frame".parse().unwrap()).appearance(Appearance::Light)
+            &Style::new("dusk".parse().unwrap()).appearance(Appearance::Light)
         ),
         Err(Error::InvalidOption(InvalidOption::Appearance {
             appearance: Appearance::Light,
@@ -336,8 +336,11 @@ fn custom_fonts_are_reused_without_leaking_between_renders() {
     assert!(r.html(&additional, &style).is_ok());
     let title = Snippet::new("x").title("Ж");
     assert!(
-        r.html(&title, &custom.clone().theme("removed-frame".parse().unwrap()))
-            .is_ok()
+        r.html(
+            &title,
+            &custom.clone().theme("thermal-receipt".parse().unwrap())
+        )
+        .is_ok()
     );
     assert!(r.html(&title, &custom).is_ok());
     assert!(r.html(&Snippet::new("x").title("🦀"), &style).is_ok());
@@ -350,7 +353,7 @@ fn concurrent_first_use_matches_sequential_outputs() {
         &include_bytes!("../assets/fonts/space-mono.ttf")[..],
     ))
     .unwrap();
-    let style = Style::new("removed-frame".parse().unwrap()).font(font);
+    let style = Style::new("ordinal".parse().unwrap()).font(font);
     let snippet = Snippet::new("const answer = 42;")
         .language("ts".parse().unwrap())
         .highlight(1);
@@ -381,7 +384,7 @@ fn concurrent_first_use_matches_sequential_outputs() {
 }
 
 #[test]
-fn fixed_width_tailwind_reports_png_budget_and_recovers() {
+fn fixed_width_wrapping_reports_png_budget_and_recovers() {
     let source = (0..30)
         .map(|i| {
             format!(
@@ -393,11 +396,12 @@ fn fixed_width_tailwind_reports_png_budget_and_recovers() {
         .join("\n");
     let renderer = Renderer::new();
     let snippet = Snippet::new(source).language("rust".parse().unwrap());
-    let style = Style::new("removed-frame".parse().unwrap())
-        .width(896)
+    let style = Style::new("monoprint".parse().unwrap())
+        .width(600)
+        .font_size(18)
         .padding(64)
         .line_numbers(LineNumbers::Show);
-    // The frame's borders and gutter wrap these lines into a 22 MP canvas at 4x.
+    // The frame's borders and gutter wrap these lines beyond the pixel budget at 4x.
     // Reject before entering Takumi, whose root and SVG-source caps are 16 MP.
     for style in [
         style.clone(),
@@ -408,16 +412,16 @@ fn fixed_width_tailwind_reports_png_budget_and_recovers() {
         assert!(matches!(
             renderer.png(&snippet, &style, Scale::X4),
             Err(Error::ImageTooLarge {
-                width: 3584,
-                height: 6184,
+                width: 2400,
+                height: _,
                 supersampled: false
             })
         ));
         let png = renderer.png(&snippet, &style, Scale::X2).unwrap();
-        assert_eq!(u32::from_be_bytes(png[16..20].try_into().unwrap()), 1792);
-        assert_eq!(u32::from_be_bytes(png[20..24].try_into().unwrap()), 3092);
+        assert_eq!(u32::from_be_bytes(png[16..20].try_into().unwrap()), 1200);
+        let height = u32::from_be_bytes(png[20..24].try_into().unwrap());
         let svg = renderer.svg(&snippet, &style).unwrap();
-        assert!(svg.contains("width=\"896\" height=\"1546\""));
+        assert!(svg.contains(&format!("width=\"600\" height=\"{}\"", height / 2)));
     }
 }
 
@@ -456,18 +460,7 @@ fn every_theme_preserves_default_line_numbers_and_allows_overrides() {
     assert!(!editor_has_numbers(r.html(&plain, &style).unwrap()));
     assert!(editor_has_numbers(r.html(&code, &style).unwrap()));
     for theme in Theme::all() {
-        let default = matches!(
-            theme.id(),
-            "removed-frame"
-                | "removed-frame"
-                | "removed-frame"
-                | "removed-frame"
-                | "removed-frame"
-                | "removed-frame"
-                | "removed-frame"
-                | "removed-frame"
-                | "removed-frame"
-        );
+        let default = theme.id() == "ordinal";
         assert_eq!(
             theme.line_numbers(),
             LineNumberPolicy::Toggleable { default }
@@ -508,7 +501,7 @@ fn cli_and_library_export_identical_bytes() {
         .language("ts".parse().unwrap())
         .title("sample.ts")
         .highlight(1);
-    let style = Style::new("removed-frame".parse().unwrap())
+    let style = Style::new("monoprint".parse().unwrap())
         .padding(32)
         .line_numbers(LineNumbers::Show);
     for (format, expected) in [
@@ -525,7 +518,7 @@ fn cli_and_library_export_identical_bytes() {
                 "-l",
                 "ts",
                 "--theme",
-                "removed-frame",
+                "monoprint",
                 "--padding",
                 "32",
                 "--line-numbers",

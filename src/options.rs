@@ -79,7 +79,7 @@ pub enum Appearance {
     /// Dark variant.
     #[default]
     Dark,
-    /// Light variant; not available for Stripe.
+    /// Light variant; available only for themes with a light palette.
     Light,
 }
 impl Appearance {
@@ -260,8 +260,7 @@ impl Snippet {
         self.title = title.into();
         self
     }
-    /// Set Auth0 subtitle metadata. Its pinned frame displays the language label
-    /// instead; this text is not visible. Other themes reject nonempty subtitles.
+    /// Legacy subtitle metadata. Current themes reject nonempty subtitles.
     #[must_use]
     pub fn subtitle(mut self, subtitle: impl Into<String>) -> Self {
         self.subtitle = subtitle.into();
@@ -309,6 +308,7 @@ pub struct Style {
     pub(crate) line_numbers: LineNumbers,
     pub(crate) font: Option<Font>,
     pub(crate) comment_font: Option<Font>,
+    theme_comment_font: bool,
     pub(crate) ligatures: bool,
     pub(crate) mixed_fonts: Option<Arc<crate::font::PreparedFonts>>,
 }
@@ -340,6 +340,7 @@ impl Default for Style {
             line_numbers: LineNumbers::Auto,
             font: None,
             comment_font: None,
+            theme_comment_font: true,
             ligatures: false,
             mixed_fonts: None,
         }
@@ -348,11 +349,13 @@ impl Default for Style {
 impl Style {
     /// Use a theme's preferred appearance with all other defaults unchanged.
     pub fn new(theme: Theme) -> Self {
-        Self {
+        let mut style = Self {
             theme,
             appearance: theme.default_appearance(),
             ..Self::default()
-        }
+        };
+        style.reset_mixed_fonts();
+        style
     }
     /// Change the theme, retaining the appearance if supported and other settings.
     /// Explicit legacy palette IDs select their original preferred appearance.
@@ -448,6 +451,7 @@ impl Style {
     #[must_use]
     pub fn comments_use_code_font(mut self) -> Self {
         self.comment_font = None;
+        self.theme_comment_font = false;
         self.reset_mixed_fonts();
         self
     }
@@ -459,6 +463,22 @@ impl Style {
         self
     }
     fn reset_mixed_fonts(&mut self) {
-        self.mixed_fonts = self.comment_font.as_ref().map(|_| Arc::default());
+        self.mixed_fonts = self.effective_comment_font().map(|_| Arc::default());
+    }
+    pub(crate) fn effective_comment_font(&self) -> Option<&Font> {
+        self.comment_font.as_ref().or_else(|| {
+            if self.theme_comment_font && self.theme.data().comment_font.as_deref() == Some("inter")
+            {
+                static INTER: std::sync::LazyLock<Font> = std::sync::LazyLock::new(|| {
+                    "inter"
+                        .parse::<crate::BundledFont>()
+                        .expect("bundled Inter")
+                        .font()
+                });
+                Some(&*INTER)
+            } else {
+                None
+            }
+        })
     }
 }

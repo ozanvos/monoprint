@@ -7,6 +7,8 @@ pub struct Theme {
     pub id: String,
     pub name: String,
     pub font: String,
+    pub comment_font: Option<String>,
+    pub syntax_weight: Option<u32>,
     #[serde(default)]
     pub line_numbers: bool,
     pub syntax: BTreeMap<String, BTreeMap<String, String>>,
@@ -64,14 +66,8 @@ pub struct Grammar {
 pub fn themes() -> &'static BTreeMap<String, Theme> {
     static DATA: LazyLock<BTreeMap<String, Theme>> = LazyLock::new(|| {
         let mut themes: BTreeMap<String, Theme> =
-            serde_json::from_str(include_str!("../assets/removed-frames/themes.json"))
-                .expect("bundled legacy frame theme manifest");
-        let editor: BTreeMap<String, Theme> =
             serde_json::from_str(include_str!("../assets/editor/themes.json"))
                 .expect("bundled editor theme manifest");
-        for (id, theme) in editor {
-            assert!(themes.insert(id, theme).is_none(), "duplicate theme ID");
-        }
         let originals: BTreeMap<String, Theme> =
             serde_json::from_str(include_str!("../assets/originals/themes.json"))
                 .expect("bundled Monoprint originals");
@@ -82,6 +78,12 @@ pub fn themes() -> &'static BTreeMap<String, Theme> {
             serde_json::from_str(include_str!("../assets/selected/themes.json"))
                 .expect("bundled selected Monoprint styles");
         for (id, theme) in selected {
+            assert!(themes.insert(id, theme).is_none(), "duplicate theme ID");
+        }
+        let code_styles: BTreeMap<String, Theme> =
+            serde_json::from_str(include_str!("../assets/code-styles/themes.json"))
+                .expect("bundled code-only Monoprint styles");
+        for (id, theme) in code_styles {
             assert!(themes.insert(id, theme).is_none(), "duplicate theme ID");
         }
         themes
@@ -95,28 +97,6 @@ pub fn grammars() -> &'static [Grammar] {
     });
     &DATA
 }
-pub fn templates() -> &'static BTreeMap<String, String> {
-    static DATA: LazyLock<BTreeMap<String, String>> = LazyLock::new(|| {
-        serde_json::from_str(include_str!("../assets/removed-frames/templates.json"))
-            .expect("bundled frame templates")
-    });
-    &DATA
-}
-pub fn images() -> &'static BTreeMap<String, String> {
-    static DATA: LazyLock<BTreeMap<String, String>> = LazyLock::new(|| {
-        serde_json::from_str(include_str!("../assets/removed-frames/images.json"))
-            .expect("bundled image assets")
-    });
-    &DATA
-}
-pub fn styles() -> &'static BTreeMap<String, String> {
-    static DATA: LazyLock<BTreeMap<String, String>> = LazyLock::new(|| {
-        serde_json::from_str(include_str!("../assets/removed-frames/styles.json"))
-            .expect("bundled frame styles")
-    });
-    &DATA
-}
-
 pub fn font(name: &str) -> &'static [u8] {
     match name {
         "jetbrains-mono" => include_bytes!("../assets/fonts/jetbrains-mono.ttf"),

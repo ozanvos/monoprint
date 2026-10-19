@@ -166,14 +166,14 @@ fn with_fallback_families(css: &str, families: &str) -> String {
 }
 
 fn typography_css(font: &[u8], font_size: u32, line_count: usize) -> Result<String> {
-    // Keep the original CSS (and exported bytes) untouched at the legacy frame default.
+    // Keep the original CSS (and exported bytes) untouched at the default font size.
     if font_size == 15 {
         return Ok(String::new());
     }
     let ratio = f64::from(font_size) / 15.0;
     let rendered_size = f64::from(font_size) * 149.0 / 150.0;
     let line_height = f64::from(font_size) * 1.5;
-    // the frame's gutter is specified in rem, so merely increasing font-size makes
+    // The shared gutter is specified in rem, so merely increasing font-size makes
     // large line numbers overlap code or extend outside the window. Keep its
     // proportions while also reserving room for every digit in long snippets.
     let face = ttf_parser::Face::parse(font, 0)?;
@@ -227,10 +227,10 @@ pub(crate) fn render(
         source,
         theme,
         mode,
-        style.comment_font.is_some(),
+        style.effective_comment_font().is_some(),
     )?;
     let mut fallbacks = Fallbacks::default();
-    if let Some(comment_font) = &style.comment_font {
+    if let Some(comment_font) = style.effective_comment_font() {
         let mut offset = 0;
         for range in &code.comments {
             fallbacks.include(font, &source[offset..range.start], TextRole::Code, true)?;
@@ -252,15 +252,7 @@ pub(crate) fn render(
             LineNumbers::Show => true,
             LineNumbers::Hide => false,
         };
-    let weight = if theme.editor.is_none()
-        && !theme.original
-        && style.font.is_none()
-        && matches!(theme.font.as_str(), "jetbrains-mono" | "ibm-plex-mono")
-    {
-        500
-    } else {
-        400
-    };
+    let weight = 400;
     let palette_css = palette
         .iter()
         .map(|(k, v)| format!("{k}:{v};"))
@@ -278,13 +270,6 @@ pub(crate) fn render(
         "<div class=\"Editor__editor{number_class}\" style=\"--editor-padding:16px;--code-weight:{weight};font-family:CodeMono;font-weight:{weight};{palette_css}\"><div class=\"Editor__formatted\"><pre><code>{}</code></pre></div></div>",
         code.html
     );
-    let key = format!(
-        "{}/{mode}/{}/{}/{}",
-        theme.id,
-        u8::from(style.background == crate::Background::Theme),
-        u8::from(!snippet.title.is_empty()),
-        u8::from(!snippet.subtitle.is_empty())
-    );
     let language_name = assets::grammars()
         .iter()
         .find(|g| g.name == code.language || g.aliases.contains(&code.language))
@@ -297,24 +282,15 @@ pub(crate) fn render(
             .original
             .then(|| originals::frame(theme, style, snippet, source))
     };
-    let mut template = if let Some(frame) = &original {
+    let template = if let Some(frame) = &original {
         frame.template.clone()
-    } else if theme.editor.is_some() {
-        editor_theme::template(!snippet.title.is_empty(), style.background)
     } else {
-        assets::templates()
-            .get(&key)
-            .context("missing embedded frame template")?
-            .clone()
+        editor_theme::template(!snippet.title.is_empty(), style.background)
     };
     if template.contains("__TITLE__") {
-        let title_uses_code_font = matches!(
-            theme.id.as_str(),
-            "removed-frame" | "removed-frame" | "thermal-receipt" | "monoprint"
-        );
+        let title_uses_code_font = matches!(theme.id.as_str(), "thermal-receipt" | "monoprint");
         let title_font = match theme.id.as_str() {
-            "removed-frame" | "removed-frame" | "thermal-receipt" | "monoprint" => font,
-            "removed-frame" => assets::font("ibm-plex-mono"),
+            "thermal-receipt" | "monoprint" => font,
             _ => assets::font("inter"),
         };
         fallbacks.include(
@@ -324,14 +300,6 @@ pub(crate) fn render(
             title_uses_code_font,
         )?;
     }
-    // The pinned Auth0 frame keeps subtitle only in data-value metadata; its
-    // visible span is the language label. No subtitle glyphs are drawn.
-    if matches!(theme.id.as_str(), "removed-frame" | "removed-frame" | "removed-frame")
-        && let Some(start) = template.find("background-image:linear-gradient(")
-        && let Some(end) = template[start..].find(')')
-    {
-        template.replace_range(start..start + end + 1, "");
-    }
     let width = style
         .width
         .map(|w| format!("width:{w}px"))
@@ -339,17 +307,15 @@ pub(crate) fn render(
     let editor_css;
     let base_css = if let Some(frame) = &original {
         &frame.css
-    } else if theme.editor.is_some() {
+    } else {
         editor_css = editor_theme::css(theme);
         &editor_css
-    } else {
-        &assets::styles()[&theme.id]
     };
     // html-to-image 1.11.13 reduces 15px code to 14.9px on export.
     // Match that in every format, retaining 22.5px leading and the original
     // pre-export fit-width measurement below.
     let mut css = format!(
-        "{base_css}\n#capture{{{width}}}.Editor__editor{{display:block}}.Editor__editor:after{{content:none}}.Editor__formatted{{font-family:CodeMono;font-size:14.9px;font-variant-ligatures:none;font-feature-settings:'liga' 0,'calt' 0}}[data-export-input]{{display:block}}.DefaultFrame__header .DefaultFrame__fileName>[data-export-input]{{display:flex;align-items:center;justify-content:center}}\n"
+        "{base_css}\n#capture{{{width}}}.Editor__editor{{display:block}}.Editor__editor:after{{content:none}}.Editor__formatted{{font-family:CodeMono;font-size:14.9px;font-variant-ligatures:none;font-feature-settings:'liga' 0,'calt' 0}}[data-export-input]{{display:block}}\n"
     );
     css += &background::css(theme, style.appearance, style.background);
     if style.ligatures {
@@ -360,21 +326,15 @@ pub(crate) fn render(
     if !snippet.text_highlights.is_empty() {
         css += ".Editor__editor .highlighted-text{background-color:var(--ink-highlight,rgba(128,128,128,0.28))}";
     }
-    // All image URLs are resolved from the embedded asset bundle; no network access.
-    for (name, data) in assets::images() {
-        template = template.replace(&format!("asset:{name}"), data);
-        css = css.replace(&format!("asset:{name}"), data);
-    }
-    let secondary_font = matches!(theme.id.as_str(), "removed-frame" | "removed-frame");
     let fallback_families = fallbacks.families();
     if style.width.is_none() {
         let measured_width = if !fallbacks.is_empty() || !source.is_ascii() {
-            let fonts = renderer.fonts(style, secondary_font, fallbacks)?;
+            let fonts = renderer.fonts(style, false, fallbacks)?;
             shaped_code_width(&code.html, &fonts, style, weight, &fallback_families)?
         } else {
             code_width(
                 font,
-                style.comment_font.as_ref().map(|font| font.bytes()),
+                style.effective_comment_font().map(|font| font.bytes()),
                 &code.comments,
                 source,
                 style.font_size,
@@ -411,8 +371,8 @@ pub(crate) fn render(
         )
     };
     let frame = fill_template(&template);
-    let mut html = format!("<div id=\"capture\" data-theme=\"{mode}\">{frame}</div>");
-    css += "#capture{--font-space-mono:CodeMono;--font-soehne-mono:CodeMono}.TriggerdevFrame__fileName,.TriggerdevFrame__language{font-family:CodeMono}.Editor__editor .line{min-height:22.5px}";
+    let html = format!("<div id=\"capture\" data-theme=\"{mode}\">{frame}</div>");
+    css += "#capture{--font-space-mono:CodeMono;--font-soehne-mono:CodeMono}.Editor__editor .line{min-height:22.5px}";
     css += &typography_css(font, style.font_size, code.line_count)?;
     if !fallbacks.is_empty() {
         css = with_fallback_families(&css, &fallback_families);
@@ -434,10 +394,10 @@ pub(crate) fn render(
         ))
     };
     let mut stylesheet = parse_css(&css)?;
-    let mut node =
+    let node =
         takumi::from_html(&html, FromHtmlOptions::default()).context("parsing frame markup")?;
-    if effects::needs_measurement(&theme.id) || theme.id == "dither-light" {
-        let fonts = renderer.fonts(style, secondary_font, fallbacks)?;
+    if theme.id == "dither-light" {
+        let fonts = renderer.fonts(style, false, fallbacks)?;
         let viewport =
             Viewport::new((style.width.map(|w| w * 2), None)).with_device_pixel_ratio(2.0);
         let size = takumi_raster::measure_size(
@@ -448,27 +408,13 @@ pub(crate) fn render(
                 .stylesheet(stylesheet.clone())
                 .build(),
         )?;
-        let effect = effects::prepare(&theme.id, style, size.width / 2.0, size.height / 2.0);
-        css += &effect.css;
         css += &originals::measured_css(style, size.width / 2.0, size.height / 2.0);
-        // Adapt only trusted template markup, before inserting user text.
-        let template =
-            effects::adapt_template(&theme.id, template, size.width / 2.0, size.height / 2.0);
-        let frame = fill_template(&template);
-        html = format!(
-            "<div id=\"capture\" data-theme=\"{mode}\">{frame}{}</div>",
-            effect.overlay
-        );
-        node = takumi::from_html(&html, FromHtmlOptions::default())?;
         stylesheet = parse_css(&css)?;
     }
     if format == Format::Html {
         let mut fonts = font_face("CodeMono", font) + &font_face("Inter", assets::font("inter"));
-        if let Some(font) = &style.comment_font {
+        if let Some(font) = style.effective_comment_font() {
             fonts += &font_face("CommentFont", font.bytes());
-        }
-        if secondary_font {
-            fonts += &font_face("IBM Plex Mono", assets::font("ibm-plex-mono"));
         }
         for (family, bytes) in fallbacks.entries() {
             fonts += &font_face(family, bytes);
@@ -479,7 +425,7 @@ pub(crate) fn render(
         );
         return Ok(Output::Text(result));
     }
-    let fonts = renderer.fonts(style, secondary_font, fallbacks)?;
+    let fonts = renderer.fonts(style, false, fallbacks)?;
     // At 2x, the upstream 22.5px line height is integral. Keep the SVG's
     // viewBox at this precision and expose its normal CSS dimensions.
     let raster_scale = scale;

@@ -34,7 +34,7 @@ Use `Renderer` to reuse styles and caches:
 ```ts
 import { Renderer, languageForFileName } from 'monoprint';
 
-const renderer = new Renderer({ theme: 'removed-frame', padding: 24, width: 640 });
+const renderer = new Renderer({ theme: 'monoprint', padding: 24, width: 640 });
 const svg = await renderer.svg('fn main() {}', {
   language: languageForFileName('main.rs') ?? 'plain',
   title: 'main.rs',

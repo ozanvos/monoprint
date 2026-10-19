@@ -1,0 +1,363 @@
+{
+  "ground": {
+    "id": "ground",
+    "name": "Ground",
+    "font": "ibm-plex-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 500,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#22252B",
+        "--ink-highlight": "#00000016"
+      }
+    },
+    "background": {
+      "from": "#F3F0E8",
+      "to": "#F3F0E8"
+    }
+  },
+  "galley": {
+    "id": "galley",
+    "name": "Galley",
+    "font": "jetbrains-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#1E2329",
+        "--ink-highlight": "#00000016"
+      }
+    },
+    "background": {
+      "from": "#56626E",
+      "to": "#56626E"
+    }
+  },
+  "traverse": {
+    "id": "traverse",
+    "name": "Traverse",
+    "font": "geist-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#E6E3DA",
+        "--ink-highlight": "#FFFFFF24"
+      }
+    },
+    "background": {
+      "from": "#E4E1DA",
+      "to": "#E4E1DA"
+    }
+  },
+  "plumb": {
+    "id": "plumb",
+    "name": "Plumb",
+    "font": "ibm-plex-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#1F2A36",
+        "--ink-highlight": "#00000016"
+      }
+    },
+    "background": {
+      "from": "#DCE1E6",
+      "to": "#DCE1E6"
+    }
+  },
+  "contour": {
+    "id": "contour",
+    "name": "Contour",
+    "font": "geist-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#23201A",
+        "--ink-highlight": "#00000016"
+      }
+    },
+    "background": {
+      "from": "#BF8F3F",
+      "to": "#BF8F3F"
+    }
+  },
+  "dusk": {
+    "id": "dusk",
+    "name": "Dusk",
+    "font": "jetbrains-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 500,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#E4E6EA",
+        "--ink-highlight": "#FFFFFF24"
+      }
+    },
+    "background": {
+      "from": "#1F232A",
+      "to": "#1F232A"
+    }
+  },
+  "cantilever": {
+    "id": "cantilever",
+    "name": "Cantilever",
+    "font": "space-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#2A2420",
+        "--ink-highlight": "#00000016"
+      }
+    },
+    "background": {
+      "from": "#94503A",
+      "to": "#94503A"
+    }
+  },
+  "ordinal": {
+    "id": "ordinal",
+    "name": "Ordinal",
+    "font": "jetbrains-mono",
+    "original": true,
+    "lineNumbers": true,
+    "syntaxWeight": 600,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#262B27",
+        "--ink-highlight": "#00000016"
+      }
+    },
+    "background": {
+      "from": "#E3E6DF",
+      "to": "#E3E6DF"
+    }
+  },
+  "ballast": {
+    "id": "ballast",
+    "name": "Ballast",
+    "font": "ibm-plex-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#EDE6DC",
+        "--ink-highlight": "#FFFFFF24"
+      }
+    },
+    "background": {
+      "from": "#221D1A",
+      "to": "#221D1A"
+    }
+  },
+  "aside": {
+    "id": "aside",
+    "name": "Aside",
+    "font": "geist-mono",
+    "original": true,
+    "lineNumbers": false,
+    "commentFont": "inter",
+    "syntaxWeight": 600,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#15201C",
+        "--ink-highlight": "#00000016"
+      }
+    },
+    "background": {
+      "from": "#A9BDB0",
+      "to": "#A9BDB0"
+    }
+  },
+  "jetty": {
+    "id": "jetty",
+    "name": "Jetty",
+    "font": "jetbrains-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#dbe6e4",
+        "--ink-highlight": "#FFFFFF24"
+      }
+    },
+    "background": {
+      "from": "#1f3a3f",
+      "to": "#1f3a3f"
+    }
+  },
+  "column": {
+    "id": "column",
+    "name": "Column",
+    "font": "ibm-plex-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 500,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#ebe3d8",
+        "--ink-highlight": "#FFFFFF24"
+      }
+    },
+    "background": {
+      "from": "#3a352f",
+      "to": "#3a352f"
+    }
+  },
+  "course": {
+    "id": "course",
+    "name": "Course",
+    "font": "geist-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#1f2523",
+        "--ink-highlight": "#00000016"
+      }
+    },
+    "background": {
+      "from": "#bcc6bf",
+      "to": "#bcc6bf"
+    }
+  },
+  "well": {
+    "id": "well",
+    "name": "Well",
+    "font": "geist-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 500,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#d5dbe8",
+        "--ink-highlight": "#FFFFFF24"
+      }
+    },
+    "background": {
+      "from": "#262d40",
+      "to": "#262d40"
+    }
+  },
+  "quay": {
+    "id": "quay",
+    "name": "Quay",
+    "font": "ibm-plex-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#272320",
+        "--ink-highlight": "#00000016"
+      }
+    },
+    "background": {
+      "from": "#d6c4ae",
+      "to": "#d6c4ae"
+    }
+  },
+  "pendant": {
+    "id": "pendant",
+    "name": "Pendant",
+    "font": "jetbrains-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 500,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#e4e6d8",
+        "--ink-highlight": "#FFFFFF24"
+      }
+    },
+    "background": {
+      "from": "#3b4331",
+      "to": "#3b4331"
+    }
+  },
+  "capsule": {
+    "id": "capsule",
+    "name": "Capsule",
+    "font": "space-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#efe4e0",
+        "--ink-highlight": "#FFFFFF24"
+      }
+    },
+    "background": {
+      "from": "#5b2126",
+      "to": "#5b2126"
+    }
+  },
+  "flange": {
+    "id": "flange",
+    "name": "Flange",
+    "font": "jetbrains-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#dcdfe3",
+        "--ink-highlight": "#FFFFFF24"
+      }
+    },
+    "background": {
+      "from": "#2b2e33",
+      "to": "#2b2e33"
+    }
+  },
+  "inlay": {
+    "id": "inlay",
+    "name": "Inlay",
+    "font": "jetbrains-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "light": {
+        "--ink-foreground": "#1c1f26",
+        "--ink-highlight": "#00000016"
+      }
+    },
+    "background": {
+      "from": "#213f8c",
+      "to": "#213f8c"
+    }
+  },
+  "trace": {
+    "id": "trace",
+    "name": "Trace",
+    "font": "ibm-plex-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 500,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#d9dee3",
+        "--ink-highlight": "#FFFFFF24"
+      }
+    },
+    "background": {
+      "from": "#121619",
+      "to": "#121619"
+    }
+  }
+}

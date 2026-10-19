@@ -33,7 +33,7 @@ try {
   await fs.writeFile(snippet, 'const message = "你好 👩🏽‍💻 🇳🇱";\n');
   for (const format of ['png', 'svg', 'html']) {
     const file = path.join(temporary, `example.${format}`);
-    run(executable, [snippet, '--theme', 'removed-frame', '--light', '--background', 'halftone', '--scale', '1', '-o', file], { env: { ...process.env, PATH: '' } });
+    run(executable, [snippet, '--theme', 'monoprint', '--light', '--background', 'halftone', '--scale', '1', '-o', file], { env: { ...process.env, PATH: '' } });
     const bytes = await fs.readFile(file);
     if (format === 'png') assert.equal(bytes.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
     if (format === 'svg') { assert.match(bytes.toString(), /<svg/); assert.doesNotMatch(bytes.toString(), /<foreignObject|<text[ >]/); }

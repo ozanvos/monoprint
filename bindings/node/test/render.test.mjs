@@ -6,14 +6,24 @@ import test from 'node:test';
 import { Font, Renderer, MonoprintError, png, pngSync, svg, html, htmlSync, getThemes, getLanguages, languageForFileName } from '../dist/index.mjs';
 
 const source = 'const answer = 42;\nconsole.log(answer);\n';
-const options = { language: 'typescript', theme: 'removed-frame', padding: 16, width: 400, highlight: [1, [2, 3]] };
+const options = { language: 'typescript', theme: 'monoprint', padding: 16, width: 400, highlight: [1, [2, 3]] };
 const code = expected => error => error instanceof MonoprintError && error.code === expected;
+
+test('retired theme IDs are absent from discovery and rejected explicitly', async () => {
+  const retired = JSON.parse(await readFile(new URL('../../../assets/retired-themes.json', import.meta.url), 'utf8'));
+  const ids = new Set(getThemes().map(theme => theme.id));
+  const renderer = new Renderer();
+  for (const theme of retired) {
+    assert.ok(!ids.has(theme), theme);
+    assert.throws(() => renderer.htmlSync(source, { theme }), code('UNKNOWN_THEME'));
+  }
+});
 
 test('line numbers inherit theme defaults and can be overridden for every theme', () => {
   assert.ok(getThemes().every(theme => theme.lineNumbers.toggleable));
   const renderer = new Renderer();
   const visible = options => renderer.htmlSync(source, { language: 'typescript', ...options }).includes('class="Editor__editor Editor__showLineNumbers');
-  for (const [theme, defaultVisible] of [['removed-frame', true], ['removed-frame', true], ['removed-frame', false], ['removed-frame', false]]) {
+  for (const [theme, defaultVisible] of [['ordinal', true], ['monoprint', false], ['dusk', false], ['ground', false]]) {
     assert.equal(visible({ theme }), defaultVisible);
     assert.equal(visible({ theme, lineNumbers: 'auto' }), defaultVisible);
     assert.equal(visible({ theme, lineNumbers: false }), false);
@@ -76,26 +86,26 @@ test('ESM and CommonJS share class identity, errors, fonts and convenience metho
 });
 
 test('styles are reusable snapshots and explicit auto/null restore defaults', async () => {
-  const style = { theme: 'removed-frame', width: 420, padding: 24 };
+  const style = { theme: 'dusk', width: 420, padding: 24 };
   const renderer = new Renderer(style);
-  style.theme = 'removed-frame';
+  style.theme = 'monoprint';
   const highlights = [1, [2, 2]];
-  const request = { ...options, theme: 'removed-frame', highlight: highlights };
+  const request = { ...options, theme: 'dusk', highlight: highlights };
   const pending = renderer.html(source, request);
-  request.theme = 'removed-frame';
+  request.theme = 'ground';
   highlights[1][1] = 999;
-  assert.equal(await pending, htmlSync(source, { ...options, theme: 'removed-frame', highlight: [1, [2, 2]] }));
+  assert.equal(await pending, htmlSync(source, { ...options, theme: 'dusk', highlight: [1, [2, 2]] }));
   assert.equal(await renderer.html(source, { width: 'auto', padding: 64, font: null }),
-    await html(source, { theme: 'removed-frame', width: 'auto', padding: 64 }));
+    await html(source, { theme: 'dusk', width: 'auto', padding: 64 }));
 });
 
 test('catalog discovery is immutable, canonical, and follows reviewed grammar exclusions', () => {
-  assert.equal(getThemes().length, 82);
+  assert.equal(getThemes().length, 69);
   const signature = getThemes().find(t => t.id === 'monoprint');
   assert.equal(signature.name, 'Monoprint');
   assert.deepEqual(signature.appearances, ['dark', 'light']);
   assert.equal(getLanguages().length, 232);
-  assert.deepEqual(getThemes().find(t => t.id === 'removed-frame').appearances, ['dark']);
+  assert.deepEqual(getThemes().find(t => t.id === 'dusk').appearances, ['dark']);
   assert.ok(getLanguages().some(l => l.id === 'typescript' && l.aliases.includes('ts')));
   assert.ok(!getLanguages().some(l => l.id === 'nginx'));
   assert.equal(languageForFileName('src/main.rs'), 'rust');
@@ -176,7 +186,7 @@ test('validation rejects invalid JS inputs without numeric coercion or ignored o
     await assert.rejects(png(source, { padding: bad }), code('INVALID_ARGUMENT'));
   }
   await assert.rejects(svg(source, { scale: 2 }), code('INVALID_ARGUMENT'));
-  await assert.rejects(png(source, { them: 'removed-frame' }), code('INVALID_ARGUMENT'));
+  await assert.rejects(png(source, { them: 'dusk' }), code('INVALID_ARGUMENT'));
   await assert.rejects(html(source, null), code('INVALID_ARGUMENT'));
   await assert.rejects(html(123), code('INVALID_ARGUMENT'));
   await assert.rejects(html(source, { font: {} }), code('INVALID_ARGUMENT'));
@@ -191,15 +201,15 @@ test('native failures expose stable codes and structured context, then renderer 
   const renderer = new Renderer();
   await assert.rejects(renderer.html(source, { theme: 'missing' }), code('UNKNOWN_THEME'));
   await assert.rejects(renderer.html(source, { language: 'nginx' }), code('UNKNOWN_LANGUAGE'));
-  await assert.rejects(renderer.html(source, { theme: 'removed-frame', appearance: 'light' }), error => code('INVALID_OPTION')(error) && error.details.option === 'appearance');
+  await assert.rejects(renderer.html(source, { theme: 'dusk', appearance: 'light' }), error => code('INVALID_OPTION')(error) && error.details.option === 'appearance');
   await assert.rejects(renderer.html(source, { highlight: [0] }), error => code('INVALID_OPTION')(error) && error.details.lineCount === 3);
   await assert.rejects(renderer.png(source, { scale: 0 }), code('INVALID_OPTION'));
   await assert.rejects(renderer.png(source, { width: 8192, padding: 0, scale: 6 }), code('IMAGE_TOO_LARGE'));
   const wrapped = Array.from({ length: 30 }, (_, i) =>
     `let value_${String(i).padStart(3, '0')} = "hello ${i}"; // benchmark code image `.padEnd(80, '.')
   ).join('\n');
-  await assert.rejects(renderer.png(wrapped, { language: 'rust', theme: 'removed-frame', width: 896, scale: 4, lineNumbers: true }),
-    error => code('IMAGE_TOO_LARGE')(error) && error.details.width === 3584 && error.details.height === 6184);
+  await assert.rejects(renderer.png(wrapped, { language: 'rust', theme: 'monoprint', width: 600, fontSize: 18, padding: 64, scale: 4, lineNumbers: true }),
+    error => code('IMAGE_TOO_LARGE')(error) && error.details.width === 2400 && error.details.height > 1700);
   await assert.rejects(renderer.html('é'.repeat(524289)), error => code('INVALID_OPTION')(error) && error.details.option === 'source');
   assert.match(await renderer.html(source), /^<!doctype html>/);
 });
@@ -216,7 +226,7 @@ test('async rendering leaves the event loop responsive and retains dropped rende
 
 test('TypeScript results are byte-identical to the Rust CLI', { skip: !process.env.MONOPRINT_CLI }, async () => {
   const renderer = new Renderer();
-  for (const theme of ['removed-frame', 'removed-frame', 'removed-frame', 'removed-frame', 'removed-frame', 'ayu', 'ayu-light', 'solarized', 'solarized-light']) {
+  for (const theme of ['monoprint', 'dusk', 'contour', 'inlay', 'ground', 'ayu', 'ayu-light', 'solarized', 'solarized-light']) {
     for (const format of ['png', 'svg', 'html']) {
       const args = ['-l', 'tsx', '--theme', theme, '--padding', '16', '--width', '400', '--highlight', '1', '--scale', '2', '--format', format, '-o', '-'];
       const cli = spawnSync(process.env.MONOPRINT_CLI, args, { input: source, maxBuffer: 16 * 1024 * 1024 });

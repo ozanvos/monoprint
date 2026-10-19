@@ -422,7 +422,7 @@ mod macos {
                 s.sync_typeface(false, window, cx);
                 s.sync_typeface(true, window, cx);
                 s.document.select_background(monoprint::Background::Theme);
-                s.select_theme("removed-frame".parse().unwrap(), window, cx);
+                s.select_theme("monoprint".parse().unwrap(), window, cx);
                 s.font_size
                     .update(cx, |input, cx| input.replace_all("23", window, cx));
                 s.install_source(title.into(), source.into(), window, cx);
@@ -1001,6 +1001,26 @@ mod macos {
             "ragged-block",
             "holofoil",
             "press-proof",
+            "ground",
+            "galley",
+            "traverse",
+            "plumb",
+            "contour",
+            "dusk",
+            "cantilever",
+            "ordinal",
+            "ballast",
+            "aside",
+            "jetty",
+            "column",
+            "course",
+            "well",
+            "quay",
+            "pendant",
+            "capsule",
+            "flange",
+            "inlay",
+            "trace",
         ] {
             reveal_theme_gallery(cx, handle, studio);
             cx.update_window(handle.into(), |_, window, cx| {
@@ -1636,7 +1656,7 @@ mod macos {
             // overridden just like any other theme. Reset restores inheritance.
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
-                    s.select_theme("removed-frame".parse().unwrap(), window, cx);
+                    s.select_theme("ordinal".parse().unwrap(), window, cx);
                 });
             })
             .unwrap();
@@ -1665,7 +1685,7 @@ mod macos {
             cx.update_window(handle.into(), |_, window, cx| {
                 assert!(window.try_find("reset-line-numbers").is_none());
                 studio.update(cx, |s, cx| {
-                    s.select_theme("removed-frame".parse().unwrap(), window, cx);
+                    s.select_theme("monoprint".parse().unwrap(), window, cx);
                 });
             })
             .unwrap();
@@ -1968,15 +1988,15 @@ mod macos {
                 handle,
                 &format!("light-theme-filter-{}", width as u32),
             );
-            let candy_variant = cx.read_entity(&studio, |s, _| {
+            let monoprint_variant = cx.read_entity(&studio, |s, _| {
                 s.thumbnails
                     .iter()
-                    .position(|(theme, _)| theme.id() == "removed-frame")
+                    .position(|(theme, _)| theme.id() == "monoprint")
                     .unwrap()
             });
-            reveal_theme_swatch(&mut cx, handle, &studio, candy_variant);
+            reveal_theme_swatch(&mut cx, handle, &studio, monoprint_variant);
             cx.update_window(handle.into(), |_, window, cx| {
-                window.click(("theme-swatch", candy_variant), cx)
+                window.click(("theme-swatch", monoprint_variant), cx)
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
@@ -1988,9 +2008,9 @@ mod macos {
             });
             inspector_click(&mut cx, handle, &studio, "themes-dark");
             reveal_theme_gallery(&mut cx, handle, &studio);
-            reveal_theme_swatch(&mut cx, handle, &studio, candy_variant);
+            reveal_theme_swatch(&mut cx, handle, &studio, monoprint_variant);
             cx.update_window(handle.into(), |_, window, cx| {
-                window.click(("theme-swatch", candy_variant), cx)
+                window.click(("theme-swatch", monoprint_variant), cx)
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
@@ -2087,7 +2107,7 @@ mod macos {
             settle(&mut cx, handle, &studio);
             reveal_theme_gallery(&mut cx, handle, &studio);
 
-            let (candy, first, last, initial_revision) = cx.read_entity(&studio, |s, _| {
+            let (monoprint, first, last, initial_revision) = cx.read_entity(&studio, |s, _| {
                 let mut bundled = s
                     .thumbnails
                     .iter()
@@ -2103,7 +2123,7 @@ mod macos {
                 (
                     s.thumbnails
                         .iter()
-                        .position(|(theme, _)| theme.id() == "removed-frame")
+                        .position(|(theme, _)| theme.id() == "monoprint")
                         .unwrap(),
                     s.filtered_themes[0],
                     s.thumbnails.len() - 1,
@@ -2176,25 +2196,25 @@ mod macos {
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
                     s.theme_search
-                        .update(cx, |input, cx| input.replace_all("  eViL  ", window, cx));
+                        .update(cx, |input, cx| input.replace_all("  gRoUnD  ", window, cx));
                 });
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
             reveal_theme_gallery(&mut cx, handle, &studio);
-            let rabbit = cx.read_entity(&studio, |s, _| {
+            let ground = cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.filtered_themes.len(), 1);
                 let index = s.filtered_themes[0];
-                assert_eq!(s.thumbnails[index].0.id(), "removed-frame");
+                assert_eq!(s.thumbnails[index].0.id(), "ground");
                 assert_eq!(s.revision, initial_revision);
                 index
             });
             cx.update_window(handle.into(), |_, window, cx| {
-                window.click(("theme-swatch", rabbit), cx)
+                window.click(("theme-swatch", ground), cx)
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
-            cx.read_entity(&studio, |s, _| assert_eq!(s.document.theme, "removed-frame"));
+            cx.read_entity(&studio, |s, _| assert_eq!(s.document.theme, "ground"));
             capture(
                 &mut cx,
                 handle,
@@ -2222,8 +2242,8 @@ mod macos {
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
                     s.theme_scroll
-                        .scroll_to_item(candy / 3, ScrollStrategy::Center);
-                    s.select_theme("removed-frame".parse().unwrap(), window, cx);
+                        .scroll_to_item(monoprint / 3, ScrollStrategy::Center);
+                    s.select_theme("monoprint".parse().unwrap(), window, cx);
                 });
             })
             .unwrap();
@@ -2397,14 +2417,14 @@ mod macos {
             }
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
-                    s.select_theme("removed-frame".parse().unwrap(), window, cx)
+                    s.select_theme("dusk".parse().unwrap(), window, cx)
                 });
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
             cx.read_entity(&studio, |s, _| {
                 assert!(!s.document.light);
-                assert_eq!(s.document.theme, "removed-frame");
+                assert_eq!(s.document.theme, "dusk");
             });
             cx.update_window(handle.into(), |_, window, _| {
                 assert!(window.try_find("light-appearance").is_none());
@@ -2470,7 +2490,7 @@ mod macos {
                         window,
                         cx,
                     );
-                    s.select_theme("removed-frame".parse().unwrap(), window, cx);
+                    s.select_theme("monoprint".parse().unwrap(), window, cx);
                 });
             })
             .unwrap();

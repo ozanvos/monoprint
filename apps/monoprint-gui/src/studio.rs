@@ -1193,7 +1193,7 @@ fn typeface_items(document: &Document, comments: bool) -> Vec<Choice> {
     let mut items = vec![Choice {
         id: String::new(),
         name: if comments {
-            "Same as code"
+            "Theme comments"
         } else {
             "Theme typeface"
         }

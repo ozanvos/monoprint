@@ -8,9 +8,9 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
     let output = Path::new("apps/monoprint-gui/assets/themes");
     fs::create_dir_all(output)?;
     let selected = std::env::args()
-        .nth(1)
-        .map(|id| id.parse::<Theme>())
-        .transpose()?;
+        .skip(1)
+        .map(|id| id.parse::<Theme>().map(Theme::canonical))
+        .collect::<Result<Vec<_>, _>>()?;
     let renderer = Renderer::new();
     let snippet = Snippet::new(
         "const theme = \"Monoprint\";\n\nfunction print(code: string) {\n  return render(code, { theme });\n}",
@@ -41,7 +41,7 @@ fn main() -> Result<(), Box<dyn std::error::Error>> {
             if suffix.is_empty() {
                 catalog.push_str(&entry);
             }
-            if selected.is_none_or(|selected| selected.canonical() == theme) {
+            if selected.is_empty() || selected.contains(&theme) {
                 let style = Style::new(theme)
                     .appearance(appearance)
                     .width(480)

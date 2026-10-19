@@ -214,7 +214,7 @@ fn exact_selections_are_unicode_aware_merge_and_coexist_with_line_highlights() {
         .language("rust".parse().unwrap())
         .highlight_text("1:5-1:6".parse().unwrap());
     let normal = Snippet::new("let x = 1;").language("rust".parse().unwrap());
-    for theme in ["removed-frame", "removed-frame", "removed-frame"] {
+    for theme in ["monoprint", "ground", "dusk"] {
         let style = Style::new(theme.parse().unwrap());
         assert_ne!(
             r.png(&marked, &style, Scale::X1).unwrap(),

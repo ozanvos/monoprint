@@ -25,7 +25,7 @@ Build with Rust 1.97 or newer and a C compiler:
 ```sh
 cargo build --locked --release --target-dir target
 ./target/release/monoprint example.rs -o example.png
-./target/release/monoprint example.rs --theme nuxt --title example.rs -o example.svg
+./target/release/monoprint example.rs --theme monoprint --title example.rs -o example.svg
 printf 'const answer = 42;\n' | ./target/release/monoprint -l ts -o example.html
 ```
 

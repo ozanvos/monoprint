@@ -140,13 +140,16 @@ fn errors_are_clear_and_leave_no_output() {
     let w = Workspace::new();
     for (flags, message) in [
         (vec!["--theme", "missing"], "unknown theme"),
-        (vec!["--theme", "removed-frame", "--light"], "no light variant"),
+        (vec!["--theme", "dusk", "--light"], "no light variant"),
         (vec!["--language", "not-a-language"], "unknown language"),
         (vec!["--highlight", "0"], "outside"),
         (vec!["--highlight", "2-1"], "outside"),
         (vec!["--highlight", "1-999999999999"], "outside"),
         (vec!["--width", "100"], "leave room"),
-        (vec!["--subtitle", "unsupported"], "Auth0"),
+        (
+            vec!["--subtitle", "unsupported"],
+            "subtitles are no longer supported",
+        ),
     ] {
         let mut args = vec!["-o", "out.png"];
         args.extend(flags);
@@ -210,7 +213,7 @@ fn custom_fonts_are_bounded_and_titles_use_their_actual_font() {
     let space = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/fonts/space-mono.ttf");
     let inter = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("assets/fonts/inter.ttf");
     // Missing characters fail only after fallback; Cyrillic title text is supported.
-    for theme in ["removed-frame", "removed-frame"] {
+    for theme in ["monoprint", "thermal-receipt"] {
         for format in ["png", "svg", "html"] {
             failure(
                 w.run(
@@ -263,7 +266,7 @@ fn custom_fonts_are_bounded_and_titles_use_their_actual_font() {
     // Frames without a title field must not reject unused label characters.
     success(w.run(
         &[
-            "--theme", "removed-frame", "--title", "🦀", "-o", "-", "--format", "html",
+            "--theme", "ground", "--title", "🦀", "-o", "-", "--format", "html",
         ],
         "x",
     ));
@@ -384,34 +387,6 @@ fn advanced_typography_and_text_highlights_reach_every_export() {
 }
 
 #[test]
-fn stripe_geometry_does_not_rewrite_source_text() {
-    let w = Workspace::new();
-    let source = format!("StripeFrame__isSmall\n{}", "\n".repeat(12));
-    let html = String::from_utf8(success(w.run(
-        &["--theme", "removed-frame", "-o", "-", "--format", "html"],
-        &source,
-    )))
-    .unwrap();
-    let code = html
-        .split("<code>")
-        .nth(1)
-        .unwrap()
-        .split("</code>")
-        .next()
-        .unwrap();
-    assert!(code.contains(">StripeFrame__isSmall</span>"));
-    // The measured large frame must still lose its small-layout class.
-    let frame = html
-        .split("<body>")
-        .nth(1)
-        .unwrap()
-        .split("<code>")
-        .next()
-        .unwrap();
-    assert!(!frame.contains("StripeFrame__isSmall"));
-}
-
-#[test]
 fn hem_files_infer_the_bundled_grammar_and_export_all_formats() {
     let w = Workspace::new();
     fs::write(
@@ -470,38 +445,6 @@ fn render_limits_explain_odd_scale_supersampling() {
     assert!(!w.0.join("out.png").exists());
 }
 
-#[test]
-fn auth0_subtitle_is_metadata_not_visible_text() {
-    let w = Workspace::new();
-    let args = [
-        "--theme", "removed-frame", "-l", "ts", "-o", "-", "--format", "png", "--scale", "2",
-    ];
-    let expected = success(w.run(&args, "const x = 1;"));
-    let mut with_subtitle = args.to_vec();
-    with_subtitle.extend(["--subtitle", "🦀"]);
-    assert_eq!(success(w.run(&with_subtitle, "const x = 1;")), expected);
-    let html = String::from_utf8(success(w.run(
-        &[
-            "--theme",
-            "removed-frame",
-            "-l",
-            "ts",
-            "-o",
-            "-",
-            "--format",
-            "html",
-            "--subtitle",
-            "🦀",
-        ],
-        "const x = 1;",
-    )))
-    .unwrap();
-    assert!(html.contains("data-value=\"🦀\""));
-    assert!(html.contains(">TypeScript</span>"));
-}
-
-// The HTML text must preserve source exactly, including blank lines and strings
-// resembling the internal template markers. No source text can inject markup.
 #[test]
 fn html_preserves_source_and_escapes_user_content() {
     let w = Workspace::new();
@@ -589,7 +532,7 @@ fn inference_override_and_line_numbers() {
         &[
             "main.rs",
             "--theme",
-            "removed-frame",
+            "ordinal",
             "--no-line-numbers",
             "-o",
             "-",
@@ -602,7 +545,7 @@ fn inference_override_and_line_numbers() {
     assert!(!hidden.contains("class=\"Editor__editor Editor__showLineNumbers"));
     let default = String::from_utf8(success(w.run(
         &[
-            "main.rs", "--theme", "removed-frame", "-o", "-", "--format", "html",
+            "main.rs", "--theme", "ordinal", "-o", "-", "--format", "html",
         ],
         "",
     )))
@@ -639,13 +582,18 @@ fn png_scale_and_svg_dimensions_agree() {
 #[test]
 fn svg_shadows_do_not_fill_translucent_windows() {
     let w = Workspace::new();
-    let png = success(w.run(&["-o", "-", "--format", "png", "--scale", "2"], ""));
-    let svg = success(w.run(&["-o", "-", "--format", "svg"], ""));
+    let png = success(w.run(
+        &[
+            "--theme", "ayu", "-o", "-", "--format", "png", "--scale", "2",
+        ],
+        "",
+    ));
+    let svg = success(w.run(&["--theme", "ayu", "-o", "-", "--format", "svg"], ""));
     let expected = image::load_from_memory(&png).unwrap().into_rgba8();
     let (width, height) = expected.dimensions();
     let actual = rasterize_svg(&svg, width, height);
     // Blank, translucent window interior. A filled outer shadow makes these
-    // pixels nearly black; a CSS-correct shadow leaves the purple backdrop.
+    // pixels nearly black; a CSS-correct shadow leaves the companion backdrop.
     for (x, y) in [(width / 2, height / 2), (width / 3, height / 2)] {
         for channel in 0..3 {
             assert!(
@@ -681,14 +629,10 @@ fn rasterize_svg(svg: &[u8], width: u32, height: u32) -> image::RgbaImage {
 #[test]
 fn svg_line_highlights_are_not_painted_twice() {
     let w = Workspace::new();
-    let source = format!(
-        "{}// {}\n\n// final line\n",
-        include_str!("../fixtures/example.ts"),
-        "wrap this long line ".repeat(6)
-    );
+    let source = "\n\n";
     let args = [
         "--theme",
-        "removed-frame",
+        "ayu",
         "-l",
         "ts",
         "--padding",
@@ -696,10 +640,8 @@ fn svg_line_highlights_are_not_painted_twice() {
         "--width",
         "460",
         "--line-numbers",
-        "--title",
-        "wrapped.ts",
         "--highlight",
-        "2,9",
+        "2",
         "-o",
         "-",
         "--scale",
@@ -707,286 +649,51 @@ fn svg_line_highlights_are_not_painted_twice() {
     ];
     let mut png_args = args.to_vec();
     png_args.extend(["--format", "png"]);
-    let expected = image::load_from_memory(&success(w.run(&png_args, &source)))
+    let expected = image::load_from_memory(&success(w.run(&png_args, source)))
         .unwrap()
         .into_rgba8();
     let mut svg_args = args.to_vec();
     svg_args.extend(["--format", "svg"]);
-    let svg = success(w.run(&svg_args, &source));
+    let svg = success(w.run(&svg_args, source));
     let actual = rasterize_svg(&svg, expected.width(), expected.height());
-    // The highlighted blank ninth row spans both the gutter and the code area.
-    // A second inherited background brightens only the code area by ~20 levels.
-    for x in [80, 160, 200, 400, 700, 840] {
-        for channel in 0..3 {
-            assert!(
-                actual[(x, 860)][channel].abs_diff(expected[(x, 860)][channel]) <= 3,
-                "highlight at {x}: {:?} versus {:?}",
-                actual[(x, 860)],
-                expected[(x, 860)]
-            );
-        }
-    }
-}
-
-#[test]
-fn native_images_match_independent_browser_references() {
-    let w = Workspace::new();
-    let source = include_str!("../fixtures/example.ts");
-    let wrapped = format!("{source}// {}", "wrap this long line ".repeat(12));
-    let numbered = format!(
-        "{source}// {}\n\n// final line\n",
-        "wrap this long line ".repeat(6)
-    );
-    struct ReferenceCase<'a> {
-        name: &'a str,
-        flags: &'a [&'a str],
-        input: &'a str,
-        reference: &'a [u8],
-        tolerance: f64,
-    }
-    let cases = [
-        ReferenceCase {
-            name: "candy-wrap",
-            flags: &[
-                "--theme",
-                "removed-frame",
-                "--light",
-                "--padding",
-                "32",
-                "--width",
-                "460",
-            ],
-            input: &wrapped,
-            reference: include_bytes!("visual/candy-wrap.png"),
-            tolerance: 2.8,
-        },
-        ReferenceCase {
-            name: "candy-wrap-numbers",
-            flags: &[
-                "--theme",
-                "removed-frame",
-                "--padding",
-                "32",
-                "--width",
-                "460",
-                "--line-numbers",
-                "--title",
-                "wrapped.ts",
-                "--highlight",
-                "2,9",
-            ],
-            input: &numbered,
-            reference: include_bytes!("visual/candy-wrap-numbers.png"),
-            tolerance: 2.2,
-        },
-        ReferenceCase {
-            name: "removed-frame",
-            flags: &["--theme", "removed-frame", "--padding", "64"],
-            input: source,
-            reference: include_bytes!("visual/nuxt-dark.png"),
-            tolerance: 1.6,
-        },
-        ReferenceCase {
-            name: "removed-frame",
-            flags: &["--theme", "removed-frame", "--padding", "64"],
-            input: source,
-            reference: include_bytes!("visual/firecrawl-dark.png"),
-            tolerance: 2.0,
-        },
-    ];
-    for ReferenceCase {
-        name,
-        flags,
-        input,
-        reference,
-        tolerance,
-    } in cases
-    {
-        let mut args = vec!["-o", "-", "--format", "png", "--scale", "2", "-l", "ts"];
-        args.extend_from_slice(flags);
-        let actual = image::load_from_memory(&success(w.run(&args, input)))
-            .unwrap()
-            .into_rgb8();
-        let expected = image::load_from_memory(reference).unwrap().into_rgb8();
-        assert_eq!(actual.dimensions(), expected.dimensions(), "{name} layout");
-        let mae = actual
-            .as_raw()
-            .iter()
-            .zip(expected.as_raw())
-            .map(|(a, b)| f64::from(a.abs_diff(*b)))
-            .sum::<f64>()
-            / actual.as_raw().len() as f64;
-        assert!(
-            mae < tolerance,
-            "{name}: mean RGB difference {mae} exceeds {tolerance}"
-        );
-        if name == "candy-wrap-numbers" {
-            // The first listed CSS shadow is the thin light border, above the dark shadow.
-            for x in [200, 460, 700] {
-                for channel in 0..3 {
-                    assert!(
-                        actual[(x, 62)][channel].abs_diff(expected[(x, 62)][channel]) <= 5,
-                        "window border at {x}"
-                    );
-                }
+    // The middle blank row is highlighted. Away from glyphs and the frame,
+    // duplicate background painting would brighten its solid interior.
+    let mut checked = 0;
+    for y in 100..expected.height().saturating_sub(70) {
+        for x in [300, 400, 500, 600] {
+            if expected[(x, y)] != expected[(x, y - 1)] {
+                continue;
             }
-        }
-        if name == "removed-frame" {
-            let bounds = |im: &image::RgbImage| {
-                im.enumerate_pixels()
-                    .filter(|(_, y, p)| {
-                        (470..550).contains(y)
-                            && p[0] > 30
-                            && p[0].saturating_sub(p[1]) > 20
-                            && p[1].saturating_sub(p[2]) > 5
-                    })
-                    .fold((u32::MAX, 0, u32::MAX), |(left, right, top), (x, y, _)| {
-                        (left.min(x), right.max(x), top.min(y))
-                    })
-            };
-            let a = bounds(&actual);
-            let e = bounds(&expected);
-            assert!(
-                a.0.abs_diff(e.0) <= 2 && a.1.abs_diff(e.1) <= 2 && a.2.abs_diff(e.2) <= 2,
-                "ASCII bounds: {a:?} versus {e:?}"
-            );
-        }
-    }
-}
-
-#[test]
-fn nuxt_glow_survives_viewport_clipping_at_export_scales() {
-    let w = Workspace::new();
-    let reference = image::load_from_memory(include_bytes!("visual/nuxt-dark.png"))
-        .unwrap()
-        .into_rgb8();
-    for scale in [1, 2, 4] {
-        let png = success(w.run(
-            &[
-                "-o",
-                "-",
-                "--format",
-                "png",
-                "--theme",
-                "removed-frame",
-                "--padding",
-                "64",
-                "-l",
-                "ts",
-                "--scale",
-                &scale.to_string(),
-            ],
-            include_str!("../fixtures/example.ts"),
-        ));
-        let actual = image::load_from_memory(&png).unwrap().into_rgb8();
-        assert_eq!(actual.dimensions(), (613 * scale, 342 * scale));
-        for (x, y) in [(0, 0), (10, 10), (32, 32), (50, 0), (0, 100)] {
             for channel in 0..3 {
                 assert!(
-                    actual[(x * scale, y * scale)][channel]
-                        .abs_diff(reference[(x * 2, y * 2)][channel])
-                        <= 3,
-                    "Nuxt glow: scale {scale} at {x},{y}"
+                    actual[(x, y)][channel].abs_diff(expected[(x, y)][channel]) <= 3,
+                    "highlight at {x},{y}: {:?} versus {:?}",
+                    actual[(x, y)],
+                    expected[(x, y)]
                 );
             }
+            checked += 1;
         }
     }
-}
-
-#[test]
-fn partner_title_fonts_and_alignment_match_browser_references() {
-    let w = Workspace::new();
-    let cases: [(&str, bool, &[u8]); 3] = [
-        (
-            "removed-frame",
-            false,
-            include_bytes!("visual/triggerdev-title.png"),
-        ),
-        (
-            "removed-frame",
-            true,
-            include_bytes!("visual/removed_frame-title.png"),
-        ),
-        ("removed-frame", false, include_bytes!("visual/resend-title.png")),
-    ];
-    for (theme, light, reference) in cases {
-        let expected = image::load_from_memory(reference).unwrap().into_rgba8();
-        let bounds = |image: &image::RgbaImage| {
-            image
-                .enumerate_pixels()
-                .filter(|(x, y, pixel)| {
-                    (145..400).contains(x)
-                        && (140..200).contains(y)
-                        && if light {
-                            pixel[0] < 100
-                        } else {
-                            pixel[0] > 100
-                        }
-                })
-                .fold(
-                    (u32::MAX, u32::MAX, 0, 0),
-                    |(left, top, right, bottom), (x, y, _)| {
-                        (left.min(x), top.min(y), right.max(x), bottom.max(y))
-                    },
-                )
-        };
-        let expected_bounds = bounds(&expected);
-        assert_ne!(expected_bounds.0, u32::MAX, "reference title exists");
-        for format in ["png", "svg"] {
-            let output = success(w.run(
-                &[
-                    "--theme",
-                    theme,
-                    "--padding",
-                    "64",
-                    if light { "--light" } else { "--dark" },
-                    "-l",
-                    "ts",
-                    "--title",
-                    "example.ts",
-                    "--scale",
-                    "2",
-                    "-o",
-                    "-",
-                    "--format",
-                    format,
-                ],
-                include_str!("../fixtures/example.ts"),
-            ));
-            let actual = if format == "svg" {
-                rasterize_svg(&output, expected.width(), expected.height())
-            } else {
-                image::load_from_memory(&output).unwrap().into_rgba8()
-            };
-            assert_eq!(
-                actual.dimensions(),
-                expected.dimensions(),
-                "{theme}/{format}"
-            );
-            let actual_bounds = bounds(&actual);
-            for (a, b) in [
-                (actual_bounds.0, expected_bounds.0),
-                (actual_bounds.1, expected_bounds.1),
-                (actual_bounds.2, expected_bounds.2),
-                (actual_bounds.3, expected_bounds.3),
-            ] {
-                assert!(
-                    a.abs_diff(b) <= 3,
-                    "{theme}/{format} title bounds: {actual_bounds:?} vs {expected_bounds:?}"
-                );
-            }
-        }
-    }
+    assert!(checked > 100);
 }
 
 #[test]
 fn all_variants_export_all_formats() {
     let w = Workspace::new();
-    let themes: serde_json::Value =
-        serde_json::from_str(include_str!("../assets/removed-frames/themes.json")).unwrap();
+    let themes = monoprint::Theme::all();
     let mut variants = 0;
-    for (id, theme) in themes.as_object().unwrap() {
-        for mode in theme["syntax"].as_object().unwrap().keys() {
+    for theme in themes {
+        let id = theme.id();
+        for appearance in [monoprint::Appearance::Dark, monoprint::Appearance::Light] {
+            if !theme.supports(appearance) {
+                continue;
+            }
+            let mode = if appearance == monoprint::Appearance::Dark {
+                "dark"
+            } else {
+                "light"
+            };
             variants += 1;
             for format in ["png", "svg", "html"] {
                 let output = success(w.run(
@@ -1019,5 +726,5 @@ fn all_variants_export_all_formats() {
             }
         }
     }
-    assert_eq!(variants, 65);
+    assert_eq!(variants, 80);
 }

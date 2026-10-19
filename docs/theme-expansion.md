@@ -1,7 +1,6 @@
 # Editor themes and canvas backgrounds
 
-Implemented on 2026-09-28. The catalog contains 54 presets: the original
-33 frame presets and 21 editor presets covering 31 palettes across 12 families.
+The catalog contains 48 Monoprint Originals and 21 editor presets covering 31 palettes across 12 families.
 
 | Family | Included palettes |
 | --- | --- |
@@ -21,8 +20,7 @@ Implemented on 2026-09-28. The catalog contains 54 presets: the original
 Every preset supports Theme, Solid, Lattice, Halftone and None backgrounds in
 the CLI, Rust library, TypeScript binding and Studio. Canvas colors follow the
 chosen palette. None makes the surroundings transparent while retaining the
-code window. Theme retains existing legacy frame artwork or selects the new palette's
-original companion gradient. The old transparency option remains an alias.
+code window. Theme uses the selected original frame or editor palette's companion gradient. The old transparency option remains an alias.
 Legacy light-palette IDs select their light appearance automatically.
 
 ## Curated light/dark pairs
@@ -43,7 +41,7 @@ switching selects the complete original palette, including its frame and backdro
 | `solarized` | Solarized Dark | Solarized Light |
 | `tokyo-night` | Tokyo Night | Tokyo Night Light |
 
-All original IDs still parse, with their original default appearance. For example,
+All imported editor-palette IDs still parse, with their original default appearance. For example,
 `--theme ayu-light` equals `--theme ayu --light`; `--theme ayu-light --dark` selects
 Ayu Dark. Saved Studio drafts migrate to the paired preset while retaining their
 appearance. Alias names remain searchable. No palette colors or token rules change.
@@ -77,37 +75,3 @@ test checks both visible colored halos and explicit `text-shadow:none` overrides
 These are TextMate palette ports with Monoprint frames, not complete VS Code
 screenshots. Language-server semantic highlighting is not reproduced. New
 palettes have not been certified pixel-identical to VS Code.
-
-## Verification
-
-- Pairing preserves all 31 imported-palette PNG exports byte-for-byte against
-  the pre-pairing release binary. Canonical IDs and legacy aliases produce the
-  same HTML across all five backgrounds; both appearances export in every format.
-  Native Studio checks exercise the paired Ayu toggle at both window sizes.
-- All 31 new palettes export PNG, outlined SVG and standalone HTML.
-- Five backgrounds preserve geometry, panel fills and transparent surroundings;
-  lattice/halftone PNG pixels are checked against rasterized SVG.
-- Original legacy frame coverage uses the existing 82-case source/font/dimension manifest.
-  Fresh native RGBA pixels match the previous accepted native images exactly;
-  all 82 dimensions also match the pinned browser exports. This is a no-regression
-  result, not a claim that the native engine equals browser antialiasing.
-- Studio interactions are exercised at 1440×900 and 1100×700, including palette
-  selection, all five backgrounds, disabled unsupported appearances, scrolling,
-  filters, source highlights, exports and session compatibility.
-- Rust integration tests, library-only tests, Clippy and rustdoc cover the public
-  API. Node checks cover runtime behavior, type declarations, CLI parity and
-  clean local tarball consumption with bundled notices.
-
-Verification was run locally on macOS arm64. Other target builds and hosted CI were
-not tested in this run. No packages were published.
-
-The compressed syntax registry grows from 1,162,605 to 1,193,274 bytes (about
-30 KiB). The gallery still virtualizes rows and decodes bundled thumbnails only
-as needed. No new runtime Rust or Node dependencies were added; `jsonc-parser`
-is a development-only importer dependency. This change does not establish a new
-rendering performance benchmark.
-
-Local images and comparison results are in `output/theme-expansion/`; Studio
-captures are in `output/gui-validation/editor-themes/`. See the
-[maintenance guide](maintenance.md#curated-editor-themes) to update source pins,
-rebuild the registry and regenerate thumbnails.

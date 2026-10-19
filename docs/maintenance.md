@@ -4,15 +4,26 @@ Normal builds only need Cargo and a C compiler. All rendering assets are embedde
 
 ## Rebuild frame assets
 
-Use Node.js 22.13+ and the locked npm dependencies. Check out the repository and
-commit recorded in `assets/legacy-frames/provenance.json`, then import that source tree:
+The catalog contains 48 Monoprint Originals and 21 editor presets, with 80
+appearances in total. Original styles live in `assets/originals`, `assets/selected`
+and `assets/code-styles`; the corresponding native frame renderers live in `src/`.
+The selected and code-only HTML studies can be reimported with:
 
 ```sh
 npm ci
-node scripts/import-legacy-frames.mjs /path/to/frame-source
+node scripts/import-selected-styles.mjs
+node scripts/import-code-styles.mjs
 ```
 
-The importer reads original components, CSS, palettes, and assets. It generates inert templates and per-theme styles for the CLI, plus a separate development bundle of the original React components for reference captures. It never copies Söhne Mono. Fonts are separately pinned by byte checksum in `assets/fonts/manifest.json`; `scripts/fetch-fonts.py` is an explicit update operation that fetches current upstream font files and updates their provenance.
+Rebuild the registry after palette changes, then regenerate Studio thumbnails
+with `cargo run --locked --example gui_thumbnails`. Rebuild the Node bindings to
+refresh the public TypeScript IDs.
+`assets/retired-themes.json` contains only IDs used to migrate saved Studio drafts
+to Monoprint. Explicit CLI and library requests for those IDs fail normally.
+
+Fonts are pinned by byte checksum in `assets/fonts/manifest.json`;
+`scripts/fetch-fonts.py` is an explicit update operation that fetches upstream
+font files and updates their provenance.
 
 ## Rebuild the Giallo registry
 
@@ -41,19 +52,16 @@ The importer does not approve new licenses or download evidence. Updating the co
 ## Validate appearance and speed
 
 ```sh
+cargo test --locked
 cargo build --locked --release --target-dir target
-# import-legacy-frames.mjs must already have produced the reference bundle.
-CHROME_PATH=/path/to/chrome node scripts/references.mjs
-python3 scripts/compare.py             # Pillow required
-node scripts/verify-exports.mjs        # Offline HTML and SVG verification
+python3 scripts/smoke.py target/release/monoprint --all-modes
 BENCH_CPU='Apple M1 Max' python3 scripts/benchmark.py
 ```
 
-Reference captures run pinned upstream React frames with their browser effects and Shiki 1.3.0, using the bundled fonts. They are independent of the CLI's static templates and native effect adapters. Both browser screenshots and upstream-style `html-to-image` PNG exports are retained. The latter also applies its own font-size adjustment. Auto-fit is derived separately from browser font measurements. OpenAI's font substitution is explicit. References use pinned source rather than a live website.
-
-`output/playwright/reference/manifest.json` records browser version, source preservation, controls, dimensions, and blocked network requests. `scripts/compare.py` produces dimension checks, per-pixel RGB differences, difference images, contact sheets, and `docs/visual-results.json`. `output/playwright/reference/review.html` provides full-resolution pairs with links to SVG/HTML. The comparator also refreshes format comparisons and alpha/composited-color diagnostics. Review actual images as well as scores; antialiasing and blur differences are not layout proof. `CASES=candy-dark,nuxt-dark` limits a reference run.
-
-`scripts/smoke.py target/release/monoprint --all-modes` is a quick PNG smoke test. The Cargo integration suite checks all three formats across all 65 variants. A network-disabled Linux container can run the same suite; the CI workflow targets native Ubuntu x86-64 and macOS runners.
+The CLI integration suite exports all 80 appearances as PNG, SVG and HTML.
+Original-style tests check frame geometry, source preservation, wrapping and
+native PNG/SVG agreement. The GUI suite checks the native picker and editing
+controls. Review rendered images as well as dimensions and pixel comparisons.
 
 `scripts/notices.py` collects Cargo's locked license declarations and packaged notice files. It needs a populated Cargo cache, and is an attribution inventory rather than a license compatibility analyzer.
 
@@ -61,7 +69,9 @@ Monoprint directly depends on `vendor/takumi-svg` for SVG shadow compositing and
 
 Use `cargo fmt --package monoprint -- --check` to check project code while retaining the vendor's upstream formatting. Library checks include `cargo test --locked --release --no-default-features` and `RUSTDOCFLAGS='-D warnings' cargo doc --locked --no-default-features --no-deps`.
 
-Visual regression PNGs in `tests/visual/` come from the independent browser references. See their README before updating them. The native CSS adapter compensates for Takumi 2.14's inline wrapping, relative pseudo-element positioning, ignored `font: inherit` shorthand and raster shadow list order; recheck these adapters when upgrading Takumi. Nuxt's glow is blurred in an SVG filter before viewport clipping. Code and Firecrawl decoration sizes follow the pinned html-to-image export adjustment.
+The native CSS adapter compensates for Takumi 2.14's inline wrapping, relative
+pseudo-element positioning, ignored `font: inherit` shorthand and raster shadow
+list order. Recheck the PNG/SVG and browser exports when upgrading Takumi.
 
 ## Curated editor themes
 

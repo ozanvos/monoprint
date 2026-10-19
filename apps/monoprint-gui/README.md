@@ -26,6 +26,9 @@ macOS Apple Silicon is tested. Windows and Linux still need native validation.
   the app interface.
 - New drafts start with **Monoprint**, the Masthead frame with Oxide syntax.
   Its light and dark appearances share one theme and lead the theme browser.
+- Twenty code-only Originals add open fields, edge-attached panels, and quiet
+  frames, from Ground through Trace. They need no filename or other metadata.
+  Aside uses Inter for comments by default; select a comment typeface to override it.
 - Set the width, padding, title, background and line numbers. Leave Width blank
   for automatic sizing. Choose None for a transparent outer background.
 - Select text to highlight it, or click line numbers to highlight whole lines.

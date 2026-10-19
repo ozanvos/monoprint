@@ -1,0 +1,142 @@
+{
+  "ground": {
+    "html": "<div class=\"Original Original--ground\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--ground{padding:var(--pad);background:#F3F0E8;}\n.Original--ground .CodeSurface{position:relative;min-width:0;}",
+    "codeWeight": 400,
+    "lineHeight": 1.4814814814814814,
+    "baseFontSize": 27
+  },
+  "galley": {
+    "html": "<div class=\"Original Original--galley\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--galley{padding:var(--pad);background:#56626E;padding:0 var(--pad)}\n.Original--galley .CodeSurface{position:relative;min-width:0;background:#F6F5F1;padding:var(--pad) var(--inset)}",
+    "codeWeight": 400,
+    "lineHeight": 1.5384615384615385,
+    "baseFontSize": 26
+  },
+  "traverse": {
+    "html": "<div class=\"Original Original--traverse\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--traverse{padding:var(--pad);background:#E4E1DA;padding:var(--pad) 0}\n.Original--traverse .CodeSurface{position:relative;min-width:0;background:#1B2124;padding:var(--inset) var(--pad)}",
+    "codeWeight": 400,
+    "lineHeight": 1.5384615384615385,
+    "baseFontSize": 26
+  },
+  "plumb": {
+    "html": "<div class=\"Original Original--plumb\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--plumb{padding:var(--pad);background:#DCE1E6;}\n.Original--plumb .CodeSurface{position:relative;min-width:0;border-left:calc(4px * var(--original-scale)) solid #1F2A36;padding-left:var(--inset)}",
+    "codeWeight": 400,
+    "lineHeight": 1.5384615384615385,
+    "baseFontSize": 26
+  },
+  "contour": {
+    "html": "<div class=\"Original Original--contour\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--contour{padding:var(--pad);background:#BF8F3F;}\n.Original--contour .CodeSurface{position:relative;min-width:0;}\n.Original--contour .Editor__editor{margin-right:var(--tail)}\n.Original.Original--contour .Editor__editor .line{display:flex;align-items:flex-start}\n.Original--contour .Editor__formatted .line .lc{display:block;position:relative;z-index:0;flex-shrink:1;min-width:0;min-height:var(--code-leading);background:#FAF7EF}\n.Original--contour .lc:before{content:\"\\200b\";font-size:0;line-height:0;position:absolute;top:0;bottom:0;left:calc(-1 * var(--pad));right:calc(-1 * var(--tail));background:#FAF7EF;z-index:-1}\n.Original--contour .Editor__showLineNumbers .lc:before{left:calc(-1 * (var(--pad) + var(--original-gutter)))}\n.Original--contour .Editor__editor .line.empty-line .lc:before{display:block}\n.Original--contour .Editor__editor .highlighted-line .lc,.Original--contour .Editor__editor .highlighted-line .lc:before{background:#E4E0D6}",
+    "codeWeight": 400,
+    "lineHeight": 1.5384615384615385,
+    "baseFontSize": 26
+  },
+  "dusk": {
+    "html": "<div class=\"Original Original--dusk\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--dusk{padding:var(--pad);background:#1F232A;}\n.Original--dusk .CodeSurface{position:relative;min-width:0;}\n.Original--dusk{background-image:linear-gradient(180deg,#2A2F38 0%,#1F232A 55%,#171A1F 100%)}",
+    "codeWeight": 400,
+    "lineHeight": 1.4814814814814814,
+    "baseFontSize": 27
+  },
+  "cantilever": {
+    "html": "<div class=\"Original Original--cantilever\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--cantilever{padding:var(--pad);background:#94503A;padding:var(--pad) var(--pad) var(--pad) 0}\n.Original--cantilever .CodeSurface{position:relative;min-width:0;background:#F4F1EA;padding:var(--inset) var(--pad)}",
+    "codeWeight": 400,
+    "lineHeight": 1.5384615384615385,
+    "baseFontSize": 26
+  },
+  "ordinal": {
+    "html": "<div class=\"Original Original--ordinal\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--ordinal{padding:var(--pad);background:#E3E6DF;}\n.Original--ordinal .CodeSurface{position:relative;min-width:0;}",
+    "codeWeight": 400,
+    "lineHeight": 1.5384615384615385,
+    "baseFontSize": 26
+  },
+  "ballast": {
+    "html": "<div class=\"Original Original--ballast\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--ballast{padding:var(--pad);background:#221D1A;}\n.Original--ballast .CodeSurface{position:relative;min-width:0;}\n.Original--ballast{border-right:calc(28px * var(--original-scale)) solid #E39A6C}",
+    "codeWeight": 400,
+    "lineHeight": 1.4814814814814814,
+    "baseFontSize": 27
+  },
+  "aside": {
+    "html": "<div class=\"Original Original--aside\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--aside{padding:var(--pad);background:#A9BDB0;}\n.Original--aside .CodeSurface{position:relative;min-width:0;}",
+    "codeWeight": 400,
+    "lineHeight": 1.4814814814814814,
+    "baseFontSize": 27
+  },
+  "jetty": {
+    "html": "<div class=\"Original Original--jetty\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--jetty{padding:var(--pad);background:#1f3a3f;padding:var(--pad) var(--pad) var(--pad) 0}\n.Original--jetty .CodeSurface{position:relative;min-width:0;background:#0D1517;border-radius:0 calc(6px * var(--original-scale)) calc(6px * var(--original-scale)) 0;padding:var(--inset) var(--pad)}\n.Original--jetty:before{content:\"\\200b\";font-size:0;line-height:0;position:absolute;left:0;top:0;bottom:0;width:calc(var(--pad) * .65);background:#0D1517}",
+    "codeWeight": 400,
+    "lineHeight": 1.4814814814814814,
+    "baseFontSize": 27
+  },
+  "column": {
+    "html": "<div class=\"Original Original--column\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--column{padding:var(--pad);background:#3a352f;padding:0 var(--pad)}\n.Original--column .CodeSurface{position:relative;min-width:0;background:#1B1917;padding:var(--pad) var(--inset)}",
+    "codeWeight": 400,
+    "lineHeight": 1.5555555555555556,
+    "baseFontSize": 27
+  },
+  "course": {
+    "html": "<div class=\"Original Original--course\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--course{padding:var(--pad);background:#bcc6bf;padding:var(--pad) 0}\n.Original--course .CodeSurface{position:relative;min-width:0;background:#F6F6F1;padding:var(--inset) var(--pad)}",
+    "codeWeight": 400,
+    "lineHeight": 1.5384615384615385,
+    "baseFontSize": 26
+  },
+  "well": {
+    "html": "<div class=\"Original Original--well\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--well{padding:var(--pad);background:#262d40;}\n.Original--well .CodeSurface{position:relative;min-width:0;background:#131722;padding:var(--inset);border-radius:calc(8px * var(--original-scale));box-shadow:inset 0 calc(2px * var(--original-scale)) 0 #00000073,inset 0 calc(-1px * var(--original-scale)) 0 #FFFFFF0F,0 calc(1px * var(--original-scale)) 0 #FFFFFF12}",
+    "codeWeight": 400,
+    "lineHeight": 1.5185185185185186,
+    "baseFontSize": 27
+  },
+  "quay": {
+    "html": "<div class=\"Original Original--quay\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--quay{padding:var(--pad);background:#d6c4ae;padding:var(--pad) 0 var(--pad) var(--pad)}\n.Original--quay .CodeSurface{position:relative;min-width:0;background:#FBF9F5;padding:var(--inset);border-radius:calc(8px * var(--original-scale)) 0 0 calc(8px * var(--original-scale))}",
+    "codeWeight": 400,
+    "lineHeight": 1.5185185185185186,
+    "baseFontSize": 27
+  },
+  "pendant": {
+    "html": "<div class=\"Original Original--pendant\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--pendant{padding:var(--pad);background:#3b4331;padding:0 var(--pad) var(--pad)}\n.Original--pendant .CodeSurface{position:relative;min-width:0;background:#14170F;padding:var(--pad) var(--inset);border-radius:0 0 calc(10px * var(--original-scale)) calc(10px * var(--original-scale))}",
+    "codeWeight": 400,
+    "lineHeight": 1.5185185185185186,
+    "baseFontSize": 27
+  },
+  "capsule": {
+    "html": "<div class=\"Original Original--capsule\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--capsule{padding:var(--pad);background:#5b2126;}\n.Original--capsule .CodeSurface{position:relative;min-width:0;background:#1A1213;padding:var(--inset);border-radius:calc(36px * var(--original-scale))}",
+    "codeWeight": 400,
+    "lineHeight": 1.5384615384615385,
+    "baseFontSize": 26
+  },
+  "flange": {
+    "html": "<div class=\"Original Original--flange\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--flange{padding:var(--pad);background:#2b2e33;}\n.Original--flange .CodeSurface{position:relative;min-width:0;background:#16181B;padding:var(--inset);border-top:calc(6px * var(--original-scale)) solid #C08A48;border-bottom:calc(6px * var(--original-scale)) solid #C08A48}",
+    "codeWeight": 400,
+    "lineHeight": 1.5185185185185186,
+    "baseFontSize": 27
+  },
+  "inlay": {
+    "html": "<div class=\"Original Original--inlay\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--inlay{padding:var(--pad);background:#213f8c;}\n.Original--inlay .CodeSurface{position:relative;min-width:0;background:#F7F7F3;padding:var(--inset);border-radius:calc(4px * var(--original-scale))}",
+    "codeWeight": 400,
+    "lineHeight": 1.5,
+    "baseFontSize": 28
+  },
+  "trace": {
+    "html": "<div class=\"Original Original--trace\"><div class=\"CodeSurface\">__CODE_IMAGES_EDITOR__</div></div>",
+    "css": ".Original--trace{padding:var(--pad);background:#121619;}\n.Original--trace .CodeSurface{position:relative;min-width:0;padding:var(--inset);border:calc(2px * var(--original-scale)) solid #44596B}",
+    "codeWeight": 400,
+    "lineHeight": 1.5185185185185186,
+    "baseFontSize": 27
+  }
+}

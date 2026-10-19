@@ -498,7 +498,12 @@ pub fn load_session(path: &Path) -> Result<Document> {
             fields.insert("line_numbers".into(), true.into());
         }
     }
-    let doc: Document = serde_json::from_value(saved)?;
+    let mut doc: Document = serde_json::from_value(saved)?;
+    let retired: &[&str] =
+        &serde_json::from_str::<Vec<&str>>(include_str!("../../../assets/retired-themes.json"))?;
+    if retired.iter().any(|id| id.eq_ignore_ascii_case(&doc.theme)) {
+        doc.select_theme(Theme::default());
+    }
     doc.theme.parse::<Theme>()?;
     doc.language.parse::<Language>()?;
     Scale::try_from(doc.scale)?;
@@ -569,7 +574,7 @@ mod tests {
         let path = dir.path().join("session.json");
         for preference in [None, Some(false), Some(true), None] {
             doc.line_numbers = preference;
-            for (theme, default) in [("removed-frame", true), ("removed-frame", false), ("removed-frame", true)] {
+            for (theme, default) in [("ordinal", true), ("monoprint", false), ("ground", false)] {
                 doc.select_theme(theme.parse().unwrap());
                 assert_eq!(doc.line_numbers, preference);
                 assert_eq!(doc.numbers_visible(), preference.unwrap_or(default));
@@ -592,18 +597,56 @@ mod tests {
     }
 
     #[test]
+    fn retired_theme_drafts_migrate_without_changing_other_fields() {
+        let retired: Vec<&str> =
+            serde_json::from_str(include_str!("../../../assets/retired-themes.json")).unwrap();
+        let dir = tempfile::tempdir().unwrap();
+        let path = dir.path().join("session.json");
+        for id in retired {
+            for light in [false, true] {
+                let original = Document {
+                    theme: id.to_uppercase(),
+                    source: "// Saved work\nconst answer = 42;".into(),
+                    light,
+                    padding: "24".into(),
+                    width: "580".into(),
+                    line_numbers: Some(true),
+                    font_size: "18".into(),
+                    highlights: "2".into(),
+                    background: "solid".into(),
+                    ..Default::default()
+                };
+                save_session(&path, &original).unwrap();
+                let saved_bytes = fs::read(&path).unwrap();
+                let migrated = load_session(&path).unwrap();
+                let mut expected = serde_json::to_value(&original).unwrap();
+                expected["theme"] = "monoprint".into();
+                assert_eq!(serde_json::to_value(&migrated).unwrap(), expected, "{id}");
+                assert_eq!(
+                    fs::read(&path).unwrap(),
+                    saved_bytes,
+                    "loading must not overwrite a draft"
+                );
+                migrated.prepare(None, None).unwrap();
+            }
+        }
+        fs::write(&path, r#"{"theme":"not-a-known-theme"}"#).unwrap();
+        assert!(load_session(&path).is_err());
+    }
+
+    #[test]
     fn legacy_drafts_inherit_numbers_unless_explicitly_enabled() {
         let dir = tempfile::tempdir().unwrap();
         let path = dir.path().join("session.json");
         for (json, preference) in [
-            (r#"{"theme":"removed-frame","numbers":false}"#, None),
-            (r#"{"theme":"removed-frame","numbers":true}"#, Some(true)),
+            (r#"{"theme":"supabase","numbers":false}"#, None),
+            (r#"{"theme":"supabase","numbers":true}"#, Some(true)),
             (
-                r#"{"theme":"removed-frame","numbers":true,"line_numbers":null}"#,
+                r#"{"theme":"supabase","numbers":true,"line_numbers":null}"#,
                 None,
             ),
             (
-                r#"{"theme":"removed-frame","numbers":true,"line_numbers":false}"#,
+                r#"{"theme":"supabase","numbers":true,"line_numbers":false}"#,
                 Some(false),
             ),
         ] {
@@ -625,7 +668,7 @@ mod tests {
             light: true,
             ..Default::default()
         };
-        d.select_theme("removed-frame".parse().unwrap());
+        d.select_theme("dusk".parse().unwrap());
         assert!(!d.light);
         d.width = "100".into();
         assert!(d.prepare(None, None).is_err());

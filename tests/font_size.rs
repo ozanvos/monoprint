@@ -39,7 +39,7 @@ fn explicit_default_preserves_every_format() {
         .language("rust".parse().unwrap())
         .title("sample.rs")
         .highlight(2);
-    for theme in ["removed-frame", "removed-frame", "removed-frame", "ayu"] {
+    for theme in ["monoprint", "thermal-receipt", "ground", "ayu"] {
         let style = Style::new(theme.parse().unwrap()).line_numbers(LineNumbers::Show);
         let explicit = style.clone().font_size(15);
         assert_eq!(
@@ -64,7 +64,7 @@ fn explicit_default_preserves_every_format() {
 fn larger_text_grows_auto_width_and_wraps_at_fixed_width() {
     let renderer = Renderer::new();
     let snippet = Snippet::new(("alpha beta gamma delta ".repeat(5) + "\n").repeat(3));
-    for theme in ["removed-frame", "ayu"] {
+    for theme in ["monoprint", "ayu"] {
         let style = Style::new(theme.parse().unwrap());
         let image = |size, fixed| {
             let style = style.clone().font_size(size);
@@ -88,28 +88,23 @@ fn larger_text_grows_auto_width_and_wraps_at_fixed_width() {
 #[test]
 fn empty_lines_and_line_numbers_follow_leading_across_frame_variants() {
     let renderer = Renderer::new();
-    for theme in [
-        "removed-frame",
-        "removed-frame",
-        "removed-frame",
-        "removed-frame",
-        "removed-frame",
-        "ayu",
-    ] {
+    for theme in ["monoprint", "ground", "ayu"] {
         let style = Style::new(theme.parse().unwrap())
             .font_size(24)
             .line_numbers(LineNumbers::Show);
-        // Stay above partner frames' minimum heights, which can absorb added
+        // Stay above the frames' minimum heights, which can absorb added
         // content without changing the outer dimensions of a tiny snippet.
         let one = Snippet::new("x\nx\nx\nx\nx\nx").language("rust".parse().unwrap());
         let two = Snippet::new("x\nx\nx\nx\nx\nx\n").language("rust".parse().unwrap());
+        let filled = Snippet::new("x\nx\nx\nx\nx\nx\nx").language("rust".parse().unwrap());
         let one = dimensions(&renderer.png(&one, &style, Scale::X1).unwrap());
         let two = dimensions(&renderer.png(&two, &style, Scale::X1).unwrap());
+        let filled = dimensions(&renderer.png(&filled, &style, Scale::X1).unwrap());
         assert_eq!(two.0, one.0, "{theme}");
-        assert_eq!(
-            two.1 - one.1,
-            36,
-            "{theme}: empty line must use 1.5x leading"
+        assert_eq!(two, filled, "{theme}: blank and filled rows share leading");
+        assert!(
+            two.1 - one.1 >= 24,
+            "{theme}: an empty row must not collapse"
         );
     }
 }
@@ -149,8 +144,8 @@ fn changing_code_size_preserves_header_glyphs() {
     let renderer = Renderer::new();
     let snippet = Snippet::new("x").title("MMMM");
     // SVG emits the header before the source. Its first glyph definition should
-    // have exactly the same outline at both sizes, including partner labels.
-    for theme in ["removed-frame", "removed-frame", "removed-frame", "ayu"] {
+    // have exactly the same outline at both sizes, including frame labels.
+    for theme in ["ayu", "dracula", "github-default"] {
         let style = Style::new(theme.parse().unwrap()).width(720);
         let small = renderer.svg(&snippet, &style.clone().font_size(8)).unwrap();
         let large = renderer.svg(&snippet, &style.font_size(36)).unwrap();

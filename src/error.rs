@@ -91,7 +91,7 @@ pub enum InvalidOption {
     HighlightedText(TextRange),
     /// Text selections must use `line:column-line:column` syntax.
     TextRangeSyntax(String),
-    /// Subtitle metadata is supported only by Auth0.
+    /// Legacy subtitle metadata is no longer supported.
     Subtitle {
         /// Theme that cannot accept subtitle metadata.
         theme: Theme,
@@ -203,7 +203,7 @@ impl fmt::Display for InvalidOption {
                 f,
                 "highlight range {start}-{end} is empty or outside the {line_count} source lines"
             ),
-            Self::Subtitle { .. } => f.write_str("subtitle is supported by the Auth0 theme"),
+            Self::Subtitle { .. } => f.write_str("subtitles are no longer supported"),
             Self::HighlightedText(range) => write!(
                 f,
                 "text highlight {range} is empty or outside the source; use one-based lines and character columns with an exclusive end"

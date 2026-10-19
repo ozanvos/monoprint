@@ -51,8 +51,8 @@ pub struct Args {
     pub png_compression: Option<monoprint::PngCompression>,
     #[arg(long, default_value = "")]
     pub title: String,
-    /// Auth0 subtitle metadata; the pinned frame displays the language label.
-    #[arg(long, default_value = "")]
+    /// Legacy subtitle option; nonempty values are no longer supported.
+    #[arg(long, default_value = "", hide = true)]
     pub subtitle: String,
     /// Language ID or alias; otherwise infer from the filename.
     #[arg(short, long)]

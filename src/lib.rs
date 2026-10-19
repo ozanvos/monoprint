@@ -21,7 +21,7 @@
 //!
 //! # fn main() -> Result<(), monoprint::Error> {
 //! let renderer = Renderer::new();
-//! let style = Style::new("removed-frame".parse()?)
+//! let style = Style::new("monoprint".parse()?)
 //!     .appearance(Appearance::Light).padding(32).width(640);
 //! for (name, source) in [("a.rs", "let a = 1;"), ("b.py", "b = 2")] {
 //!     let snippet = Snippet::new(source).title(name).highlight(1)
@@ -228,7 +228,9 @@ impl Renderer {
         secondary: bool,
         fallbacks: fallback::Fallbacks,
     ) -> Result<Arc<Fonts>, Error> {
-        if let (Some(comment_font), Some(cache)) = (&style.comment_font, &style.mixed_fonts) {
+        if let (Some(comment_font), Some(cache)) =
+            (style.effective_comment_font(), &style.mixed_fonts)
+        {
             return font::cached_fonts(cache, fallbacks, || {
                 let mut fonts = self
                     .code_fonts(style, secondary, fallback::Fallbacks::default())?
@@ -293,7 +295,7 @@ fn validate<'a>(snippet: &'a Snippet, style: &Style) -> Result<Cow<'a, str>, Err
         }
         .into());
     }
-    if !snippet.subtitle.is_empty() && style.theme.id() != "removed-frame" {
+    if !snippet.subtitle.is_empty() {
         return Err(InvalidOption::Subtitle { theme: style.theme }.into());
     }
     let source = if snippet.source.contains('\r') {
@@ -377,6 +379,28 @@ mod tests {
         assert_ne!(keyword, foreground("greeting"));
         assert_ne!(keyword, foreground("\"hello\""));
         assert_ne!(keyword, foreground("// café"));
+    }
+
+    #[test]
+    fn retired_themes_are_absent_from_catalog_and_embedded_palettes() {
+        let retired: Vec<&str> =
+            serde_json::from_str(include_str!("../assets/retired-themes.json")).unwrap();
+        assert_eq!(retired.len(), 33);
+        let renderer = Renderer::new();
+        let registry = renderer.registry().unwrap();
+        for id in retired {
+            assert!(matches!(id.parse::<Theme>(), Err(Error::UnknownTheme(_))));
+            assert!(id.to_uppercase().parse::<Theme>().is_err());
+            for mode in ["light", "dark"] {
+                assert!(!registry.contains_theme(&format!("ink-{id}-{mode}")));
+            }
+        }
+        assert_eq!(
+            Theme::all()
+                .filter(|t| t.family() == "Monoprint Originals")
+                .count(),
+            48
+        );
     }
 
     #[test]

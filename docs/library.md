@@ -63,7 +63,7 @@ use monoprint::{Appearance, Language, LineNumbers, Renderer, Snippet, Style};
 
 fn main() -> Result<(), monoprint::Error> {
     let renderer = Renderer::new();
-    let style = Style::new("nuxt".parse()?)
+    let style = Style::new("monoprint".parse()?)
         .appearance(Appearance::Light)
         .padding(32)
         .width(720)
@@ -93,7 +93,7 @@ merge, and empty/reversed/out-of-bounds coordinates fail when rendered.
 
 The title is a label, not a filename hint. Use `Language::for_file_name()` explicitly; it does not read the file. Unknown filenames return `None`; parsing an unknown explicit language returns an error. TypeScript aliases (`ts`, `mts`, `cts`) select TypeScript; TSX remains separate. TeX selects LaTeX. `Language::all()` lists these unique selections (231 highlighting languages plus plain text, backed by 232 bundled named grammars).
 
-`Theme::all()` lists 82 curated presets; matching light/dark appearances appear once.
+`Theme::all()` lists 69 curated presets; matching light/dark appearances appear once.
 For example, `Style::new("ayu".parse()?).appearance(Appearance::Light)` selects
 Ayu Light, including its frame and background. Original IDs still work:
 `Style::new("ayu-light".parse()?)` keeps its light default. `Theme::aliases()`
@@ -242,7 +242,7 @@ match result {
 - Nominal font size: integer 8–72 CSS pixels, default 15.
 - PNG/raw image scale: 1–6. Odd scales render at twice the requested ratio, then downsample.
 - PNG/raw images: at most 16,777,216 internal render pixels (the pinned raster backend’s limit). SVG: at most 64 million. Both: at most 32,768px per edge, checked after measurement and before rasterization. SVG uses 2× internally while retaining CSS output dimensions.
-- Auth0 alone accepts subtitle metadata; the pinned frame displays the language label, so subtitle text is not visible.
+- Nonempty legacy subtitle metadata is rejected. Current themes do not use it.
 
 Takumi retains bounded process-wide glyph data and per-thread layout scratch buffers. The latter stay allocated until the rendering thread exits, even after the renderer is dropped.
 

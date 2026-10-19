@@ -4,7 +4,7 @@ Original code in this project is licensed under Apache-2.0; see `LICENSE`. This 
 
 | Material | License / preserved information |
 | --- | --- |
-| legacy frames theme definitions, CSS, frame templates, images | MIT; `licenses/legacy-frames-MIT.txt`, pinned source and modifications in `licenses/legacy-frames-provenance.json` |
+| Rendering conventions adapted from legacy frames (theme assets retired) | MIT; `licenses/legacy-frames-MIT.txt`, pinned source and modifications in `licenses/legacy-frames-provenance.json` |
 | Curated editor themes and SynthWave '84 token glow | MIT; exact input revisions and hashes in `assets/editor/sources.json` and `licenses/editor-themes-provenance.json`; preserved notices in `licenses/editor-themes-NOTICE.txt`. Companion backgrounds are original Monoprint designs; no upstream wallpapers or logos are included. |
 | Bundled font files | SIL OFL-1.1; individual `assets/fonts/*-OFL.txt` files and font source/checksum manifest. The separate automatic fallback set retains exact OFL texts, original copyright notices and immutable source/checksum records in `assets/fonts/fallback/`; see `docs/font-fallback.md`. |
 | Giallo 0.5.2 | EUPL-1.2; `licenses/giallo-EUPL-1.2.txt`, unchanged dependency source available from the exact crate URL in the dependency inventory |

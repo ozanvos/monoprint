@@ -23,10 +23,8 @@ pub fn code(
         format!("original-{}-{mode}", theme.id)
     } else if theme.original {
         format!("original-{}", theme.id)
-    } else if theme.editor.is_some() {
-        format!("editor-{}", theme.id)
     } else {
-        format!("ink-{}-{mode}", theme.id)
+        format!("editor-{}", theme.id)
     };
     // The second palette classifies grammar scopes, independent of theme colors.
     // Dual highlighting shares one tokenization pass and keeps comment boundaries.
@@ -113,11 +111,15 @@ pub fn code(
             if style.font_style.contains(FontStyle::BOLD) {
                 // Monoprint uses a restrained function-name weight in each
                 // appearance; grammar scopes determine which tokens receive it.
-                css.push_str(match (theme.id.as_str(), mode) {
-                    ("monoprint", "dark") => "font-weight:560;",
-                    ("monoprint", _) => "font-weight:600;",
-                    _ => "font-weight:bold;",
-                });
+                if let Some(weight) = theme.syntax_weight {
+                    write!(css, "font-weight:{weight};")?;
+                } else {
+                    css.push_str(match (theme.id.as_str(), mode) {
+                        ("monoprint", "dark") => "font-weight:560;",
+                        ("monoprint", _) => "font-weight:600;",
+                        _ => "font-weight:bold;",
+                    });
+                }
             }
             if style.font_style.contains(FontStyle::ITALIC) {
                 css.push_str("font-style:italic;");

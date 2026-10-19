@@ -6,10 +6,10 @@ import { directory, root, pkg, targets, run, readJson, sha256, inputHash, revisi
 const args = process.argv.slice(2);
 if (args.some((arg, index) => !['--js-only', '--target'].includes(arg) && args[index - 1] !== '--target')) throw new Error('Usage: npm run build -- [--js-only] [--target RUST_TRIPLE]');
 const pairs = await readJson(path.join(root, 'assets/editor/pairs.json'));
-const themes = [...new Set([...Object.keys({ ...await readJson(path.join(root, 'assets/removed-frames/themes.json')),
-  ...await readJson(path.join(root, 'assets/editor/themes.json')),
+const themes = [...new Set([...Object.keys({ ...await readJson(path.join(root, 'assets/editor/themes.json')),
   ...await readJson(path.join(root, 'assets/originals/themes.json')),
-  ...await readJson(path.join(root, 'assets/selected/themes.json')) }), ...pairs.map(pair => pair.id)])].sort();
+  ...await readJson(path.join(root, 'assets/selected/themes.json')),
+  ...await readJson(path.join(root, 'assets/code-styles/themes.json')) }), ...pairs.map(pair => pair.id)])].sort();
 const languages = (await readJson(path.join(root, 'assets/grammar-metadata.json')))
   .map(g => g.name).filter(n => n !== 'tex').concat('plain').sort();
 const union = values => values.map(v => `  | ${JSON.stringify(v)}`).join('\n');

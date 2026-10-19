@@ -82,7 +82,7 @@ const PRIMARY: &[&str] = &[
     "plain",
     "plsql",
     "powershell",
-    "removed-frame",
+    "prisma",
     "prolog",
     "proto",
     "python",

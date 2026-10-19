@@ -94,7 +94,7 @@ fn scripts_comments_and_titles_use_embedded_fallbacks_in_every_format() {
         .font_size(20)
         .line_numbers(LineNumbers::Show)
         .width(800);
-    for theme in ["removed-frame", "removed-frame", "removed-frame", "ayu"] {
+    for theme in ["monoprint", "thermal-receipt", "ayu"] {
         let style = style.clone().theme(theme.parse().unwrap());
         let png = renderer.png(&snippet, &style, Scale::X1).unwrap();
         let svg = renderer.svg(&snippet, &style).unwrap();

@@ -26,6 +26,8 @@ new Renderer({ compression: 'balanced' });
 html('code', { font: {} });
 // @ts-expect-error Unknown theme typo.
 new Renderer({ theme: 'nuxtt' });
+// @ts-expect-error Unsupported theme IDs are not part of the public catalog.
+new Renderer({ theme: 'candy' });
 // @ts-expect-error Unknown background treatment.
 new Renderer({ background: 'sparkles' });
 // @ts-expect-error Font size is numeric CSS pixels, not a CSS string.

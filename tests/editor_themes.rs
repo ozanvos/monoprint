@@ -237,7 +237,7 @@ fn inline_token_glow_paints_in_both_backends_and_none_overrides_it() {
 #[test]
 fn backgrounds_keep_geometry_and_transparency_contracts() {
     let renderer = Renderer::new();
-    for id in ["removed-frame", "nord", "rose-pine-dawn", "removed-frame"] {
+    for id in ["monoprint", "nord", "rose-pine-dawn", "dusk"] {
         let mut images = Vec::new();
         for background in Background::ALL {
             let style = Style::new(id.parse().unwrap())
@@ -293,7 +293,10 @@ fn frameless_light_themes_keep_text_readable_on_custom_backgrounds() {
         .language("javascript".parse().unwrap());
     // These frames paint text directly on the canvas, with no panel fill to
     // protect light-mode text from a dark companion background.
-    for id in ["removed-frame", "removed-frame", "removed-frame", "removed-frame", "removed-frame"] {
+    for (id, canvas) in [
+        ("ground", [243, 240, 232, 255]),
+        ("plumb", [220, 225, 230, 255]),
+    ] {
         let mut images = Vec::new();
         for background in [Background::Solid, Background::Lattice, Background::Halftone] {
             let style = Style::new(id.parse().unwrap())
@@ -308,7 +311,7 @@ fn frameless_light_themes_keep_text_readable_on_custom_backgrounds() {
             // and pattern dots/lines. This catches dark canvases, not just
             // successfully parsed CSS or light syntax colors.
             for (x, y) in [(12, 12), (900, 100)] {
-                assert_eq!(image[(x, y)].0, [255; 4], "{id} {background} at {x},{y}");
+                assert_eq!(image[(x, y)].0, canvas, "{id} {background} at {x},{y}");
             }
             let dark_pixels = image
                 .enumerate_pixels()
@@ -333,7 +336,7 @@ fn frameless_light_themes_keep_text_readable_on_custom_backgrounds() {
             let svg = renderer.svg(&snippet, &style).unwrap();
             let vector = rasterize_svg(svg.as_bytes(), image.width(), image.height());
             for (x, y) in [(12, 12), (900, 100)] {
-                assert_eq!(vector[(x, y)].0, [255; 4], "SVG {id} {background}");
+                assert_eq!(vector[(x, y)].0, canvas, "SVG {id} {background}");
             }
             images.push(image);
         }

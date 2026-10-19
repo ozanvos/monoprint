@@ -1,9 +1,9 @@
 // Sources and CLI settings for the three real exports shown on the homepage.
 export const showcases = [
   {
-    id: 'typescript-candy', source: 'user.ts', theme: 'candy', appearance: 'dark', format: 'png',
-    name: 'Pick your theme', detail: '96 themes',
-    alt: 'A typed TypeScript API request in Candy, with colorful syntax and a gradient backdrop',
+    id: 'typescript-monoprint', source: 'user.ts', theme: 'monoprint', appearance: 'dark', format: 'png',
+    name: 'Pick your theme', detail: '69 themes',
+    alt: 'A typed TypeScript API request in the dark Monoprint style, with warm syntax accents',
   },
   {
     id: 'python-highlights', source: 'total.py', theme: 'ayu', appearance: 'light', format: 'png', highlight: '7,8',
