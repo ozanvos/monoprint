@@ -50,6 +50,12 @@ and verify the existing signed files.
 
 ## Preview and editor
 
+Use **>_ CLI** at the left of the preview toolbar to preview the current command, then
+**Copy command** to include the source code and render settings. Paste into bash
+or zsh with `monoprint` on your PATH. The command saves `monoprint.png` (or the
+selected SVG/HTML format) in the current folder and refuses to overwrite an
+existing file. Custom font paths refer to files on your machine.
+
 Previews render at 2× on a background worker and pass raw BGRA pixels to GPUI.
 Rapid edits are coalesced; stale results are discarded. Invalid input keeps the
 previous preview and shows an error. Export renders the current document, so

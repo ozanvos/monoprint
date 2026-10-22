@@ -6,6 +6,9 @@ mod assets;
 #[allow(dead_code, unused_imports)]
 #[path = "../src/canvas_resize.rs"]
 mod canvas_resize;
+#[allow(dead_code, unused_imports)]
+#[path = "../src/cli_command.rs"]
+mod cli_command;
 #[allow(dead_code, unused_imports)] // Shared source also contains standard-harness tests.
 #[path = "../src/document.rs"]
 mod document;
@@ -1573,6 +1576,45 @@ mod macos {
                 assert!(s.preview.is_some(), "{:?}", s.error)
             });
             capture(&mut cx, handle, &format!("studio-{}", width as u32));
+            // The command popover uses the live draft, copies source and settings,
+            // and keeps feedback local without requesting another render.
+            let command_revision = cx.read_entity(&studio, |s, _| s.revision);
+            click(&mut cx, handle, &studio, "cli-command");
+            capture(&mut cx, handle, &format!("cli-command-{}", width as u32));
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.render_frame(cx);
+                let panel = window.find("cli-command-panel").bounds();
+                assert!(panel.left() >= px(0.) && panel.top() >= px(0.));
+                assert!(panel.right() <= px(width) && panel.bottom() <= px(height));
+                assert!(window.find("copy-cli-command").visible());
+            })
+            .unwrap();
+            click(&mut cx, handle, &studio, "copy-cli-command");
+            cx.update(|cx| {
+                let s = studio.read(cx);
+                assert!(s.command_copied);
+                assert_eq!(s.revision, command_revision);
+                let copied = cx.read_from_clipboard().unwrap().text().unwrap();
+                assert_eq!(copied, cli_command::command(&s.document).unwrap());
+                if let Some(dir) = std::env::var_os("MONOPRINT_GUI_SCREENSHOTS") {
+                    std::fs::write(
+                        std::path::PathBuf::from(dir).join("studio-command.sh"),
+                        copied,
+                    )
+                    .unwrap();
+                }
+            });
+            capture(
+                &mut cx,
+                handle,
+                &format!("cli-command-copied-{}", width as u32),
+            );
+            cx.advance_clock(Duration::from_millis(2100));
+            cx.run_until_parked();
+            cx.read_entity(&studio, |s, _| assert!(!s.command_copied));
+            cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
+                .unwrap();
+            settle(&mut cx, handle, &studio);
             cx.read_entity(&studio, |s, _| {
                 assert_eq!(s.document.theme, "monoprint");
                 assert_eq!(s.thumbnails[0].0.id(), "monoprint");

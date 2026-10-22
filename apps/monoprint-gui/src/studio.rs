@@ -169,6 +169,7 @@ pub struct Studio {
     pub notice: Option<String>,
     pub exporting: bool,
     pub copy_state: CopyState,
+    pub command_copied: bool,
     pub viewport: PreviewViewport,
     pub canvas_resize: Option<CanvasResize>,
     live_preview_since: Option<u64>,
@@ -185,6 +186,7 @@ pub struct Studio {
     pub light_thumbnails: std::collections::HashMap<Theme, Arc<Image>>,
     _render_task: Task<()>,
     _copy_feedback_task: Option<Task<()>>,
+    _command_feedback_task: Option<Task<()>>,
     renderer: Renderer,
     worker: PreviewWorker,
     _subscriptions: Vec<Subscription>,
@@ -459,6 +461,7 @@ impl Studio {
             notice: None,
             exporting: false,
             copy_state: CopyState::Idle,
+            command_copied: false,
             viewport: PreviewViewport::default(),
             canvas_resize: None,
             live_preview_since: None,
@@ -477,6 +480,7 @@ impl Studio {
             worker,
             _render_task: render_task,
             _copy_feedback_task: None,
+            _command_feedback_task: None,
             _subscriptions: subscriptions,
             _quit: quit,
             last_selection: 0..0,
@@ -492,6 +496,8 @@ impl Studio {
     }
 
     pub fn changed(&mut self, cx: &mut Context<Self>) {
+        self.command_copied = false;
+        self._command_feedback_task = None;
         self.invalidate_drag_export();
         self.canvas_resize = None;
         self.live_preview_since = None;
@@ -1124,6 +1130,24 @@ impl Studio {
         })
         .detach();
     }
+    pub fn copy_command(&mut self, cx: &mut Context<Self>) {
+        match crate::cli_command::command(&self.document) {
+            Ok(command) => {
+                cx.write_to_clipboard(ClipboardItem::new_string(command));
+                self.command_copied = true;
+                self._command_feedback_task = Some(cx.spawn(async move |this, cx| {
+                    cx.background_executor().timer(Duration::from_secs(2)).await;
+                    let _ = this.update(cx, |this, cx| {
+                        this.command_copied = false;
+                        cx.notify();
+                    });
+                }));
+            }
+            Err(error) => self.notice = Some(format!("Could not copy command: {error:#}")),
+        }
+        cx.notify();
+    }
+
     pub fn copy_image(&mut self, _: &CopyImage, window: &mut Window, cx: &mut Context<Self>) {
         if self.exporting || self.copy_state == CopyState::Copying {
             return;

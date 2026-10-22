@@ -873,6 +873,7 @@ impl Studio {
                     .bg(rgb(p.surface))
                     .window_control_area(WindowControlArea::Drag)
                     .gap(px(7.))
+                    .child(self.cli_command(cx))
                     .child(div().flex_1())
                     .when_some(
                         match self.viewport.zoom {
@@ -1576,6 +1577,78 @@ impl Studio {
                             }),
                     ),
             )
+    }
+
+    fn cli_command(&self, cx: &Context<Self>) -> impl IntoElement {
+        let p = palette(cx);
+        let studio = cx.entity();
+        Popover::new("cli-command-popover")
+            .anchor(Anchor::TopLeft)
+            .trigger_style(StyleRefinement::default().flex_shrink_0())
+            .trigger(
+                Button::new("cli-command")
+                    .outline()
+                    .xsmall()
+                    .h(px(26.))
+                    .px(px(9.))
+                    .border_color(rgb(p.strong))
+                    .bg(rgb(p.control))
+                    .label(">_ CLI")
+                    .accessibility_label("CLI command")
+                    .tooltip("Reproduce this image in your terminal")
+                    .smooth_hover(p, HoverStyle::Control),
+            )
+            .content(move |_, _, cx| {
+                studio
+                    .read(cx)
+                    .command_panel(studio.clone(), cx)
+                    .into_any_element()
+            })
+    }
+
+    fn command_panel(&self, studio: Entity<Self>, cx: &App) -> impl IntoElement {
+        let p = palette(cx);
+        let invocation = crate::cli_command::invocation(&self.document);
+        let valid = invocation.is_ok();
+        div()
+            .id("cli-command-panel")
+            .w(px(390.))
+            .p(px(14.))
+            .flex()
+            .flex_col()
+            .gap(px(10.))
+            .text_color(rgb(p.ink))
+            .child(div().text_size(px(14.)).font_weight(FontWeight::SEMIBOLD).child("Take it to the terminal"))
+            .child(div().text_size(px(11.)).text_color(rgb(p.muted)).child("Copies your current code with these settings."))
+            .child(
+                div()
+                    .id("cli-command-preview")
+                    .max_h(px(230.))
+                    .overflow_y_scroll()
+                    .p(px(10.))
+                    .rounded(px(5.))
+                    .border_1()
+                    .border_color(rgb(p.border))
+                    .bg(rgb(p.stage))
+                    .font_family("JetBrains Mono")
+                    .text_size(px(11.))
+                    .child(invocation.unwrap_or_else(|error| format!("{error:#}"))),
+            )
+            .child(div().text_size(px(10.)).text_color(rgb(p.muted)).child(
+                "Paste into bash or zsh with monoprint installed. Saves in the current folder; existing files are kept.",
+            ))
+            .child(
+                Button::new("copy-cli-command")
+                    .primary()
+                    .h(px(32.))
+                    .w_full()
+                    .icon(if self.command_copied { IconName::Check } else { IconName::Copy })
+                    .label(if self.command_copied { "Copied command" } else { "Copy command" })
+                    .disabled(!valid)
+                    .on_click(move |_, _, cx| studio.update(cx, |this, cx| this.copy_command(cx)))
+                    .smooth_hover(p, HoverStyle::Primary),
+            )
+            .test_support()
     }
 
     fn advanced_export_settings(&self, cx: &Context<Self>) -> impl IntoElement {

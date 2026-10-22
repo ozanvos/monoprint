@@ -1,6 +1,7 @@
 mod appearance;
 mod assets;
 mod canvas_resize;
+mod cli_command;
 mod document;
 mod handoff;
 mod interaction_motion;
