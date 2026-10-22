@@ -1,5 +1,4 @@
-//! Giallo tokens projected into GPUI's editor, independent of the export theme.
-use giallo::{HighlightOptions, Registry, ThemeVariant};
+//! Monoprint's native/fallback syntax projected into GPUI's source editor.
 use gpui_kit::{
     Context, FontStyle, FontWeight, HighlightStyle, Rgba, SharedString, StrikethroughStyle, Task,
     UnderlineStyle, Window,
@@ -110,7 +109,7 @@ fn apply_edit(runs: &mut Runs, replaced: Range<usize>, new_end: usize) {
         }
         adjusted.push((range.start..range.end.min(replaced.start), *style));
     }
-    // Newly typed text inherits its local style until Giallo resolves its syntax.
+    // Newly typed text inherits its local style until the highlighter resolves its syntax.
     if new_end > replaced.start {
         adjusted.push((replaced.start..new_end, inherited));
     }
@@ -127,73 +126,41 @@ fn apply_edit(runs: &mut Runs, replaced: Range<usize>, new_end: usize) {
 }
 
 fn highlight(source: &str, language: &str, light: bool) -> anyhow::Result<Runs> {
-    // The same reviewed grammar/theme artifact used by Monoprint's renderer.
-    // Load once, off the UI thread; no grammar downloads or extra language set.
-    static REGISTRY: OnceLock<Result<Registry, String>> = OnceLock::new();
-    let registry = REGISTRY
-        .get_or_init(|| {
-            Registry::load(include_bytes!("../../../assets/registry.zst"))
-                .map_err(|error| error.to_string())
+    static RENDERER: OnceLock<monoprint::Renderer> = OnceLock::new();
+    let spans = RENDERER
+        .get_or_init(monoprint::Renderer::new)
+        .highlight_source(
+            source,
+            language.parse()?,
+            if light {
+                monoprint::Appearance::Light
+            } else {
+                monoprint::Appearance::Dark
+            },
+        )?;
+    Ok(spans
+        .into_iter()
+        .map(|span| {
+            let style = editor_style(&span);
+            (span.range, style)
         })
-        .as_ref()
-        .map_err(|error| anyhow::anyhow!(error.clone()))?;
-    let theme = if light {
-        "editor-github-light-default"
-    } else {
-        "editor-github-dark-default"
-    };
-    let options =
-        HighlightOptions::new(language, ThemeVariant::Single(theme)).merge_whitespace(false);
-    let code = registry.highlight(source, &options)?;
-    let mut result = Vec::new();
-    let mut offset = 0;
-    for line in code.tokens {
-        for token in line {
-            let end = offset + token.text.len();
-            let ThemeVariant::Single(style) = token.style else {
-                unreachable!()
-            };
-            if end > offset {
-                result.push((offset..end, editor_style(style)));
-            }
-            offset = end;
-        }
-        // Giallo normalizes CRLF and CR to LF. Keep offsets in the original
-        // editor buffer, including Unicode and empty lines.
-        if source.as_bytes().get(offset) == Some(&b'\r') {
-            offset += 1;
-        }
-        if source.as_bytes().get(offset) == Some(&b'\n') {
-            offset += 1;
-        }
-    }
-    Ok(result)
+        .collect())
 }
 
-fn editor_style(style: giallo::Style) -> HighlightStyle {
-    let color = Rgba::try_from(style.foreground.as_hex().as_str())
-        .expect("Giallo emits valid RGBA hex colors");
-    let font = style.font_style;
+fn editor_style(span: &monoprint::SyntaxSpan) -> HighlightStyle {
+    let color = Rgba::try_from(span.foreground.as_str()).expect("bundled RGBA palette");
     HighlightStyle {
         color: Some(color.into()),
-        font_weight: font
-            .contains(giallo::FontStyle::BOLD)
-            .then_some(FontWeight::BOLD),
-        font_style: font
-            .contains(giallo::FontStyle::ITALIC)
-            .then_some(FontStyle::Italic),
-        underline: font
-            .contains(giallo::FontStyle::UNDERLINE)
-            .then_some(UnderlineStyle {
-                thickness: px(1.),
-                ..Default::default()
-            }),
-        strikethrough: font.contains(giallo::FontStyle::STRIKETHROUGH).then_some(
-            StrikethroughStyle {
-                thickness: px(1.),
-                ..Default::default()
-            },
-        ),
+        font_weight: span.bold.then_some(FontWeight::BOLD),
+        font_style: span.italic.then_some(FontStyle::Italic),
+        underline: span.underline.then_some(UnderlineStyle {
+            thickness: px(1.),
+            ..Default::default()
+        }),
+        strikethrough: span.strikethrough.then_some(StrikethroughStyle {
+            thickness: px(1.),
+            ..Default::default()
+        }),
         ..Default::default()
     }
 }
@@ -275,7 +242,7 @@ mod tests {
     }
 
     #[test]
-    fn giallo_colors_languages_beyond_the_kit_grammars_in_both_appearances() {
+    fn shared_highlighter_colors_native_and_fallback_languages_in_both_appearances() {
         for light in [false, true] {
             for (language, source) in [
                 ("rust", "// Comment\nfn main() { let x = \"hello\"; }"),

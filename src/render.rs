@@ -222,7 +222,7 @@ pub(crate) fn render(
         .map(|font| font.bytes())
         .unwrap_or_else(|| assets::font(&theme.font));
     let code = highlight::code(
-        renderer.registry()?,
+        renderer,
         snippet,
         source,
         theme,

@@ -1,55 +1,36 @@
 # Monoprint
 
-Create code images locally. Monoprint has a macOS app, a CLI, and Rust and
-TypeScript APIs. It exports PNG, SVG and self-contained HTML using
-[Giallo](https://github.com/getzola/giallo) and [Takumi](https://github.com/kane50613/takumi).
+Create code images locally with a native desktop editor, a CLI, and Rust and
+Node.js APIs. Export PNG, SVG, or self-contained HTML.
 
-Fonts, themes and syntax grammars are bundled. Rendering needs no browser,
-network connection or installed fonts. Public downloads and registry packages
-are not available yet.
+Fonts, themes, and syntax grammars are bundled. Rendering runs on your device
+without a browser, network connection, or installed fonts.
 
-## Desktop app
+## Build from source
+
+Requires Rust 1.97 or newer and a C compiler. The desktop app also needs the
+[platform prerequisites](apps/monoprint-gui/README.md).
 
 ```sh
+# Desktop editor
 cargo run --locked --release --manifest-path apps/monoprint-gui/Cargo.toml
-```
 
-Edit code, choose a theme and export an image. The app has a live preview,
-line and text highlights, custom fonts, clipboard export and a saved local draft.
-See the [Studio guide](apps/monoprint-gui/README.md) for requirements and controls.
-
-## CLI
-
-Build with Rust 1.97 or newer and a C compiler:
-
-```sh
+# CLI
 cargo build --locked --release --target-dir target
-./target/release/monoprint example.rs -o example.png
-./target/release/monoprint example.rs --theme monoprint --title example.rs -o example.svg
-printf 'const answer = 42;\n' | ./target/release/monoprint -l ts -o example.html
+./target/release/monoprint fixtures/example.ts -o example.png
 ```
 
-Use `--list-themes`, `--list-languages` and `--list-fonts` to see the available
-choices. Themes have light/dark variants and themed, solid, patterned or
-transparent backgrounds. See the [CLI reference](docs/cli.md) for all options.
+Choose a theme, adjust the typeface and layout, add line or text highlights,
+and export. Themes support light and dark appearances, custom backgrounds,
+and transparent surroundings.
 
-## Rust and TypeScript
+## Guides
 
-```rust
-use monoprint::{Renderer, Scale, Snippet, Style};
-
-let png = Renderer::new().png(
-    &Snippet::new("fn main() {}\n").language("rust".parse()?).title("main.rs"),
-    &Style::default(),
-    Scale::X2,
-)?;
-```
-
-The [Rust guide](docs/library.md) covers path dependencies, reusable renderers,
-custom fonts and raw-pixel previews. The [TypeScript guide](bindings/node/README.md)
-covers Node.js 22+, async/sync rendering and native packages for macOS, Linux
-and Windows. Rust registry publishing is disabled until the vendored backend
-fixes are available as published dependencies.
+- [Desktop editor](apps/monoprint-gui/README.md)
+- [CLI options](docs/cli.md)
+- [Rust API](docs/library.md)
+- [Node.js and TypeScript](bindings/node/README.md)
+- [Themes](docs/theme-expansion.md)
 
 ## Development
 
@@ -57,14 +38,11 @@ fixes are available as published dependencies.
 cargo fmt --package monoprint -- --check
 cargo clippy --locked --all-targets -- -D warnings
 cargo test --locked --release
-cargo test --manifest-path vendor/takumi-raster/Cargo.toml --locked --release --lib
 ```
 
-See [maintenance](docs/maintenance.md) for asset updates and
-[validation](docs/validation.md) for checks and limitations.
+See [asset maintenance](docs/maintenance.md) and [release packaging](docs/release.md).
 
 ## License
 
-Original code is Apache-2.0. Bundled assets and dependencies keep their own
-licenses. See [THIRD_PARTY_NOTICES.md](THIRD_PARTY_NOTICES.md) and
-[grammar licensing](docs/grammar-licenses.md).
+Original code is Apache-2.0. Dependencies and bundled assets retain their own
+licenses; see [third-party notices](THIRD_PARTY_NOTICES.md).

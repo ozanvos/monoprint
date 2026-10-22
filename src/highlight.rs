@@ -1,6 +1,6 @@
-use crate::{Snippet, assets, highlighted_lines};
+use crate::{Renderer, Snippet, assets, highlighted_lines, syntax};
 use anyhow::Result;
-use giallo::{FontStyle, HighlightOptions, Registry, ThemeVariant};
+use giallo::FontStyle;
 use std::{fmt::Write, ops::Range};
 
 pub struct Highlighted {
@@ -11,7 +11,7 @@ pub struct Highlighted {
 }
 
 pub fn code(
-    registry: &Registry,
+    renderer: &Renderer,
     snippet: &Snippet,
     source: &str,
     theme: &assets::Theme,
@@ -26,22 +26,14 @@ pub fn code(
     } else {
         format!("editor-{}", theme.id)
     };
-    // The second palette classifies grammar scopes, independent of theme colors.
-    // Dual highlighting shares one tokenization pass and keeps comment boundaries.
-    let themes = if separate_comments {
-        ThemeVariant::Dual {
-            light: &*theme_name,
-            dark: "monoprint-comments",
-        }
-    } else {
-        ThemeVariant::Single(&*theme_name)
-    };
-    let options = HighlightOptions::new(&language, themes).merge_whitespace(false);
-    let result = registry.highlight(source, &options)?;
-    let default_background = match result.theme {
-        ThemeVariant::Single(theme) => theme.default_style.background,
-        ThemeVariant::Dual { light, .. } => light.default_style.background,
-    };
+    let result = syntax::highlight(
+        renderer,
+        snippet.language,
+        source,
+        &theme_name,
+        separate_comments,
+    )?;
+    let default_background = result.background;
     let marked = highlighted_lines(snippet);
     let mut selections = snippet
         .text_highlights
@@ -49,13 +41,14 @@ pub fn code(
         .map(|range| range.resolve(source))
         .collect::<std::result::Result<Vec<_>, _>>()?;
     merge_ranges(&mut selections);
-    let comment_marker = giallo::Color::from_hex("#ffffff")?;
     let mut comments = Vec::new();
     let mut html = String::new();
     let mut offset = 0;
-    for (index, tokens) in result.tokens.iter().enumerate() {
+    let line_count = source.split('\n').count();
+    let mut run_index = 0;
+    for (index, line) in source.split('\n').enumerate() {
         let selected = theme.study_id.is_some();
-        let empty = selected && tokens.iter().all(|token| token.text.trim().is_empty());
+        let empty = selected && line.trim().is_empty();
         let class = if marked.contains(&(index + 1)) {
             "line highlighted-line"
         } else {
@@ -71,26 +64,22 @@ pub fn code(
             html.push_str("<span class=\"lc\">");
         }
         let mut runs: Vec<(Range<usize>, giallo::Style, bool)> = Vec::new();
-        for token in tokens {
-            let (style, comment) = match token.style {
-                ThemeVariant::Single(style) => (style, false),
-                ThemeVariant::Dual { light, dark } => (light, dark.foreground == comment_marker),
-            };
-            let end = offset + token.text.len();
-            if comment {
-                comments.push(offset..end);
+        let line_end = offset + line.len();
+        while let Some(run) = result.runs.get(run_index) {
+            if run.range.start >= line_end {
+                break;
             }
-            // Dual-theme mode does not merge tokens itself. Rejoin identical runs
-            // so ligatures can shape across grammar tokens with the same style.
-            if let Some((range, previous_style, previous_comment)) = runs.last_mut()
-                && *previous_style == style
-                && *previous_comment == comment
-            {
-                range.end = end;
-            } else {
-                runs.push((offset..end, style, comment));
+            let range = run.range.start.max(offset)..run.range.end.min(line_end);
+            if !range.is_empty() {
+                if run.comment {
+                    comments.push(range.clone());
+                }
+                runs.push((range, run.style, run.comment));
             }
-            offset = end;
+            if run.range.end > line_end {
+                break;
+            }
+            run_index += 1;
         }
         for (range, style, comment) in runs {
             let foreground = style.foreground.as_hex();
@@ -152,7 +141,8 @@ pub fn code(
             html.push_str("</span>");
         }
         html.push_str("</span>");
-        if index + 1 < result.tokens.len() {
+        offset = line_end;
+        if index + 1 < line_count {
             html.push('\n');
             offset += 1;
         }

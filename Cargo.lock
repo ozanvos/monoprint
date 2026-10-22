@@ -951,6 +951,7 @@ dependencies = [
  "icu_properties",
  "image",
  "parley",
+ "pierre-highlights-rs",
  "png",
  "rayon",
  "serde",
@@ -1220,6 +1221,12 @@ checksum = "e57fef6bc5981e38c2ce2d63bfa546861309f875b8a75f092d1d54ae2d64f266"
 dependencies = [
  "siphasher",
 ]
+
+[[package]]
+name = "pierre-highlights-rs"
+version = "0.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "03d0b5807893bcaf58ddfd7516f787ed1b1da065857739e251e5f30f511e022a"
 
 [[package]]
 name = "pin-project-lite"

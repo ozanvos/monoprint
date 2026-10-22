@@ -4,9 +4,6 @@ Packaging scripts produce archives, checksums and build records. They do not
 upload or publish. Release builds require clean source; `--local` allows working
 changes and marks the result non-release. Use a new output directory each time.
 
-See [workflow and publishing setup](private-release-prep.md).
-Qualify each release from its own source and build receipts.
-
 ## CLI
 
 Requires Rust, a C compiler, Node.js 22+ and Python 3:
@@ -105,6 +102,22 @@ through Apple's installed distribution path. Record the commit, archive checksum
 OS and machine. Unit tests and headless captures do not cover these checks.
 
 Preserve project, font, grammar and dependency licenses and corresponding sources
-in every package. Review older Git revisions before publishing the full history:
-pre-curation commits contain excluded grammar inputs. A source snapshot is an
-alternative; it does not remove those inputs from the existing history.
+in every package.
+
+## Workflows and publishing
+
+`ci.yml` checks the source. The release workflows build packages and receipts;
+`release.yml` assembles CLI, Node, and desktop artifacts at one commit. These
+workflows are dispatched explicitly. A push or tag does not publish packages.
+
+```sh
+node scripts/release.mjs check
+node --test scripts/release.test.mjs scripts/package-receipts.test.mjs
+```
+
+Public distribution requires `publicPublishing: true` in `release/config.json`
+and explicit approval for the invocation. Keep credentials outside Git. Apple
+signing uses the `apple-signing` environment and `scripts/with-apple-signing.py`;
+the workflow declares the required certificate and App Store Connect secrets.
+See [Node packaging](node-packaging.md) for npm publication requirements and
+[website commands](../website/README.md) for the separate website deployment.

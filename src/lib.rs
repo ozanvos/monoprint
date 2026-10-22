@@ -69,6 +69,7 @@ mod raster;
 mod render;
 mod resample;
 mod selected_styles;
+mod syntax;
 
 pub use background::Background;
 pub use catalog::{Language, LineNumberPolicy, Theme};
@@ -79,6 +80,7 @@ pub use options::{
     TextRange,
 };
 pub use raster::{BgraImage, RasterImage};
+pub use syntax::{HighlightBackend, SyntaxSpan};
 
 use giallo::Registry;
 use std::{
@@ -97,7 +99,8 @@ pub const MAX_FONT_BYTES: usize = 64 * 1024 * 1024;
 /// A reusable native renderer with lazy grammar and bundled-font caches.
 ///
 /// Construction is cheap and infallible. The first render loads the embedded
-/// grammar registry; fonts prepare on first use. Clones share these caches.
+/// native palettes; the grammar registry loads only for Giallo fallback. Fonts
+/// prepare on first use. Clones share these caches.
 /// Render methods accept `&self` and may run concurrently, including with
 /// different fonts. Drop all clones to release the per-renderer caches.
 ///
@@ -107,15 +110,17 @@ pub const MAX_FONT_BYTES: usize = 64 * 1024 * 1024;
 /// Dropping a renderer does not flush those; scratch buffers live until their
 /// rendering thread exits. Applications should bound concurrent work.
 #[derive(Clone, Default)]
-pub struct Renderer(Arc<Inner>);
+pub struct Renderer(Arc<Inner>, HighlightBackend);
 #[derive(Default)]
 struct Inner {
     registry: OnceLock<Result<Registry, String>>,
+    native: syntax::NativePool,
     fonts: [font::PreparedFonts; font::BUNDLED_NAMES.len() * 2],
 }
 impl fmt::Debug for Renderer {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("Renderer")
+            .field("highlight_backend", &self.1)
             .field("initialized", &self.0.registry.get().is_some())
             .finish_non_exhaustive()
     }

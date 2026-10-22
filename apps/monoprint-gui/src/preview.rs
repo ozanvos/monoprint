@@ -301,6 +301,142 @@ mod tests {
     }
 
     #[test]
+    #[ignore = "Manual A/B timing; run alone with --release --ignored --nocapture"]
+    fn benchmark_native_highlight_preview_export() {
+        use crate::document::{self, Format};
+        use monoprint::HighlightBackend;
+        let automatic = Renderer::new();
+        let giallo = automatic
+            .clone()
+            .highlight_backend(HighlightBackend::Giallo);
+        let renderers = [&automatic, &giallo];
+        let decoder = SvgRenderer::new(Arc::new(()));
+        let mut report = Vec::new();
+        for (language, lines, transparent, comment_font) in [
+            ("rust", 10, false, false),
+            ("rust", 30, false, false),
+            ("rust", 100, false, false),
+            ("typescript", 30, false, false),
+            ("typescript", 100, false, false),
+            ("python", 30, false, false),
+            ("hem", 30, false, false),
+            ("rust", 30, true, false),
+            ("rust", 30, false, true),
+            ("python", 30, false, true),
+        ] {
+            let source = (0..lines)
+                .map(|i| match language {
+                    "typescript" => format!("const value{i:03}: string = `hello {i:03}`; // code"),
+                    "python" => format!("value_{i:03} = 'hello {i:03}'  # code"),
+                    _ => format!("let value_{i:03} = \"hello {i:03}\"; // code"),
+                })
+                .collect::<Vec<_>>()
+                .join("\n");
+            let document = Document {
+                source,
+                language: language.into(),
+                transparent,
+                comment_font_id: comment_font.then(|| "space-mono".to_owned()),
+                ..Default::default()
+            };
+            let preview = |renderer: &Renderer| {
+                let font = FontCache::default()
+                    .load_document(&document, false)
+                    .unwrap();
+                let comments = FontCache::default().load_document(&document, true).unwrap();
+                let (snippet, style) = document.prepare(font, comments).unwrap();
+                render_image(renderer.bgra(&snippet, &style, Scale::X2).unwrap())
+            };
+            let expected_png =
+                renderers.map(|r| document::export(r, &document, Format::Png).unwrap());
+            let expected = expected_png.each_ref().map(|png| {
+                Image::from_bytes(ImageFormat::Png, png.clone())
+                    .to_image_data(decoder.clone())
+                    .unwrap()
+            });
+            assert_eq!(
+                expected[0].size(0),
+                expected[1].size(0),
+                "A/B pixel workload must have identical dimensions"
+            );
+            for backend in 0..2 {
+                assert_eq!(
+                    preview(renderers[backend]).as_bytes(0),
+                    expected[backend].as_bytes(0)
+                );
+            }
+            let mut previews = [Vec::new(), Vec::new()];
+            let mut exports = [Vec::new(), Vec::new()];
+            let mut svg = [Vec::new(), Vec::new()];
+            let mut html = [Vec::new(), Vec::new()];
+            // Alternate both backend and preview/export order. Validation and
+            // image comparison are deliberately outside each timed interval.
+            for sample in 0..15 {
+                let order = if sample % 2 == 0 { [0, 1] } else { [1, 0] };
+                for backend in order {
+                    let r = renderers[backend];
+                    for operation in if sample % 3 == 0 { [1, 0] } else { [0, 1] } {
+                        let start = Instant::now();
+                        if operation == 0 {
+                            let image = std::hint::black_box(preview(r));
+                            previews[backend].push(start.elapsed().as_secs_f64() * 1000.);
+                            assert_eq!(image.as_bytes(0), expected[backend].as_bytes(0));
+                        } else {
+                            let png = std::hint::black_box(
+                                document::export(r, &document, Format::Png).unwrap(),
+                            );
+                            exports[backend].push(start.elapsed().as_secs_f64() * 1000.);
+                            assert_eq!(png, expected_png[backend]);
+                        }
+                    }
+                    for (format, timings) in [(Format::Svg, &mut svg), (Format::Html, &mut html)] {
+                        let start = Instant::now();
+                        std::hint::black_box(document::export(r, &document, format).unwrap());
+                        timings[backend].push(start.elapsed().as_secs_f64() * 1000.);
+                    }
+                }
+            }
+            let median = |samples: &[f64]| {
+                let mut sorted = samples.to_vec();
+                sorted.sort_by(f64::total_cmp);
+                sorted[sorted.len() / 2]
+            };
+            let medians = |samples: &[Vec<f64>; 2]| serde_json::json!({"auto":median(&samples[0]),"giallo":median(&samples[1])});
+            eprintln!(
+                "{language}/{lines} transparent={transparent} comments={comment_font}: preview {:.3} -> {:.3} ms; PNG {:.3} -> {:.3} ms",
+                median(&previews[1]),
+                median(&previews[0]),
+                median(&exports[1]),
+                median(&exports[0])
+            );
+            report.push(serde_json::json!({
+                "language":language,"lines":lines,"source_bytes":document.source.len(),"transparent":transparent,"comment_font":comment_font,
+                "width":expected[0].size(0).width.0,"height":expected[0].size(0).height.0,
+                "source":document.source,"theme":document.theme,"font_size":document.font_size,"outer_width":document.width,"padding":document.padding,
+                "scale":document.scale,"png_compression":document.png_compression,
+                "preview_matches_png":true,"same_pixels_between_backends":expected[0].as_bytes(0)==expected[1].as_bytes(0),
+                "median_ms":{"preview":medians(&previews),"png":medians(&exports),"svg":medians(&svg),"html":medians(&html)},
+                "samples_ms":{"preview":previews,"png":exports,"svg":svg,"html":html},
+            }));
+            if let Ok(dir) = std::env::var("MONOPRINT_HIGHLIGHT_BENCH_IMAGES") {
+                std::fs::create_dir_all(&dir).unwrap();
+                for (backend, png) in expected_png.iter().enumerate() {
+                    std::fs::write(
+                        format!(
+                            "{dir}/{language}-{lines}-{transparent}-{comment_font}-{}.png",
+                            ["auto", "giallo"][backend]
+                        ),
+                        png,
+                    )
+                    .unwrap();
+                }
+            }
+        }
+        let path = std::env::var("MONOPRINT_HIGHLIGHT_BENCH_REPORT").expect("report output path");
+        std::fs::write(path, serde_json::to_vec_pretty(&report).unwrap()).unwrap();
+    }
+
+    #[test]
     fn rapid_edits_render_only_the_latest_snapshot() {
         let (worker, results) =
             PreviewWorker::new(Renderer::new(), Arc::new(SessionStore::new(None)));

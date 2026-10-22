@@ -56,7 +56,28 @@ Balanced compression preserves pixels while trading more encoding time for small
 
 ## Batch rendering
 
-Reuse one renderer to retain the grammar registry, compiled grammar patterns, and prepared bundled fonts. Clone a style to derive a variation without changing the original.
+Reuse one renderer to retain native lexer arenas, the fallback grammar registry, compiled grammar patterns, and prepared bundled fonts. Clone a style to derive a variation without changing the original.
+
+Monoprint uses [pierre-highlights-rs 0.1.0](https://crates.io/crates/pierre-highlights-rs/0.1.0)
+from crates.io. The highlighter is maintained in its
+[own repository](https://github.com/ozanvos/pierre-highlights-rs).
+
+Syntax highlighting defaults to native Pierre for supported languages, with Giallo
+for the remaining catalog entries. The full language picker and aliases remain
+available. Python with a separate comment font also uses Giallo to preserve
+TextMate's docstring classification. Existing theme palettes are mapped to Pierre's
+token kinds; syntax classification can differ from TextMate.
+
+Use `Renderer::new().highlight_backend(HighlightBackend::Giallo)` to retain the
+original backend explicitly. Clones share caches, while each handle retains its
+backend policy. `Renderer::highlight_source(source, language, appearance)` exposes
+styled UTF-8 byte ranges for native source editors using the GitHub light/dark
+palettes; it preserves original CRLF/CR offsets and enforces the source-size limit.
+
+After regenerating `assets/registry.zst`, run
+`cargo run --release --example compile_pierre_palettes` to update the native tables.
+The `--check` option verifies all 80 palettes against Giallo's theme matcher and the
+reviewed mapping in `assets/pierre-token-scopes.json`.
 
 ```rust
 use monoprint::{Appearance, Language, LineNumbers, Renderer, Snippet, Style};
@@ -246,7 +267,7 @@ match result {
 
 Takumi retains bounded process-wide glyph data and per-thread layout scratch buffers. The latter stay allocated until the rendering thread exits, even after the renderer is dropped.
 
-These limits are per call, not a process-wide memory or CPU quota. Applications control concurrency. Monoprint never performs file IO, looks up system fonts, launches processes, prints, or accesses the network. Rendering is deterministic for the pinned assets and dependency versions; antialiasing can differ from browser exports. The existing [fidelity limitations](validation.md) still apply.
+These limits are per call, not a process-wide memory or CPU quota. Applications control concurrency. Monoprint never performs file IO, looks up system fonts, launches processes, prints, or accesses the network. Rendering is deterministic for the pinned assets and dependency versions; antialiasing can differ from browser exports.
 
 Run `cargo doc --no-default-features --no-deps --open` for the API reference and `cargo run --release --example library --no-default-features` for executable one-off, batch, custom-font, and worker examples.
 
