@@ -59,10 +59,26 @@ See [Velopack signing](https://docs.velopack.io/packaging/signing).
 The Entra app's federated credential must use issuer
 `https://token.actions.githubusercontent.com`, audience
 `api://AzureADTokenExchange`, and subject
-`repo:ozanvos/monoprint:environment:windows-signing`. Grant its service principal
+`repo:ozanvos@111265/monoprint@1430299394:environment:windows-signing`.
+This repository has GitHub's immutable OIDC subjects enabled. Confirm the
+current prefix with `gh api repos/ozanvos/monoprint/actions/oidc/customization/sub`
+before configuring federation; the older name-only subject will not match.
+Grant its service principal
 Artifact Signing Certificate Profile Signer on the Monoprint profile only.
 The workflow logs in through OIDC immediately before packaging; the signing
 library uses that Azure CLI session. No Azure client password is required.
+The `windows-signing` environment permits only `main`, `codex/stealth-launch`,
+and `v*` tags. Remove the launch branch allowance after qualification.
+
+The initial Azure signing account is approved for one billing month only.
+Billing continues until the account is deleted; no automatic cancellation is
+configured. Deletion stops future signing but does not invalidate existing
+signatures. Do not assume subsequent billing periods are authorized.
+See [Microsoft's billing and unenrollment FAQ](https://learn.microsoft.com/en-us/azure/artifact-signing/faq#unenroll-from-the-artifact-signing-service).
+
+The business verification homepage is maintained separately in `company-site/`
+and deployed to the `seven-east-site` Worker at `7ea.st`. It has no build step
+and does not use the Monoprint website CI token.
 
 Confirm publisher eligibility before purchasing: Microsoft currently accepts
 organizations in the US, Canada, EU and UK, but individual developers only in the
