@@ -3,7 +3,7 @@
     "version": "2.10.0",
     "archiveSha256": "c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c",
     "feedUrl": "https://github.com/ozanvos/monoprint/releases/latest/download/appcast-macos-arm64.xml",
-    "publicKey": null
+    "publicKey": "i2nm9PbU+5JaicSqb3i7XMKU9upz4FdIu0Tr/MChTgM="
   },
   "linuxdeploy": {
     "version": "1-alpha-20251107-1",

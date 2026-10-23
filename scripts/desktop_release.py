@@ -21,7 +21,7 @@ def read_json(path):
     return json.loads(path.read_text())
 
 
-def assemble(source, output, *, version, commit, input_hash, repository, distribution):
+def assemble(source, output, *, version, commit, input_hash, repository, public_key, distribution):
     base = f'https://github.com/{repository}/releases'
     latest = base + '/latest/download/'
     tagged = base + f'/download/v{version}/'
@@ -68,6 +68,7 @@ def assemble(source, output, *, version, commit, input_hash, repository, distrib
                 with zipfile.ZipFile(files[name]['source']) as archive:
                     info = plistlib.loads(archive.read('Monoprint.app/Contents/Info.plist'))
                 if (info.get('SUPublicEDKey') != feed.get('publicKey')
+                        or not public_key or info.get('SUPublicEDKey') != public_key
                         or info.get('SUFeedURL') != receipt['updateFeed']
                         or info.get('CFBundleShortVersionString') != version):
                     raise ValueError('Embedded Sparkle settings differ from the signed feed')
@@ -94,12 +95,13 @@ def assemble(source, output, *, version, commit, input_hash, repository, distrib
                 raise ValueError(f'Missing update feed: {runtime}')
             feed = read_json(files[feed_name]['source'])
             full = False
+            platform_files = {entry['file'] for entry in artifacts}
             for asset in feed.get('Assets', []):
                 entry = files.get(asset['FileName'])
-                if (not entry or asset['Version'] != version
+                if (not entry or asset['FileName'] not in platform_files or asset['Version'] != version
                         or asset['SHA256'].lower() != entry['sha256'] or int(asset['Size']) != entry['bytes']):
                     raise ValueError(f'Velopack feed does not match shipping bytes: {runtime}')
-                full |= asset.get('Type') == 'Full'
+                full |= asset.get('Type') == 'Full' and asset['FileName'].endswith('-full.nupkg')
             if not full:
                 raise ValueError(f'Missing full update package: {runtime}')
             suffix = 'Setup.exe' if runtime == 'win-x64' else '.AppImage'
@@ -133,6 +135,7 @@ def main():
         version=tomllib.loads((ROOT / 'Cargo.toml').read_text())['package']['version'],
         commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
         input_hash=source_digest(ROOT), repository=read_json(ROOT / 'release/config.json')['repository'],
+        public_key=read_json(ROOT / 'release/updates.json')['sparkle']['publicKey'],
         distribution=args.distribution)
     print(f"Verified {len(manifest['files'])} desktop assets for {manifest['tag']}")
 

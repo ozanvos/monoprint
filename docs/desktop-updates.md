@@ -43,7 +43,7 @@ An AppImage in an unwritable location cannot self-update.
 ## Release configuration
 
 `release/updates.json` pins tool versions and archive hashes. Feed URLs target
-GitHub Releases; the Sparkle public key comes from the signing environment.
+GitHub Releases; the Sparkle public key is pinned in the same configuration.
 Development binaries and packages built
 without configured updates make no update-feed requests. Configure the feeds
 before preparing distributable update-enabled packages.

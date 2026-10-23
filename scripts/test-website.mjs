@@ -71,6 +71,9 @@ try {
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(out, `website-${width}.png`), fullPage: true });
     await page.locator('.showcase').screenshot({ path: path.join(out, `showcase-${width}.png`) });
+    if (process.env.MONOPRINT_DOWNLOAD_MANIFEST) {
+      await page.locator('.downloads').screenshot({ path: path.join(out, `downloads-${width}.png`) });
+    }
   }
   await page.setViewportSize({ width: 1440, height: 1100 });
   const copy = page.getByRole('button', { name: 'Copy CLI command', exact: true });

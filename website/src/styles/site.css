@@ -540,6 +540,17 @@ img {
   .strip nav .button {
     display: none;
   }
+  .strip:not(.foot) nav {
+    gap: 12px;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    padding-block: 8px;
+  }
+  .strip:not(.foot) {
+    height: auto;
+    min-height: 48px;
+    grid-template-columns: auto minmax(0,1fr);
+  }
   .foot {
     grid-template-columns: 1fr;
     height: auto;

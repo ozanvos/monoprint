@@ -28,6 +28,26 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: '12.0'
     steps:
       - uses: actions/checkout@v4
+      - name: Check Developer ID and notarization configuration before building
+        if: ${{ inputs.signed }}
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          python3 - <<'PY'
+          import os
+          names = ['MACOS_CERTIFICATE_BASE64', 'MACOS_CERTIFICATE_PASSWORD', 'MACOS_SIGN_IDENTITY',
+                   'APPLE_API_KEY_BASE64', 'APPLE_API_KEY_ID', 'APPLE_API_ISSUER_ID']
+          missing = [name for name in names if not os.environ.get(name)]
+          if missing:
+              raise SystemExit('Missing apple-signing credentials: ' + ', '.join(missing))
+          if not os.environ['MACOS_SIGN_IDENTITY'].startswith('Developer ID Application:'):
+              raise SystemExit('Direct downloads require a Developer ID Application certificate')
+          PY
       - name: Check update signing configuration before building
         if: ${{ inputs.updates }}
         env:

@@ -65,7 +65,7 @@ class DesktopReleaseTests(unittest.TestCase):
         for folder, receipt in self.receipts.items():
             (self.source / folder / 'manifest.json').write_text(json.dumps(receipt))
         return assemble(self.source, self.output, version=self.version, commit=self.commit,
-                        input_hash='inputs', repository='ozanvos/monoprint', distribution=distribution)
+                        input_hash='inputs', repository='ozanvos/monoprint', public_key='key', distribution=distribution)
 
     def test_complete_distribution_has_three_downloads_and_all_feeds(self):
         manifest = self.build()

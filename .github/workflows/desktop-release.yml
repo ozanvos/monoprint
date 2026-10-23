@@ -120,6 +120,7 @@ jobs:
         uses: actions/attest@v4
         with:
           subject-path: output/release/*
+          create-storage-record: false
       - name: Include the verifiable Sigstore signature bundle
         env:
           BUNDLE: ${{ steps.attest.outputs.bundle-path }}

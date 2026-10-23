@@ -33,6 +33,11 @@ The repository must be public before publishing downloads or build attestations.
 branch/tag restrictions according to the repository's release approval policy.
 For signing environments, permit only trusted release refs.
 
+The Sparkle key is configured in `apple-signing` and retained in the macOS login
+Keychain under account `app.monoprint.studio`. Its public key is also pinned in
+`release/updates.json`; distribution assembly rejects a different embedded key.
+Back up the private key securely and preserve it for future updates.
+
 Apple Development and Mac App Store distribution certificates do **not** replace
 Developer ID Application signing for direct downloads. Apple notarization and
 Sparkle update signing are separate requirements. The workflow stores private
