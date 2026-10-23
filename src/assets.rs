@@ -17,7 +17,10 @@ pub struct Theme {
     #[serde(default)]
     pub original: bool,
     pub surface: Option<String>,
-    pub study_id: Option<String>,
+    /// Selected and code-only catalogs share their frame and line markup.
+    /// Derive routing from the owning catalog, not optional palette metadata.
+    #[serde(skip)]
+    pub selected_frame: bool,
 }
 
 #[derive(Debug, Deserialize)]
@@ -77,13 +80,15 @@ pub fn themes() -> &'static BTreeMap<String, Theme> {
         let selected: BTreeMap<String, Theme> =
             serde_json::from_str(include_str!("../assets/selected/themes.json"))
                 .expect("bundled selected Monoprint styles");
-        for (id, theme) in selected {
+        for (id, mut theme) in selected {
+            theme.selected_frame = true;
             assert!(themes.insert(id, theme).is_none(), "duplicate theme ID");
         }
         let code_styles: BTreeMap<String, Theme> =
             serde_json::from_str(include_str!("../assets/code-styles/themes.json"))
                 .expect("bundled code-only Monoprint styles");
-        for (id, theme) in code_styles {
+        for (id, mut theme) in code_styles {
+            theme.selected_frame = true;
             assert!(themes.insert(id, theme).is_none(), "duplicate theme ID");
         }
         themes

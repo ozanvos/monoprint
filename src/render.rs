@@ -275,7 +275,7 @@ pub(crate) fn render(
         .find(|g| g.name == code.language || g.aliases.contains(&code.language))
         .map(|g| g.display_name.as_str())
         .unwrap_or("Plain Text");
-    let original = if theme.study_id.is_some() {
+    let original = if theme.selected_frame {
         Some(selected_styles::frame(theme, style, code.line_count))
     } else {
         theme
