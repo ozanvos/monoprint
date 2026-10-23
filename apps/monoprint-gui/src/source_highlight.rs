@@ -282,7 +282,7 @@ mod tests {
         let comment = source.find("// fin").unwrap();
         assert!(
             runs.iter().any(|(range, style)| range.start == comment
-                && style.color == Some(rgb(0x8b949e).into()))
+                && style.color == Some(rgb(0x9e9e98).into()))
         );
         for (range, _) in &runs {
             assert!(source.get(range.clone()).is_some());

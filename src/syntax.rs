@@ -25,7 +25,7 @@ pub enum HighlightBackend {
 pub struct SyntaxSpan {
     /// Nonempty byte range on UTF-8 character boundaries.
     pub range: Range<usize>,
-    /// CSS RGBA hex color from the selected GitHub editor palette.
+    /// CSS RGBA hex color from the default Monoprint palette.
     pub foreground: String,
     /// Use a bold font weight.
     pub bold: bool,
@@ -45,7 +45,8 @@ impl Renderer {
     }
 
     /// Color an editor buffer without rendering an image. Offsets address the
-    /// original UTF-8 input, including CRLF and lone CR line endings.
+    /// original UTF-8 input, including CRLF and lone CR line endings. Uses
+    /// Monoprint's default syntax palette for the requested appearance.
     pub fn highlight_source(
         &self,
         source: &str,
@@ -56,8 +57,8 @@ impl Renderer {
             return Err(InvalidOption::SourceTooLarge { len: source.len() }.into());
         }
         let theme = match appearance {
-            Appearance::Light => "editor-github-light-default",
-            Appearance::Dark => "editor-github-dark-default",
+            Appearance::Light => "original-monoprint-light",
+            Appearance::Dark => "original-monoprint-dark",
         };
         let result = highlight(self, language, source, theme, false).map_err(Error::backend)?;
         Ok(result
