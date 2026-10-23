@@ -39,7 +39,8 @@ def main():
     if args.output.exists():
         parser.error('--output must be a fresh directory')
     feed, tool_version = velopack_settings(args.runtime, args.update_feed)
-    installed = subprocess.check_output(['vpk', '--version'], text=True).strip()
+    # vpk 1.2 exposes its version in the help banner, not --version.
+    installed = subprocess.check_output(['vpk', '--help'], text=True).strip()
     if not re.search(rf'(?<![\d.]){re.escape(tool_version)}(?![\d.])', installed):
         parser.error(f'Install vpk {tool_version}; found {installed}')
     signing = bool(args.sign_template or args.azure_signing_metadata)
@@ -105,7 +106,7 @@ def main():
             subprocess.run(['desktop-file-validate', str(desktop)], check=True)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.mkdir()
-        command = ['vpk', 'pack', '--packId', 'Monoprint', '--packTitle', 'Monoprint', '--packVersion', version, '--packDir', str(stage), '--mainExe', exe, '--runtime', args.runtime, '--channel', channel, '--outputDir', str(args.output.resolve())]
+        command = ['vpk', 'pack', '--skip-updates', '--yes', '--packId', 'Monoprint', '--packTitle', 'Monoprint', '--packVersion', version, '--packDir', str(stage), '--mainExe', exe, '--runtime', args.runtime, '--channel', channel, '--outputDir', str(args.output.resolve())]
         if args.sign_template:
             command += ['--signTemplate', args.sign_template]
         if args.azure_signing_metadata:
