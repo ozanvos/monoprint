@@ -38,7 +38,10 @@ fn default_monoprint_exports_both_approved_appearances() {
             .font_size(25);
         let image = renderer.rgba(&snippet, &style, Scale::X1).unwrap();
         assert_eq!((image.width(), image.height()), (1000, 750));
-        assert_eq!(&image.pixels()[0..4], &stage);
+        // The default halftone has a dot at the origin. Sample the stage
+        // between dots, away from the code window and its border.
+        let stage_pixel = (4 * image.width() as usize + 4) * 4;
+        assert_eq!(&image.pixels()[stage_pixel..stage_pixel + 4], &stage);
         let paper_pixel = (140 * image.width() as usize + 50) * 4;
         assert_eq!(&image.pixels()[paper_pixel..paper_pixel + 4], &paper);
         let html = renderer.html(&snippet, &style).unwrap();
@@ -141,6 +144,11 @@ fn monoprint_grows_with_wrapped_code_and_keeps_appearance_when_transparent() {
         let solid = renderer
             .rgba(&short, &style.background(Background::Solid), Scale::X1)
             .unwrap();
-        assert_eq!(&solid.pixels()[0..4], &a.pixels()[0..4]);
+        // Solid removes the default halftone but keeps its base stage color.
+        let stage_pixel = (4 * a.width() as usize + 4) * 4;
+        assert_eq!(
+            &solid.pixels()[0..4],
+            &a.pixels()[stage_pixel..stage_pixel + 4]
+        );
     }
 }
