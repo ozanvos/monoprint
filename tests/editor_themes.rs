@@ -437,3 +437,28 @@ fn cli_selects_light_palette_and_rejects_conflicting_background_flags() {
         .unwrap();
     assert!(!output.status.success());
 }
+
+#[test]
+fn monoprint_default_background_is_halftone_in_both_appearances() {
+    let renderer = Renderer::new();
+    for appearance in [Appearance::Light, Appearance::Dark] {
+        let style = Style::default().appearance(appearance).width(440);
+        let default = renderer.png(&snippet(), &style, Scale::X1).unwrap();
+        assert_eq!(
+            default,
+            renderer
+                .png(
+                    &snippet(),
+                    &style.clone().background(Background::Halftone),
+                    Scale::X1
+                )
+                .unwrap()
+        );
+        assert_ne!(
+            default,
+            renderer
+                .png(&snippet(), &style.background(Background::Solid), Scale::X1)
+                .unwrap()
+        );
+    }
+}

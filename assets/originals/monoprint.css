@@ -1,4 +1,4 @@
-.Monoprint{background:var(--monoprint-stage);color:var(--ink-foreground)}
+.Monoprint{background:transparent;color:var(--ink-foreground)}
 .Monoprint__page{min-width:0;background:var(--monoprint-surface);border:1px solid var(--monoprint-border);border-radius:8px;overflow:hidden}
 .Monoprint__mast,.Monoprint__foot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:var(--masthead-label-padding) var(--masthead-label-inset);font-family:CodeMono;font-size:var(--masthead-label-size);line-height:1.5;color:var(--monoprint-label);overflow-wrap:anywhere}
 .Monoprint__mast{min-height:var(--masthead-mast-height);border-bottom:1px solid var(--monoprint-rule)}

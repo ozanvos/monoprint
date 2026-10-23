@@ -341,7 +341,7 @@ impl Default for Style {
             font: None,
             comment_font: None,
             theme_comment_font: true,
-            ligatures: false,
+            ligatures: true,
             mixed_fonts: None,
         }
     }
@@ -456,7 +456,7 @@ impl Style {
         self
     }
     /// Enable coding ligatures (`liga`, `clig`, `calt`) supported by the font.
-    /// Disabled by default. Preserves the theme's letter spacing.
+    /// Enabled by default. Preserves the theme's letter spacing.
     #[must_use]
     pub fn ligatures(mut self, enabled: bool) -> Self {
         self.ligatures = enabled;

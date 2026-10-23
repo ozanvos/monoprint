@@ -90,7 +90,7 @@ impl Default for Document {
             highlights: "".into(),
             text_highlights: "".into(),
             font_size: "15".into(),
-            ligatures: false,
+            ligatures: true,
             scale: 2,
             png_compression: "balanced".into(),
             format: Format::Png,
@@ -944,7 +944,9 @@ mod tests {
         let old: Document = serde_json::from_str(r#"{"source":"old draft"}"#).unwrap();
         assert_eq!(old.font_size, "15");
         assert_eq!(old.png_compression, "balanced");
-        assert!(!old.ligatures);
+        assert!(old.ligatures);
+        let explicit_off: Document = serde_json::from_str(r#"{"ligatures":false}"#).unwrap();
+        assert!(!explicit_off.ligatures);
         assert!(old.comment_font_path.is_none());
         assert!(old.text_highlights.is_empty());
         assert!(old.font_id.is_none());

@@ -4,7 +4,7 @@ use std::{fmt, str::FromStr};
 /// Decoration outside the code window. All modes retain the theme's panel fill.
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq)]
 pub enum Background {
-    /// The preset's original artwork or matching gradient.
+    /// The preset's default treatment: artwork, gradient, or Monoprint halftone.
     #[default]
     Theme,
     /// A flat color chosen to complement the palette.
@@ -52,6 +52,11 @@ impl FromStr for Background {
 }
 
 pub(crate) fn css(theme: &assets::Theme, appearance: Appearance, background: Background) -> String {
+    let background = if background == Background::Theme && theme.id == "monoprint" {
+        Background::Halftone
+    } else {
+        background
+    };
     let gradient = theme.background.as_ref();
     let solid = theme
         .editor

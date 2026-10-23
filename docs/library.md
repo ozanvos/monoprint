@@ -236,8 +236,8 @@ original font and weight.
 
 `ligatures(true)` enables the font's `liga`, `clig` and `calt` features while preserving
 code letter spacing. Text without substitutions keeps the same width and wrapping.
-Availability depends on the font. The default is off, and
-`ligatures(false)` restores the theme-compatible rendering. Both options work
+Availability depends on the font. The default is on, and
+`ligatures(false)` disables these substitutions. Both options work
 with PNG, SVG and embedded HTML; exact selections may split a ligature at the
 selection boundary.
 
@@ -281,4 +281,4 @@ let theme: Theme = "catppuccin-latte".parse().unwrap();
 let style = Style::new(theme).background(Background::Halftone);
 ```
 
-`Background::{Theme, Solid, Lattice, Halftone, None}` controls the outer canvas. Colors follow the palette; the code window is retained. `transparent(true)` selects `None`, and `transparent(false)` restores `Theme`. These setters replace one another, so the last call wins. Imported themes preserve TextMate rules; language-server semantic coloring is not available. SynthWave ’84 includes its token-specific Neon Dreams glow.
+`Background::{Theme, Solid, Lattice, Halftone, None}` controls the outer canvas. Colors follow the palette; the code window is retained. The Monoprint default uses halftone in both light and dark appearances. `transparent(true)` selects `None`, and `transparent(false)` restores `Theme`. These setters replace one another, so the last call wins. Imported themes preserve TextMate rules; language-server semantic coloring is not available. SynthWave ’84 includes its token-specific Neon Dreams glow.

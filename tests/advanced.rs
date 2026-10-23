@@ -126,10 +126,15 @@ fn comment_glyphs_use_the_comment_font_and_caches_do_not_leak() {
 fn coding_ligatures_change_glyphs_and_can_be_disabled() {
     let r = Renderer::new();
     let snippet = Snippet::new("-> === != =>");
-    let off = Style::default().font(font("fira-code"));
+    let off = Style::default().font(font("fira-code")).ligatures(false);
     let on = off.clone().ligatures(true);
     let a = r.svg(&snippet, &off).unwrap();
     let b = r.svg(&snippet, &on).unwrap();
+    assert_eq!(
+        b,
+        r.svg(&snippet, &Style::default().font(font("fira-code")))
+            .unwrap()
+    );
     // Fira Code combines === and != into fewer drawn glyphs. Comparing glyph
     // references, rather than output bytes, cannot pass on a spacing change alone.
     assert!(b.matches("<use href=\"#g").count() < a.matches("<use href=\"#g").count());
@@ -147,7 +152,7 @@ fn coding_ligatures_preserve_text_without_substitutions() {
     let renderer = Renderer::new();
     let snippet = Snippet::new("A".repeat(100));
     for bundled in BundledFont::all() {
-        let base = Style::default().font(bundled.font());
+        let base = Style::default().font(bundled.font()).ligatures(false);
         // Cover both automatic sizing and a fixed width that wraps this line.
         for off in [base.clone(), base.width(720)] {
             let on = off.clone().ligatures(true);
@@ -170,7 +175,8 @@ fn coding_ligatures_preserve_text_without_substitutions() {
         .language("python".parse().unwrap());
     let off = Style::default()
         .font(font("fira-code"))
-        .comment_font(font("space-mono"));
+        .comment_font(font("space-mono"))
+        .ligatures(false);
     let on = off.clone().ligatures(true);
     assert_eq!(
         renderer.svg(&snippet, &off).unwrap(),

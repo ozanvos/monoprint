@@ -2565,7 +2565,7 @@ mod macos {
             });
             inspector_click(&mut cx, handle, &studio, "coding-ligatures");
             cx.read_entity(&studio, |s, _| {
-                assert!(s.document.ligatures);
+                assert!(!s.document.ligatures);
                 assert!(s.error.is_none(), "{:?}", s.error);
             });
             let (original_height, editor_line_height) = cx.read_entity(&studio, |s, cx| {

@@ -32,7 +32,7 @@ macOS Apple Silicon is tested. Windows and Linux still need native validation.
 - Set the width, padding, title, background and line numbers. Leave Width blank
   for automatic sizing. Choose None for a transparent outer background.
 - Select text to highlight it, or click line numbers to highlight whole lines.
-- Choose code and comment typefaces, a size from 8 to 72 px, and optional ligatures.
+- Choose code and comment typefaces, a size from 8 to 72 px, and ligatures enabled by default.
   Bundled fonts work offline; custom fonts must be single-face TTF/OTF files.
 - Scroll or drag to pan, pinch to zoom, and use the image's side handles to change
   export width. Preview zoom does not change the export.

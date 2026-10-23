@@ -349,7 +349,25 @@ fn advanced_typography_and_text_highlights_reach_every_export() {
     }
     assert_eq!(
         success(w.run(&["-o", "-", "--format", "svg"], "a => b")),
-        success(w.run(&["--no-ligatures", "-o", "-", "--format", "svg"], "a => b"))
+        success(w.run(&["--ligatures", "-o", "-", "--format", "svg"], "a => b"))
+    );
+    assert_ne!(
+        success(w.run(
+            &["--font", "fira-code", "-o", "-", "--format", "svg"],
+            "a => b"
+        )),
+        success(w.run(
+            &[
+                "--font",
+                "fira-code",
+                "--no-ligatures",
+                "-o",
+                "-",
+                "--format",
+                "svg"
+            ],
+            "a => b"
+        ))
     );
     for (args, message) in [
         (vec!["--font", "missing"], "unknown bundled font"),

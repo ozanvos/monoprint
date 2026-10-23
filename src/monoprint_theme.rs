@@ -1,6 +1,6 @@
 //! The selected Masthead/Oxide composition, with paired appearance tokens.
 //! Flow layout keeps the frame attached to real, possibly wrapped source text.
-use crate::{Background, Style, assets, originals::Frame};
+use crate::{Style, assets, originals::Frame};
 
 pub(crate) fn frame(theme: &assets::Theme, style: &Style, lines: usize) -> Frame {
     let palette = &theme.syntax[style.appearance.as_str()];
@@ -26,7 +26,7 @@ pub(crate) fn frame(theme: &assets::Theme, style: &Style, lines: usize) -> Frame
     // frame dimensions keep wrapping and export dimensions stable at 1–6x.
     let leading = (size * 1.6 * 2.0).round() / 2.0;
     let scaled = |value: f32| (value * scale).round();
-    let mut css = format!(
+    let css = format!(
         "{}\n#capture{{{colors}--masthead-mast-height:{mast_height}px;--masthead-foot-height:{foot_height}px;\
          --masthead-label-padding:{label_padding}px;--masthead-foot-padding:{foot_padding}px;\
          --masthead-body-padding:{body_padding}px;--masthead-inset:{inset}px;\
@@ -46,9 +46,6 @@ pub(crate) fn frame(theme: &assets::Theme, style: &Style, lines: usize) -> Frame
         foot_padding = scaled(10.0),
         body_padding = scaled(42.0),
     );
-    if style.background != Background::Theme {
-        css += ".Monoprint{background:transparent}";
-    }
     Frame {
         template: "<div class=\"Monoprint\" style=\"padding:__PADDING__px\">\
           <div class=\"Monoprint__page\">\

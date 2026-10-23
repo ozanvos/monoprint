@@ -99,6 +99,8 @@ pub fn invocation(document: &Document) -> Result<String> {
     }
     if document.ligatures {
         args.push("--ligatures".into());
+    } else {
+        args.push("--no-ligatures".into());
     }
     Ok(args.join(" \\\n  "))
 }
@@ -150,6 +152,8 @@ mod tests {
             assert!(!command.contains("--font="));
             assert!(!command.contains("line-numbers"));
         }
+        document.ligatures = false;
+        assert!(invocation(&document).unwrap().contains("--no-ligatures"));
         document.padding = "-".into();
         assert!(command(&document).is_err());
         document.padding = "32".into();

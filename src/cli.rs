@@ -82,10 +82,10 @@ pub struct Args {
     /// Separate TTF/OTF typeface for grammar-recognized comments and docstrings.
     #[arg(long)]
     pub comment_font_file: Option<PathBuf>,
-    /// Enable coding ligatures supported by the selected fonts (off by default).
+    /// Enable coding ligatures supported by the selected fonts (on by default).
     #[arg(long, conflicts_with = "no_ligatures")]
     pub ligatures: bool,
-    /// Disable coding ligatures (default).
+    /// Disable coding ligatures.
     #[arg(long)]
     pub no_ligatures: bool,
     #[arg(long)]

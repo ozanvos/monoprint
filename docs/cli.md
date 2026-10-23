@@ -24,7 +24,7 @@ Defaults: Monoprint dark, 15px code size, 32px outer padding, automatic width, 4
 | `--comment-font space-mono` | Select a bundled comment typeface. Defaults to the code typeface. |
 | `--font-file mono.ttf` | Supply a TTF/OTF code font. HTML embeds it. |
 | `--comment-font-file comments.otf` | Separate typeface for grammar-recognized comments and docstrings. Defaults to the code font. |
-| `--ligatures`, `--no-ligatures` | Toggle coding ligatures supported by the font. Off by default. |
+| `--ligatures`, `--no-ligatures` | Toggle coding ligatures supported by the font. On by default. |
 | `--force` | Replace an existing output. Otherwise overwriting is rejected. |
 
 Omit the input filename, or use `-`, to read UTF-8 stdin. Unknown filenames and unspecified stdin use plain text; an unknown explicit language is an error. TypeScript and TSX are separate; `.ts`, `.mts` and `.cts` select TypeScript. CRLF/CR are normalized to LF; all other source text, including blank lines and trailing newlines, is preserved in selectable HTML.

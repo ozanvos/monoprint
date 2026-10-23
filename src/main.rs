@@ -104,7 +104,7 @@ fn run() -> Result<()> {
         .transparent(args.transparent)
         .padding(args.padding)
         .font_size(args.font_size)
-        .ligatures(args.ligatures)
+        .ligatures(!args.no_ligatures)
         .line_numbers(if args.no_line_numbers {
             LineNumbers::Hide
         } else if args.line_numbers {
