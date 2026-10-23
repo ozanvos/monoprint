@@ -62,7 +62,7 @@ jobs:
       - if: ${{ matrix.runtime == 'linux-x64' }}
         run: |
           sudo apt-get update
-          sudo apt-get install -y clang cmake pkg-config libfontconfig1-dev libfreetype6-dev libxcb1-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libssl-dev libfuse2t64 desktop-file-utils
+          sudo apt-get install -y clang cmake pkg-config libfontconfig1-dev libfreetype6-dev libxcb1-dev libxkbcommon-x11-dev libwayland-dev libvulkan-dev libssl-dev libfuse2t64 desktop-file-utils xvfb xdotool mesa-vulkan-drivers
       - uses: dtolnay/rust-toolchain@1.98.1
         with:
           components: clippy
@@ -96,6 +96,9 @@ jobs:
         run: python apps/monoprint-gui/scripts/bundle-desktop.py --runtime win-x64 --output output/desktop-win-x64 --update-feed "$env:MONOPRINT_UPDATE_FEED" --azure-signing-metadata "$env:RUNNER_TEMP/signing-metadata.json"
         env:
           MONOPRINT_UPDATE_FEED: ${{ vars.MONOPRINT_WINDOWS_UPDATE_FEED }}
+      - if: ${{ matrix.runtime == 'linux-x64' }}
+        name: Qualify native AppImage startup and a real Velopack update
+        run: xvfb-run -a python scripts/test-linux-appimage.py --from output/desktop-linux-x64
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.runtime }}

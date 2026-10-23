@@ -112,6 +112,11 @@ See [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/se
    restart and uninstall. Verify two consecutive versions upgrade correctly.
    Before a public channel exists, use isolated test feeds with the standalone
    packagers; the public workflow requires the committed production feed URLs.
+   Linux packaging also runs `scripts/test-linux-appimage.py` under Xvfb. It
+   discovers and downloads the real package from an isolated feed, waits for
+   the SDK's graceful-exit installer to replace an older test host byte for
+   byte, then opens the native window twice and checks draft persistence.
+   This covers the packaged updater and X11 startup, not every compositor/GPU.
 4. Tag the qualified source as `vVERSION`, push the tag, and dispatch from that
    tag with `signed: true`, `publish: true`, and `tag: vVERSION`.
 5. CI rebuilds and verifies all platforms, signs provenance, uploads every asset
