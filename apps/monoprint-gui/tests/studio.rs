@@ -1289,7 +1289,12 @@ mod macos {
         let mut attempts = 0;
         let popup = loop {
             cx.update_window(handle.into(), |_, window, cx| {
-                window.click("source-language", cx);
+                // TestWindowExt::click redraws after mouse-down and mouse-up.
+                // Those extra frames can consume the short fade before this
+                // test observes it. Dispatch the same pointer sequence with a
+                // single opening frame, then sample the next frame below.
+                let position = window.find("source-language").bounds().center();
+                pointer_click(window, position, cx);
                 window.render_frame(cx);
             })
             .unwrap();
@@ -1336,7 +1341,11 @@ mod macos {
         let early = cx.capture_screenshot(handle.into()).unwrap();
         capture(cx, handle, &format!("language-popup-fading-{mode}"));
         // The 1px ring is the most visible shadow layer in either appearance.
-        // Sample its straight left edge, outside the translucent panel.
+        // Sample its straight left edge, outside the translucent panel. The
+        // popup slides vertically during its fade, so its center can land on
+        // source glyphs in the closed image. Measure only editor-background
+        // pixels along the middle half of the edge; averaging them keeps text
+        // and pixel rounding from cancelling the translucent ring's contrast.
         let x = (popup.bounds.left().0 - 1.).floor() as u32;
         let y = popup.bounds.center().y.0.floor() as u32;
         let inside_x = (popup.bounds.right().0 - 8.).floor() as u32;
@@ -1352,13 +1361,42 @@ mod macos {
             (actual - expected).abs() < 4.,
             "shadow ink stays outside the fading panel: actual={actual}, expected={expected}"
         );
-        let baseline = closed.get_pixel(x, y).0[0] as f32;
-        let rising = early.get_pixel(x, y).0[0] as f32 - baseline;
+        let canvas = cx.update(|cx| appearance::palette(cx).canvas);
+        let canvas = [(canvas >> 16) as u8, (canvas >> 8) as u8, canvas as u8];
+        let edge_rows = ((popup.bounds.top().0 + popup.bounds.size.height.0 * 0.25).ceil() as u32
+            ..(popup.bounds.top().0 + popup.bounds.size.height.0 * 0.75).floor() as u32)
+            .filter(|y| closed.get_pixel(x, *y).0[..3] == canvas)
+            .collect::<Vec<_>>();
+        assert!(
+            edge_rows.len() >= 32,
+            "shadow measurement needs at least 32 unobstructed background pixels"
+        );
+        let contrast = |image: &image::RgbaImage| {
+            edge_rows
+                .iter()
+                .map(|y| image.get_pixel(x, *y).0[0] as f32 - closed.get_pixel(x, *y).0[0] as f32)
+                .sum::<f32>()
+                / edge_rows.len() as f32
+        };
+        let rising = contrast(&early);
         std::thread::sleep(Duration::from_millis(170));
         cx.update_window(handle.into(), |_, window, cx| window.render_frame(cx))
             .unwrap();
         let settled = cx.capture_screenshot(handle.into()).unwrap();
-        let resting = settled.get_pixel(x, y).0[0] as f32 - baseline;
+        if let Some(dir) = std::env::var_os("MONOPRINT_GUI_SCREENSHOTS") {
+            let dir = std::path::PathBuf::from(dir);
+            let width = closed.width();
+            closed
+                .save(dir.join(format!("popup-closed-{width}-{mode}.png")))
+                .unwrap();
+            early
+                .save(dir.join(format!("popup-fading-{width}-{mode}.png")))
+                .unwrap();
+            settled
+                .save(dir.join(format!("popup-settled-{width}-{mode}.png")))
+                .unwrap();
+        }
+        let resting = contrast(&settled);
         assert!(
             resting.abs() > 5.,
             "the popup's shadow ring remains visible: {resting}"
