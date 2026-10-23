@@ -47,7 +47,7 @@ pub fn code(
     let line_count = source.split('\n').count();
     let mut run_index = 0;
     for (index, line) in source.split('\n').enumerate() {
-        let selected = theme.study_id.is_some();
+        let selected = theme.selected_frame;
         let empty = selected && line.trim().is_empty();
         let class = if marked.contains(&(index + 1)) {
             "line highlighted-line"
