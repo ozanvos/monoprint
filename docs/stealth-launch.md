@@ -24,7 +24,7 @@ The repository must be public before publishing downloads or build attestations.
 | `apple-signing` | Secrets `APPLE_API_KEY_BASE64`, `APPLE_API_KEY_ID`, `APPLE_API_ISSUER_ID` | App Store Connect API key with notarization access |
 | `apple-signing` | Secret `SPARKLE_PRIVATE_KEY` | Text exported by Sparkle's `generate_keys -x`; preserve it across releases |
 | `apple-signing` | Variable `MONOPRINT_SPARKLE_PUBLIC_KEY` | Corresponding base64 Ed25519 public key |
-| `windows-signing` | Secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | Identity with Certificate Profile Signer access to Azure Artifact Signing |
+| `windows-signing` | Secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID` | OIDC identity with Certificate Profile Signer access to the Monoprint Azure signing profile |
 | `windows-signing` | Variable `MONOPRINT_WINDOWS_SIGNING_METADATA` | JSON containing `Endpoint`, `CodeSigningAccountName`, `CertificateProfileName` |
 | `website` | Secret `CLOUDFLARE_API_TOKEN` | Individual Workers Editor, scoped only to the existing `monoprint-site` Worker |
 | `website` | Variable `CLOUDFLARE_ACCOUNT_ID` | Account hosting `monoprint.7ea.st` |
@@ -55,6 +55,14 @@ validation before attempting a signed build. This repository does not provision
 or purchase that service. Other providers remain possible through the packager's
 existing `--sign-template` option, but require a corresponding CI setup.
 See [Velopack signing](https://docs.velopack.io/packaging/signing).
+
+The Entra app's federated credential must use issuer
+`https://token.actions.githubusercontent.com`, audience
+`api://AzureADTokenExchange`, and subject
+`repo:ozanvos/monoprint:environment:windows-signing`. Grant its service principal
+Artifact Signing Certificate Profile Signer on the Monoprint profile only.
+The workflow logs in through OIDC immediately before packaging; the signing
+library uses that Azure CLI session. No Azure client password is required.
 
 Confirm publisher eligibility before purchasing: Microsoft currently accepts
 organizations in the US, Canada, EU and UK, but individual developers only in the

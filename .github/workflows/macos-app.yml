@@ -48,6 +48,7 @@ jobs:
           if not os.environ['MACOS_SIGN_IDENTITY'].startswith('Developer ID Application:'):
               raise SystemExit('Direct downloads require a Developer ID Application certificate')
           PY
+          python3 scripts/with-apple-signing.py --check-only
       - name: Check update signing configuration before building
         if: ${{ inputs.updates }}
         env:
