@@ -50,7 +50,9 @@ try {
     assert.equal(await page.getByRole('link', { name: 'Download', exact: true }).count(), 2);
     assert.equal(await page.getByRole('button', { name: 'Download', exact: true }).count(), 0);
     for (const [platform, runtime] of [['macOS', 'macos-arm64'], ['Windows', 'win-x64'], ['Linux', 'linux-x64']]) {
-      assert.equal(await page.getByRole('link', { name: `Download for ${platform}`, exact: true }).getAttribute('href'), manifest.downloads[runtime].url);
+      const link = page.getByRole('link', { name: `Download for ${platform}`, exact: true });
+      if (manifest.downloads[runtime]) assert.equal(await link.getAttribute('href'), manifest.downloads[runtime].url);
+      else assert.equal(await link.count(), 0, `No download link for deferred ${platform}`);
     }
   } else {
     assert.equal(await page.getByRole('link', { name: /Download/i }).count(), 0);

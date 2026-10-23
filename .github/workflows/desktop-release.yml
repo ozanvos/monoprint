@@ -23,6 +23,8 @@ concurrency:
 jobs:
   preflight:
     runs-on: ubuntu-24.04
+    outputs:
+      include_windows: ${{ steps.platforms.outputs.include_windows }}
     steps:
       - uses: actions/checkout@v4
         with:
@@ -30,6 +32,9 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 22.23.0
+      - id: platforms
+        name: Select committed release platforms
+        run: node --input-type=module -e "import c from './release/config.json' with {type:'json'}; console.log('include_windows=' + c.desktopPlatforms.includes('win-x64'))" >> "$GITHUB_OUTPUT"
       - name: Validate version, tag, repository and publication approval
         env:
           SIGNED: ${{ inputs.signed }}
@@ -63,6 +68,7 @@ jobs:
       id-token: write
     uses: ./.github/workflows/desktop-app.yml
     with:
+      include_windows: ${{ needs.preflight.outputs.include_windows == 'true' }}
       signed: ${{ inputs.signed }}
     secrets: inherit
   assemble:

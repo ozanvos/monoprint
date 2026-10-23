@@ -21,10 +21,14 @@ def read_json(path):
     return json.loads(path.read_text())
 
 
-def assemble(source, output, *, version, commit, input_hash, repository, public_key, distribution):
+def assemble(source, output, *, version, commit, input_hash, repository, public_key, distribution,
+             platforms=('macos-arm64', 'win-x64', 'linux-x64')):
     base = f'https://github.com/{repository}/releases'
     latest = base + '/latest/download/'
     tagged = base + f'/download/v{version}/'
+    supported = {'macos-arm64': 'macos-app', 'win-x64': 'desktop-win-x64', 'linux-x64': 'desktop-linux-x64'}
+    if not platforms or len(set(platforms)) != len(platforms) or set(platforms) - supported.keys():
+        raise ValueError('Invalid release platforms')
     files = {}
     downloads = {}
 
@@ -43,7 +47,8 @@ def assemble(source, output, *, version, commit, input_hash, repository, public_
         files[destination] = {'source': file, 'sha256': digest, 'bytes': len(data)}
         return destination
 
-    for folder, runtime in [('macos-app', 'macos-arm64'), ('desktop-win-x64', 'win-x64'), ('desktop-linux-x64', 'linux-x64')]:
+    for runtime in platforms:
+        folder = supported[runtime]
         receipt = read_json(source / folder / 'manifest.json')
         if (receipt.get('version') != version or receipt.get('commit') != commit
                 or receipt.get('inputHash') != input_hash or receipt.get('dirty')
@@ -116,7 +121,7 @@ def assemble(source, output, *, version, commit, input_hash, repository, public_
     for name, entry in files.items():
         shutil.copyfile(entry['source'], output / name)
     manifest = {'version': version, 'tag': f'v{version}', 'commit': commit, 'repository': repository,
-                'distribution': distribution, 'downloads': downloads,
+                'distribution': distribution, 'platforms': list(platforms), 'downloads': downloads,
                 'files': [{'file': name, 'sha256': entry['sha256'], 'bytes': entry['bytes']} for name, entry in files.items()]}
     (output / 'release.json').write_text(json.dumps(manifest, indent=2) + '\n')
     checksums = {name: entry['sha256'] for name, entry in files.items()}
@@ -136,7 +141,7 @@ def main():
         commit=subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=ROOT, text=True).strip(),
         input_hash=source_digest(ROOT), repository=read_json(ROOT / 'release/config.json')['repository'],
         public_key=read_json(ROOT / 'release/updates.json')['sparkle']['publicKey'],
-        distribution=args.distribution)
+        distribution=args.distribution, platforms=read_json(ROOT / 'release/config.json')['desktopPlatforms'])
     print(f"Verified {len(manifest['files'])} desktop assets for {manifest['tag']}")
 
 

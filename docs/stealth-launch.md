@@ -1,7 +1,9 @@
 # Desktop launch
 
-The `Desktop release` workflow builds macOS Apple Silicon, Windows x64 and Linux
-x64 at one commit. It reuses the existing Sparkle and Velopack packagers. Intel
+The `Desktop release` workflow builds the platforms committed in
+`release/config.json` at one commit. The initial release includes macOS Apple
+Silicon and Linux x64; Windows is deferred until Microsoft verification and
+Authenticode signing are ready. Windows packaging remains covered by PR CI. It reuses the existing Sparkle and Velopack packagers. Intel
 Macs and ARM Windows/Linux are not included in this initial matrix. Linux builds
 require glibc 2.39 (Ubuntu 24.04 or newer) and may need FUSE 2.
 
@@ -133,7 +135,7 @@ formats against the shipping bytes.
 macOS uses `appcast-macos-arm64.xml`; Windows and Linux use separate
 `releases.win-x64.json` and `releases.linux-x64.json` feeds. Sparkle enclosures and
 website download links use immutable version-tag URLs. Keep old releases and
-packages available. Do not mark a release without all three platform feeds as
+packages available. Do not mark a release without all configured platform feeds as
 latest, or publish a lower version over the channel.
 
 The website only enables downloads when `MONOPRINT_DOWNLOAD_MANIFEST` names the

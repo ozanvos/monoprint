@@ -28,13 +28,25 @@ export function verifyRelease(release, manifest, repository, expectedTag) {
     }
     files.set(file.file, file);
   }
-  for (const name of ['appcast-macos-arm64.xml', 'releases.win-x64.json', 'releases.linux-x64.json']) {
-    if (!files.has(name)) throw new Error(`Missing update feed: ${name}`);
+  const formats = {
+    'macos-arm64': ['-aarch64-apple-darwin.zip', 'appcast-macos-arm64.xml'],
+    'win-x64': ['Setup.exe', 'releases.win-x64.json'],
+    'linux-x64': ['.AppImage', 'releases.linux-x64.json'],
+  };
+  const platforms = Object.keys(manifest.downloads ?? {});
+  if (!platforms.length || platforms.some(runtime => !formats[runtime])
+      || config.desktopPlatforms.some(runtime => !platforms.includes(runtime))
+      || (manifest.platforms && (new Set(manifest.platforms).size !== platforms.length
+        || manifest.platforms.length !== platforms.length
+        || manifest.platforms.some(runtime => !platforms.includes(runtime))))) {
+    throw new Error('Missing or unsupported release platform');
   }
   if (!assets.get('provenance.sigstore.json')?.size || !assets.get('SHA256SUMS')?.size) {
     throw new Error('Missing release signatures or checksums');
   }
-  for (const [runtime, suffix] of [['macos-arm64', '-aarch64-apple-darwin.zip'], ['win-x64', 'Setup.exe'], ['linux-x64', '.AppImage']]) {
+  for (const runtime of platforms) {
+    const [suffix, feed] = formats[runtime];
+    if (!files.has(feed)) throw new Error(`Missing update feed: ${feed}`);
     const download = manifest.downloads?.[runtime];
     const file = files.get(download?.file);
     if (!file || !download.file.endsWith(suffix) || file.sha256 !== download.sha256

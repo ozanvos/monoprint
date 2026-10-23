@@ -50,6 +50,7 @@ const parts = [
         {manifest && <section class="downloads" id="downloads" aria-labelledby="downloads-title">
           <h2 id="downloads-title">Get Monoprint</h2>
           <p>Version {manifest.version}. Free and open source. Updates are built in.</p>
+          {!manifest.downloads['win-x64'] && <p>Windows downloads are coming later.</p>}
           <div class="download-platforms">{downloads.map(download => <div>
             <a class="button ink" href={download.url}>{download.label}</a>
             <p>{download.detail}</p>

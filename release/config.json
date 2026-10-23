@@ -2,5 +2,9 @@
   "publicPublishing": true,
   "websitePublishing": true,
   "repository": "ozanvos/monoprint",
-  "homepage": "https://monoprint.7ea.st"
+  "homepage": "https://monoprint.7ea.st",
+  "desktopPlatforms": [
+    "macos-arm64",
+    "linux-x64"
+  ]
 }

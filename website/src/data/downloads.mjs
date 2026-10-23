@@ -10,6 +10,6 @@ if (manifest && (manifest.distribution !== true || manifest.repository !== relea
 }
 export const downloads = manifest ? [
   { ...manifest.downloads['macos-arm64'], label: 'Download for macOS', detail: 'Apple Silicon · ZIP' },
-  { ...manifest.downloads['win-x64'], label: 'Download for Windows', detail: '64-bit · Installer' },
+  ...(manifest.downloads['win-x64'] ? [{ ...manifest.downloads['win-x64'], label: 'Download for Windows', detail: '64-bit · Installer' }] : []),
   { ...manifest.downloads['linux-x64'], label: 'Download for Linux', detail: '64-bit · AppImage · Ubuntu 24.04+' },
 ] : [];

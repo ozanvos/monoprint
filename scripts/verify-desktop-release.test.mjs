@@ -43,3 +43,31 @@ test('website rejects an unexpected latest tag', () => {
   const f = fixture();
   assert.throws(() => verifyRelease(f.release, f.manifest, f.repository, 'v0.2.0'));
 });
+
+function deferWindows(f) {
+  const names = new Set([f.manifest.downloads['win-x64'].file, 'releases.win-x64.json']);
+  delete f.manifest.downloads['win-x64'];
+  f.manifest.platforms = ['macos-arm64', 'linux-x64'];
+  f.manifest.files = f.manifest.files.filter(file => !names.has(file.file));
+  f.release.assets = f.release.assets.filter(asset => !names.has(asset.name));
+  return f;
+}
+
+test('macOS/Linux release needs no Windows assets or feed', () => {
+  const f = deferWindows(fixture());
+  assert.equal(verifyRelease(f.release, f.manifest, f.repository), f.manifest);
+});
+
+for (const runtime of ['macos-arm64', 'linux-x64']) {
+  test(`deferring Windows does not permit missing ${runtime}`, () => {
+    const f = deferWindows(fixture());
+    delete f.manifest.downloads[runtime];
+    assert.throws(() => verifyRelease(f.release, f.manifest, f.repository));
+  });
+}
+
+test('a declared platform cannot silently lose its download', () => {
+  const f = deferWindows(fixture());
+  f.manifest.platforms.push('win-x64');
+  assert.throws(() => verifyRelease(f.release, f.manifest, f.repository));
+});

@@ -61,11 +61,11 @@ class DesktopReleaseTests(unittest.TestCase):
         self.receipts[folder]['artifacts'].append(entry)
         return entry
 
-    def build(self, distribution=True):
+    def build(self, distribution=True, **options):
         for folder, receipt in self.receipts.items():
             (self.source / folder / 'manifest.json').write_text(json.dumps(receipt))
         return assemble(self.source, self.output, version=self.version, commit=self.commit,
-                        input_hash='inputs', repository='ozanvos/monoprint', public_key='key', distribution=distribution)
+                        input_hash='inputs', repository='ozanvos/monoprint', public_key='key', distribution=distribution, **options)
 
     def test_complete_distribution_has_three_downloads_and_all_feeds(self):
         manifest = self.build()
@@ -74,6 +74,23 @@ class DesktopReleaseTests(unittest.TestCase):
         for line in (self.output / 'SHA256SUMS').read_text().splitlines():
             digest, name = line.split('  ')
             self.assertEqual(hashlib.sha256((self.output / name).read_bytes()).hexdigest(), digest)
+
+    def test_deferred_windows_needs_no_windows_artifacts(self):
+        del self.receipts['desktop-win-x64']
+        manifest = self.build(platforms=['macos-arm64', 'linux-x64'])
+        self.assertEqual(manifest['platforms'], ['macos-arm64', 'linux-x64'])
+        self.assertEqual(set(manifest['downloads']), {'macos-arm64', 'linux-x64'})
+        self.assertFalse((self.output / 'releases.win-x64.json').exists())
+
+    def test_deferring_windows_does_not_relax_mac_signing(self):
+        self.receipts['macos-app']['signed'] = False
+        with self.assertRaisesRegex(ValueError, 'macOS requires signing'):
+            self.build(platforms=['macos-arm64', 'linux-x64'])
+
+    def test_selected_linux_cannot_be_missing(self):
+        del self.receipts['desktop-linux-x64']
+        with self.assertRaises(FileNotFoundError):
+            self.build(platforms=['macos-arm64', 'linux-x64'])
 
     def test_rejects_mixed_sources_local_builds_and_unsigned_packages(self):
         cases = [('desktop-win-x64', 'signed', False), ('desktop-linux-x64', 'release', False),

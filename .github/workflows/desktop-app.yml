@@ -11,12 +11,19 @@ on:
       - 'Cargo.*'
   workflow_dispatch:
     inputs:
+      include_windows:
+        description: Include Windows packaging
+        type: boolean
+        default: true
       signed:
         description: Sign Windows packages with Azure Artifact Signing
         type: boolean
         default: false
   workflow_call:
     inputs:
+      include_windows:
+        type: boolean
+        default: true
       signed:
         type: boolean
         default: false
@@ -29,12 +36,7 @@ jobs:
       id-token: write
     strategy:
       fail-fast: false
-      matrix:
-        include:
-          - runner: windows-2022
-            runtime: win-x64
-          - runner: ubuntu-24.04
-            runtime: linux-x64
+      matrix: ${{ fromJSON((github.event_name == 'pull_request' || inputs.include_windows) && '{"include":[{"runner":"windows-2022","runtime":"win-x64"},{"runner":"ubuntu-24.04","runtime":"linux-x64"}]}' || '{"include":[{"runner":"ubuntu-24.04","runtime":"linux-x64"}]}') }}
     runs-on: ${{ matrix.runner }}
     environment: ${{ inputs.signed && matrix.runtime == 'win-x64' && 'windows-signing' || '' }}
     steps:
