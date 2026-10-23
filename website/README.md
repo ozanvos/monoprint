@@ -41,7 +41,11 @@ node scripts/test-website.mjs --from website/dist --out output/playwright/websit
 Deployments upload `dist/`. Nothing deploys on push. `websitePublishing` in
 `release/config.json` controls website publication; `publicPublishing`
 separately controls app/npm releases and source links. Download links stay
-inactive until a public release is available.
+inactive until a public release is available. The `Website` workflow resolves
+the latest public desktop release, verifies its assets against `release.json`,
+and sets `MONOPRINT_DOWNLOAD_MANIFEST` before building. The `Desktop release`
+workflow calls it after publishing. See the [desktop launch guide](../docs/stealth-launch.md)
+for signing, release and Cloudflare configuration.
 
 After checking and building an approved update:
 

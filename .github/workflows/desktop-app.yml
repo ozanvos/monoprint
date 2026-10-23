@@ -1,6 +1,25 @@
 name: Windows and Linux desktop packages
 on:
+  pull_request:
+    paths:
+      - '.github/workflows/desktop*.yml'
+      - 'apps/monoprint-gui/**'
+      - 'scripts/**'
+      - 'release/**'
+      - 'src/**'
+      - 'vendor/**'
+      - 'Cargo.*'
   workflow_dispatch:
+    inputs:
+      signed:
+        description: Sign Windows packages with Azure Artifact Signing
+        type: boolean
+        default: false
+  workflow_call:
+    inputs:
+      signed:
+        type: boolean
+        default: false
 permissions:
   contents: read
 jobs:
@@ -14,8 +33,25 @@ jobs:
           - runner: ubuntu-24.04
             runtime: linux-x64
     runs-on: ${{ matrix.runner }}
+    environment: ${{ inputs.signed && matrix.runtime == 'win-x64' && 'windows-signing' || '' }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Stable receipt hashes across Windows and Unix checkouts.
+          persist-credentials: false
+      - name: Check signing configuration before building
+        if: ${{ inputs.signed && matrix.runtime == 'win-x64' }}
+        shell: pwsh
+        env:
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
+          SIGNING_METADATA: ${{ vars.MONOPRINT_WINDOWS_SIGNING_METADATA }}
+        run: |
+          foreach ($name in @('AZURE_TENANT_ID', 'AZURE_CLIENT_ID', 'AZURE_CLIENT_SECRET', 'SIGNING_METADATA')) {
+            if (-not [Environment]::GetEnvironmentVariable($name)) { throw "Missing $name in windows-signing" }
+          }
+          $env:SIGNING_METADATA | Set-Content "$env:RUNNER_TEMP/signing-metadata.json"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
@@ -35,15 +71,23 @@ jobs:
       - run: cargo test --locked --manifest-path apps/monoprint-gui/Cargo.toml --target-dir target/gui --bin monoprint-gui
       - run: python scripts/test_desktop_updates.py
       - if: ${{ matrix.runtime == 'linux-x64' }}
+        shell: bash
         run: |
           python apps/monoprint-gui/scripts/prepare-linuxdeploy.py --output target/update-tools/linuxdeploy.AppImage
-          python apps/monoprint-gui/scripts/bundle-desktop.py --runtime linux-x64 --output output/desktop-linux-x64 --linuxdeploy target/update-tools/linuxdeploy.AppImage --update-feed "${MONOPRINT_UPDATE_FEED}" --local
+          python apps/monoprint-gui/scripts/bundle-desktop.py --runtime linux-x64 --output output/desktop-linux-x64 --linuxdeploy target/update-tools/linuxdeploy.AppImage --update-feed "${MONOPRINT_UPDATE_FEED}"
         env:
           MONOPRINT_UPDATE_FEED: ${{ vars.MONOPRINT_LINUX_UPDATE_FEED }}
-      - if: ${{ matrix.runtime == 'win-x64' }}
+      - if: ${{ matrix.runtime == 'win-x64' && !inputs.signed }}
         run: python apps/monoprint-gui/scripts/bundle-desktop.py --runtime win-x64 --output output/desktop-win-x64 --update-feed "$env:MONOPRINT_UPDATE_FEED" --local
         env:
           MONOPRINT_UPDATE_FEED: ${{ vars.MONOPRINT_WINDOWS_UPDATE_FEED }}
+      - if: ${{ matrix.runtime == 'win-x64' && inputs.signed }}
+        run: python apps/monoprint-gui/scripts/bundle-desktop.py --runtime win-x64 --output output/desktop-win-x64 --update-feed "$env:MONOPRINT_UPDATE_FEED" --azure-signing-metadata "$env:RUNNER_TEMP/signing-metadata.json"
+        env:
+          MONOPRINT_UPDATE_FEED: ${{ vars.MONOPRINT_WINDOWS_UPDATE_FEED }}
+          AZURE_TENANT_ID: ${{ secrets.AZURE_TENANT_ID }}
+          AZURE_CLIENT_ID: ${{ secrets.AZURE_CLIENT_ID }}
+          AZURE_CLIENT_SECRET: ${{ secrets.AZURE_CLIENT_SECRET }}
       - uses: actions/upload-artifact@v4
         with:
           name: desktop-${{ matrix.runtime }}

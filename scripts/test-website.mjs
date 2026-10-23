@@ -45,9 +45,18 @@ try {
   } else {
     assert.equal(await page.locator('meta[name=robots]').getAttribute('content'), 'noindex,nofollow');
   }
-  assert.equal(await page.getByRole('link', { name: /Download/i }).count(), 0);
-  assert.equal(await page.getByRole('button', { name: 'Download', exact: true }).count(), 2);
-  assert.equal(await page.locator('button:disabled').count(), 2);
+  if (process.env.MONOPRINT_DOWNLOAD_MANIFEST) {
+    const manifest = JSON.parse(await fs.readFile(process.env.MONOPRINT_DOWNLOAD_MANIFEST, 'utf8'));
+    assert.equal(await page.getByRole('link', { name: 'Download', exact: true }).count(), 2);
+    assert.equal(await page.getByRole('button', { name: 'Download', exact: true }).count(), 0);
+    for (const [platform, runtime] of [['macOS', 'macos-arm64'], ['Windows', 'win-x64'], ['Linux', 'linux-x64']]) {
+      assert.equal(await page.getByRole('link', { name: `Download for ${platform}`, exact: true }).getAttribute('href'), manifest.downloads[runtime].url);
+    }
+  } else {
+    assert.equal(await page.getByRole('link', { name: /Download/i }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Download', exact: true }).count(), 2);
+    assert.equal(await page.locator('button:disabled').count(), 2);
+  }
   const screenshot = page.locator('.app-screenshot img');
   assert.equal(await screenshot.count(), 1);
   assert.match(await screenshot.getAttribute('alt'), /Monoprint for macOS/);

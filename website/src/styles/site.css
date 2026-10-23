@@ -99,6 +99,17 @@ img {
   white-space: nowrap;
 }
 
+.downloads {
+  border-top: 1px solid var(--line);
+  padding: 32px var(--edge);
+  scroll-margin-top: 24px;
+}
+
+.downloads h2 { margin-bottom: 12px; }
+.downloads p { font-size: 12px; line-height: 1.7; }
+.download-platforms { display: flex; flex-wrap: wrap; gap: 24px; margin: 24px 0; }
+.download-platforms p { margin-top: 8px; color: var(--muted); }
+
 .skip-link {
   position: absolute;
   left: 20px;

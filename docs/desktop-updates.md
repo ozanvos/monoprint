@@ -42,15 +42,17 @@ An AppImage in an unwritable location cannot self-update.
 
 ## Release configuration
 
-`release/updates.json` pins tool versions and archive hashes. Feed URLs and the
-Sparkle public key are initially unset. Development binaries and packages built
+`release/updates.json` pins tool versions and archive hashes. Feed URLs target
+GitHub Releases; the Sparkle public key comes from the signing environment.
+Development binaries and packages built
 without configured updates make no update-feed requests. Configure the feeds
 before preparing distributable update-enabled packages.
 
-Use a separate HTTPS directory for each runtime: macOS architecture-specific
-appcasts, `win-x64`, and `linux-x64`. Velopack's feed URL points to a directory
+Use a separate feed for each runtime: macOS architecture-specific appcasts,
+`win-x64`, and `linux-x64`. Velopack's feed URL points to a directory
 containing `releases.CHANNEL.json` and the package files it references; Sparkle's
-feed URL points to `appcast.xml`. Never mix architectures in a single feed.
+feed URL points to the architecture's appcast XML. Distinct channel filenames
+can share GitHub's latest-download directory; never mix architectures in a feed.
 
 Sparkle requires both Developer ID signing/notarization and an Ed25519 update
 key. Generate the key with the SDK's `bin/generate_keys`, commit only its public
@@ -92,8 +94,8 @@ update without deltas; it does not edit an existing published feed.
 The macOS archive workflow and release-candidate workflow have an `updates`
 input. It requires `signed: true`. They can use repository variables
 `MONOPRINT_MACOS_UPDATE_FEED` and `MONOPRINT_SPARKLE_PUBLIC_KEY`, or the committed
-configuration. Feed signing and hosting remain separate preparation/publication
-steps.
+configuration. `Desktop release` additionally signs the appcast and publishes
+the complete feeds. See [desktop launch](stealth-launch.md).
 
 ## Prepare Windows and Linux packages
 
@@ -122,20 +124,20 @@ installer and packaged executable's Authenticode signatures when signing is
 requested. Linux uses a custom AppDir with bundled shared libraries
 and an AppRun that preserves arguments. Updates can use full packages; deltas are optional.
 
-`Windows and Linux desktop packages` is a manual GitHub workflow. Set
+`Windows and Linux desktop packages` runs for relevant pull requests and can be
+dispatched or called by `Desktop release`. Set
 `MONOPRINT_WINDOWS_UPDATE_FEED` and `MONOPRINT_LINUX_UPDATE_FEED` repository
 variables, or commit the feed configuration. It builds and tests both platforms
-and uploads verification artifacts only: Windows output is deliberately unsigned
-and marked non-release. Verify distribution signing before a public release. Local dirty or unsigned checks require `--local` and cannot
+and uploads CI artifacts. Windows output is unsigned and marked non-release
+unless `signed: true` selects the `windows-signing` environment. Local dirty or unsigned checks require `--local` and cannot
 be represented as release artifacts.
 
 ## Publishing and testing
 
-These scripts do not publish, create releases or change the existing
-`release/config.json` publication gate. After validating the artifacts, upload
-package files first and replace the feed last. Serve feed metadata with short
-cache lifetimes. Keeping the old feed during package upload prevents references
-to unavailable packages.
+The standalone scripts do not publish. The `Desktop release` workflow honors
+`release/config.json` and the manual publication input. It validates the artifacts,
+uploads all packages and feeds into a draft, then promotes the complete release
+to latest. The previous latest release remains active while upload is in progress.
 
 Before enabling a public channel, qualify two consecutive versions on each
 native platform: fresh install, launch, background check/download, restart,

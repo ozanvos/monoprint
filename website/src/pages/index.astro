@@ -4,6 +4,7 @@ import Icon from '../components/Icon.astro';
 import { themes, initialTheme, command } from '../data/demo.mjs';
 import { showcases } from '../data/showcase.mjs';
 import release from '../../../release/config.json';
+import { downloads, manifest } from '../data/downloads.mjs';
 import '../styles/site.css';
 const repository = `https://github.com/${release.repository}`;
 const docs = `${repository}/blob/main/README.md`;
@@ -19,7 +20,7 @@ const parts = [
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Create code images locally with the Monoprint macOS app, CLI, or Rust and TypeScript APIs." />
+    <meta name="description" content="Create code images locally with Monoprint for macOS, Windows and Linux, the CLI, or Rust and TypeScript APIs." />
     {release.websitePublishing !== true && <meta name="robots" content="noindex,nofollow" />}
     {release.homepage && <link rel="canonical" href={release.homepage + '/'} />}
     <title>Monoprint | Code images</title>
@@ -31,20 +32,30 @@ const parts = [
     <div class="page">
       <header class="strip">
         <a class="brand" href="/">Monoprint</a>
-        <nav aria-label="Main">{release.publicPublishing && <><a href={docs}>Docs</a><a href={cliDocs}>CLI</a><a href={repository}>GitHub ↗</a></>}<a href="/support/">Support</a><button class="button ink" type="button" disabled title="Downloads are being prepared">Download</button></nav>
+        <nav aria-label="Main">{release.publicPublishing && <><a href={docs}>Docs</a><a href={cliDocs}>CLI</a><a href={repository}>GitHub ↗</a></>}<a href="/support/">Support</a>{manifest ? <a class="button ink" href="#downloads">Download</a> : <button class="button ink" type="button" disabled title="Downloads are being prepared">Download</button>}</nav>
       </header>
       <main id="main">
         <section class="hero" aria-labelledby="hero-title">
-          <p class="eyebrow">macOS app · CLI · Rust · TypeScript</p>
+          <p class="eyebrow">macOS · Windows · Linux · CLI · Rust · TypeScript</p>
           <h1 id="hero-title">Code images.</h1>
-          <p class="lede">Turn source code into PNG, SVG or HTML on your Mac. Fonts, themes and grammars are bundled, so nothing leaves the machine.</p>
+          <p class="lede">Turn source code into PNG, SVG or HTML on your computer. Fonts, themes and grammars are bundled, so your code stays on the machine.</p>
           <div class="actions">
-            <button class="button ink" type="button" disabled title="Downloads are being prepared">Download</button>
+            {manifest ? <a class="button ink" href="#downloads">Download</a> : <button class="button ink" type="button" disabled title="Downloads are being prepared">Download</button>}
             <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id="command-text">{command(initialTheme)}</code><button class="icon-button" id="copy-command" aria-label="Copy CLI command" title="Copy command" type="button"><Icon name="copy"/></button></div>
           </div>
         </section>
 
         <section class="app-section" aria-label="App screenshot"><AppScreenshot /></section>
+
+        {manifest && <section class="downloads" id="downloads" aria-labelledby="downloads-title">
+          <h2 id="downloads-title">Get Monoprint</h2>
+          <p>Version {manifest.version}. Free and open source. Updates are built in.</p>
+          <div class="download-platforms">{downloads.map(download => <div>
+            <a class="button ink" href={download.url}>{download.label}</a>
+            <p>{download.detail}</p>
+          </div>)}</div>
+          <p><a href={`${repository}/releases/tag/${manifest.tag}`}>Release notes, checksums and signatures ↗</a></p>
+        </section>}
 
         <section class="themes" aria-labelledby="themes-title">
           <div class="picker">
