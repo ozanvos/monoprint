@@ -26,12 +26,18 @@ The repository must be public before publishing downloads or build attestations.
 | `apple-signing` | Variable `MONOPRINT_SPARKLE_PUBLIC_KEY` | Corresponding base64 Ed25519 public key |
 | `windows-signing` | Secrets `AZURE_TENANT_ID`, `AZURE_CLIENT_ID`, `AZURE_CLIENT_SECRET` | Identity with Certificate Profile Signer access to Azure Artifact Signing |
 | `windows-signing` | Variable `MONOPRINT_WINDOWS_SIGNING_METADATA` | JSON containing `Endpoint`, `CodeSigningAccountName`, `CertificateProfileName` |
-| `website` | Secret `CLOUDFLARE_API_TOKEN` | Deploy permission for the existing `monoprint-site` Worker |
+| `website` | Secret `CLOUDFLARE_API_TOKEN` | Individual Workers Editor, scoped only to the existing `monoprint-site` Worker |
 | `website` | Variable `CLOUDFLARE_ACCOUNT_ID` | Account hosting `monoprint.7ea.st` |
 
 `public-release` is the publication environment. Configure its reviewers and
 branch/tag restrictions according to the repository's release approval policy.
 For signing environments, permit only trusted release refs.
+
+Website deployment uploads a uniquely tagged Worker version and deploys that
+exact version to 100% of traffic. It preserves existing routes and custom domains,
+so the CI token does not need zone or account-wide Worker permissions. Domain
+changes remain a separate infrastructure operation. Rotate the token before its
+configured expiration.
 
 The Sparkle key is configured in `apple-signing` and retained in the macOS login
 Keychain under account `app.monoprint.studio`. Its public key is also pinned in
