@@ -45,9 +45,20 @@ try {
   } else {
     assert.equal(await page.locator('meta[name=robots]').getAttribute('content'), 'noindex,nofollow');
   }
-  assert.equal(await page.getByRole('link', { name: /Download/i }).count(), 0);
-  assert.equal(await page.getByRole('button', { name: 'Download', exact: true }).count(), 2);
-  assert.equal(await page.locator('button:disabled').count(), 2);
+  if (process.env.MONOPRINT_DOWNLOAD_MANIFEST) {
+    const manifest = JSON.parse(await fs.readFile(process.env.MONOPRINT_DOWNLOAD_MANIFEST, 'utf8'));
+    assert.equal(await page.getByRole('link', { name: 'Download', exact: true }).count(), 2);
+    assert.equal(await page.getByRole('button', { name: 'Download', exact: true }).count(), 0);
+    for (const [platform, runtime] of [['macOS', 'macos-arm64'], ['Windows', 'win-x64'], ['Linux', 'linux-x64']]) {
+      const link = page.getByRole('link', { name: `Download for ${platform}`, exact: true });
+      if (manifest.downloads[runtime]) assert.equal(await link.getAttribute('href'), manifest.downloads[runtime].url);
+      else assert.equal(await link.count(), 0, `No download link for deferred ${platform}`);
+    }
+  } else {
+    assert.equal(await page.getByRole('link', { name: /Download/i }).count(), 0);
+    assert.equal(await page.getByRole('button', { name: 'Download', exact: true }).count(), 2);
+    assert.equal(await page.locator('button:disabled').count(), 2);
+  }
   const screenshot = page.locator('.app-screenshot img');
   assert.equal(await screenshot.count(), 1);
   assert.match(await screenshot.getAttribute('alt'), /Monoprint for macOS/);
@@ -62,6 +73,9 @@ try {
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(out, `website-${width}.png`), fullPage: true });
     await page.locator('.showcase').screenshot({ path: path.join(out, `showcase-${width}.png`) });
+    if (process.env.MONOPRINT_DOWNLOAD_MANIFEST) {
+      await page.locator('.downloads').screenshot({ path: path.join(out, `downloads-${width}.png`) });
+    }
   }
   await page.setViewportSize({ width: 1440, height: 1100 });
   const copy = page.getByRole('button', { name: 'Copy CLI command', exact: true });

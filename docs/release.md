@@ -1,5 +1,9 @@
 # Release packaging
 
+For the macOS, Windows and Linux stealth launch, use the
+[desktop launch workflow](stealth-launch.md). It publishes signed desktop
+packages and update feeds to GitHub Releases, then deploys verified website links.
+
 Packaging scripts produce archives, checksums and build records. They do not
 upload or publish. Release builds require clean source; `--local` allows working
 changes and marks the result non-release. Use a new output directory each time.

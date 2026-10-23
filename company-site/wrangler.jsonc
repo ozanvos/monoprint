@@ -1,0 +1,10 @@
+{
+  "$schema": "../website/node_modules/wrangler/config-schema.json",
+  "name": "seven-east-site",
+  "account_id": "87aa5a560c0f7dbb4281d93c1a110324",
+  "compatibility_date": "2026-10-23",
+  "workers_dev": false,
+  "preview_urls": false,
+  "routes": [{ "pattern": "7ea.st", "custom_domain": true }],
+  "assets": { "directory": "./public", "not_found_handling": "none" }
+}

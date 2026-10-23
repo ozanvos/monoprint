@@ -28,6 +28,7 @@ def main():
     parser.add_argument('--update-feed', help='HTTPS directory containing releases.CHANNEL.json and packages')
     parser.add_argument('--linuxdeploy', type=Path, help='Pinned linuxdeploy AppImage (Linux only)')
     parser.add_argument('--sign-template', help='Windows signing command template accepted by vpk; use {{file}}')
+    parser.add_argument('--azure-signing-metadata', type=Path, help='Azure Artifact Signing metadata JSON (Windows only)')
     parser.add_argument('--local', action='store_true', help='Allow dirty source; mark artifacts verification-only')
     args = parser.parse_args()
     is_windows = args.runtime == 'win-x64'
@@ -38,11 +39,21 @@ def main():
     if args.output.exists():
         parser.error('--output must be a fresh directory')
     feed, tool_version = velopack_settings(args.runtime, args.update_feed)
-    installed = subprocess.check_output(['vpk', '--version'], text=True).strip()
+    # vpk 1.2 exposes its version in the help banner, not --version.
+    installed = subprocess.check_output(['vpk', '--help'], text=True).strip()
     if not re.search(rf'(?<![\d.]){re.escape(tool_version)}(?![\d.])', installed):
         parser.error(f'Install vpk {tool_version}; found {installed}')
-    if is_windows and not args.local and not args.sign_template:
-        parser.error('Windows distribution requires --sign-template; use --local for unsigned verification')
+    signing = bool(args.sign_template or args.azure_signing_metadata)
+    if args.sign_template and args.azure_signing_metadata:
+        parser.error('Choose one Windows signing provider')
+    if signing and not is_windows:
+        parser.error('Windows signing options cannot be used for Linux')
+    if args.azure_signing_metadata:
+        metadata = json.loads(args.azure_signing_metadata.read_text())
+        if not all(metadata.get(key) for key in ['Endpoint', 'CodeSigningAccountName', 'CertificateProfileName']):
+            parser.error('Incomplete Azure signing metadata')
+    if is_windows and not args.local and not signing:
+        parser.error('Windows distribution requires signing; use --local for unsigned verification')
     if not is_windows and (not args.linuxdeploy or not args.linuxdeploy.is_file()):
         parser.error('Linux packaging requires --linuxdeploy from prepare-linuxdeploy.py')
     if not is_windows and hashlib.sha256(args.linuxdeploy.read_bytes()).hexdigest() != configuration()['linuxdeploy']['archiveSha256']:
@@ -95,9 +106,11 @@ def main():
             subprocess.run(['desktop-file-validate', str(desktop)], check=True)
         args.output.parent.mkdir(parents=True, exist_ok=True)
         args.output.mkdir()
-        command = ['vpk', 'pack', '--packId', 'Monoprint', '--packTitle', 'Monoprint', '--packVersion', version, '--packDir', str(stage), '--mainExe', exe, '--runtime', args.runtime, '--channel', channel, '--outputDir', str(args.output.resolve())]
+        command = ['vpk', 'pack', '--skip-updates', '--yes', '--packId', 'Monoprint', '--packTitle', 'Monoprint', '--packVersion', version, '--packDir', str(stage), '--mainExe', exe, '--runtime', args.runtime, '--channel', channel, '--outputDir', str(args.output.resolve())]
         if args.sign_template:
             command += ['--signTemplate', args.sign_template]
+        if args.azure_signing_metadata:
+            command += ['--azureTrustedSignFile', str(args.azure_signing_metadata.resolve())]
         subprocess.run(command, check=True)
     if source_digest(root) != input_hash or subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip() != commit:
         raise RuntimeError('Source changed while packaging; rebuild')
@@ -115,7 +128,7 @@ def main():
         'version': version, 'commit': commit, 'runtime': args.runtime, 'channel': channel,
         'release': False, 'dirty': final_dirty, 'inputHash': input_hash,
         'updates': True, 'updateFeed': feed, 'velopackVersion': tool_version,
-        'signed': bool(is_windows and args.sign_template), 'artifacts': artifacts,
+        'signed': bool(is_windows and signing), 'artifacts': artifacts,
     }
     manifest = args.output / 'manifest.json'
     manifest.write_text(json.dumps(receipt, indent=2) + '\n')

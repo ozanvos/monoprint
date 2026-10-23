@@ -67,4 +67,10 @@ for item in items:
         subprocess.run(['xcrun', 'swift', '-module-cache-path', cache,
                         str(root / 'scripts/verify-sparkle-signature.swift'),
                         str(archive.resolve()), signature, public_key], check=True)
+(args.output / 'manifest.json').write_text(json.dumps({
+    'version': receipt['version'], 'commit': receipt['commit'],
+    'archive': archive_name, 'archiveSha256': receipt['archiveSha256'],
+    'appcast': 'appcast.xml', 'appcastSha256': hashlib.sha256(appcast.read_bytes()).hexdigest(),
+    'updateFeed': receipt['updateFeed'], 'publicKey': public_key,
+}, indent=2) + '\n')
 print(appcast)

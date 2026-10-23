@@ -27,12 +27,11 @@ impl Workspace {
             .stderr(Stdio::piped())
             .spawn()
             .unwrap();
-        process
-            .stdin
-            .take()
-            .unwrap()
-            .write_all(input.as_bytes())
-            .unwrap();
+        if let Err(error) = process.stdin.take().unwrap().write_all(input.as_bytes()) {
+            // Argument validation can exit before consuming stdin. Still collect
+            // the exit status and diagnostics so the caller checks the failure.
+            assert_eq!(error.kind(), std::io::ErrorKind::BrokenPipe, "{error}");
+        }
         process.wait_with_output().unwrap()
     }
 }
