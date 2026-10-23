@@ -50,6 +50,11 @@ or purchase that service. Other providers remain possible through the packager's
 existing `--sign-template` option, but require a corresponding CI setup.
 See [Velopack signing](https://docs.velopack.io/packaging/signing).
 
+Confirm publisher eligibility before purchasing: Microsoft currently accepts
+organizations in the US, Canada, EU and UK, but individual developers only in the
+US and Canada. A Netherlands individual publisher needs another signing provider.
+See [Microsoft's signing options](https://learn.microsoft.com/en-us/windows/apps/package-and-deploy/code-signing-options).
+
 Linux assets, and every other released asset, receive a Sigstore build attestation
 through GitHub OIDC. The release includes `provenance.sigstore.json` and
 `SHA256SUMS`. Verify a downloaded file with:
