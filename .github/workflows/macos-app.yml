@@ -28,6 +28,41 @@ jobs:
       MACOSX_DEPLOYMENT_TARGET: '12.0'
     steps:
       - uses: actions/checkout@v4
+      - name: Check Developer ID and notarization configuration before building
+        if: ${{ inputs.signed }}
+        env:
+          MACOS_CERTIFICATE_BASE64: ${{ secrets.MACOS_CERTIFICATE_BASE64 }}
+          MACOS_CERTIFICATE_PASSWORD: ${{ secrets.MACOS_CERTIFICATE_PASSWORD }}
+          MACOS_SIGN_IDENTITY: ${{ secrets.MACOS_SIGN_IDENTITY }}
+          APPLE_API_KEY_BASE64: ${{ secrets.APPLE_API_KEY_BASE64 }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          APPLE_API_ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
+        run: |
+          python3 - <<'PY'
+          import os
+          names = ['MACOS_CERTIFICATE_BASE64', 'MACOS_CERTIFICATE_PASSWORD', 'MACOS_SIGN_IDENTITY',
+                   'APPLE_API_KEY_BASE64', 'APPLE_API_KEY_ID', 'APPLE_API_ISSUER_ID']
+          missing = [name for name in names if not os.environ.get(name)]
+          if missing:
+              raise SystemExit('Missing apple-signing credentials: ' + ', '.join(missing))
+          if not os.environ['MACOS_SIGN_IDENTITY'].startswith('Developer ID Application:'):
+              raise SystemExit('Direct downloads require a Developer ID Application certificate')
+          PY
+          python3 scripts/with-apple-signing.py --check-only
+      - name: Check update signing configuration before building
+        if: ${{ inputs.updates }}
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+          MONOPRINT_SPARKLE_PUBLIC_KEY: ${{ vars.MONOPRINT_SPARKLE_PUBLIC_KEY }}
+        run: |
+          python3 - <<'PY'
+          import os, sys
+          sys.path.insert(0, 'scripts')
+          from desktop_updates import sparkle_settings
+          sparkle_settings(public_key=os.environ['MONOPRINT_SPARKLE_PUBLIC_KEY'])
+          if not os.environ['SPARKLE_PRIVATE_KEY']:
+              raise SystemExit('Missing SPARKLE_PRIVATE_KEY in apple-signing')
+          PY
       - uses: maxim-lobanov/setup-xcode@v1
         with:
           xcode-version: '26.3'
@@ -69,6 +104,32 @@ jobs:
       - run: python3 apps/monoprint-gui/scripts/test-shortcuts.py
         env:
           MONOPRINT_CLI: target/gui/Monoprint.app/Contents/MacOS/monoprint
+      - name: Sign the update feed for the final notarized archive
+        if: ${{ inputs.updates }}
+        env:
+          SPARKLE_PRIVATE_KEY: ${{ secrets.SPARKLE_PRIVATE_KEY }}
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, subprocess, tempfile
+          config = json.loads(pathlib.Path('release/config.json').read_text())
+          receipt = json.loads(pathlib.Path('output/macos-app/manifest.json').read_text())
+          with tempfile.TemporaryDirectory() as temporary:
+              key = pathlib.Path(temporary) / 'sparkle.key'
+              key.write_text(os.environ['SPARKLE_PRIVATE_KEY'])
+              key.chmod(0o600)
+              subprocess.run(['python3', 'apps/monoprint-gui/scripts/generate-appcast.py',
+                  '--from', 'output/macos-app', '--sparkle-sdk', 'target/update-tools/sparkle',
+                  '--output', 'output/macos-feed', '--ed-key-file', str(key),
+                  '--download-url', f"https://github.com/{config['repository']}/releases/download/v{receipt['version']}/"], check=True)
+          PY
+      - uses: actions/upload-artifact@v4
+        if: ${{ inputs.updates }}
+        with:
+          name: macos-feed
+          path: |
+            output/macos-feed/appcast.xml
+            output/macos-feed/manifest.json
+          if-no-files-found: error
       - uses: actions/upload-artifact@v4
         with:
           name: macos-app

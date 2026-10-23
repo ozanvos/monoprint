@@ -24,7 +24,7 @@ def source_digest(root):
                    'apps/monoprint-gui/assets/Monoprint.icon', 'apps/monoprint-gui/assets/shortcuts',
                    'apps/monoprint-gui/assets/themes', 'scripts']
     for directory in directories:
-        inputs += [str(p.relative_to(root)) for p in (root / directory).rglob('*')
+        inputs += [p.relative_to(root).as_posix() for p in (root / directory).rglob('*')
                    if p.is_file() and '__pycache__' not in p.parts and 'target' not in p.parts]
     digest = hashlib.sha256()
     for name in sorted(set(inputs)):

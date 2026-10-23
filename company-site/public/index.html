@@ -1,0 +1,246 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Seven East — Independent software, Leiden</title>
+<meta name="description" content="Seven East is an independent software business based in Leiden, the Netherlands.">
+<link rel="canonical" href="https://7ea.st/">
+<meta name="color-scheme" content="light dark">
+<meta name="theme-color" content="#f6f5f1" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#151514" media="(prefers-color-scheme: dark)">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='6' fill='%23151514'/%3E%3Cpath d='M9 9h14L14 24' fill='none' stroke='%23f6f5f1' stroke-width='2.6' stroke-linecap='square' stroke-linejoin='miter'/%3E%3C/svg%3E">
+<style>
+  :root {
+    --bg: #f6f5f1;
+    --ink: #151514;
+    --muted: #6b6a65;
+    --rule: #d9d7d0;
+    --accent: #8a3b1f;
+    --measure: 34rem;
+    --sans: ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", "Helvetica Neue", Helvetica, Arial, sans-serif;
+    --serif: "Iowan Old Style", "Palatino Linotype", Palatino, "Book Antiqua", Georgia, serif;
+    --mono: ui-monospace, "SF Mono", SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+  }
+
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #151514;
+      --ink: #ecebe6;
+      --muted: #9a9993;
+      --rule: #2f2e2b;
+      --accent: #d98a62;
+    }
+  }
+
+  *, *::before, *::after { box-sizing: border-box; }
+
+  html {
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    min-height: 100svh;
+    display: flex;
+    flex-direction: column;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: var(--sans);
+    font-size: clamp(1rem, 0.96rem + 0.2vw, 1.0625rem);
+    line-height: 1.6;
+    font-kerning: normal;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  .skip {
+    position: absolute;
+    left: 1rem;
+    top: -4rem;
+    padding: 0.5rem 0.75rem;
+    background: var(--ink);
+    color: var(--bg);
+    text-decoration: none;
+    font-size: 0.875rem;
+    z-index: 10;
+  }
+  .skip:focus { top: 1rem; }
+
+  .wrap {
+    width: 100%;
+    max-width: 68rem;
+    margin: 0 auto;
+    padding-inline: clamp(1.5rem, 6vw, 5rem);
+  }
+
+  header.site {
+    padding-block: clamp(1.75rem, 4vw, 2.75rem);
+  }
+
+  .mark {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.75rem;
+    color: inherit;
+    text-decoration: none;
+    font-family: var(--mono);
+    font-size: 0.8125rem;
+    letter-spacing: 0.04em;
+  }
+  .mark svg { width: 1.25rem; height: 1.25rem; flex: none; }
+
+  main {
+    flex: 1;
+    display: flex;
+    align-items: center;
+    padding-block: clamp(4rem, 14vh, 10rem);
+  }
+
+  h1 {
+    margin: 0;
+    font-family: var(--serif);
+    font-weight: 400;
+    font-size: clamp(2.75rem, 1.6rem + 5.4vw, 6rem);
+    line-height: 1.02;
+    letter-spacing: -0.02em;
+  }
+
+  .lede {
+    margin: clamp(1.5rem, 3vw, 2.25rem) 0 0;
+    max-width: var(--measure);
+    font-size: clamp(1.125rem, 1rem + 0.6vw, 1.375rem);
+    line-height: 1.5;
+    color: var(--muted);
+  }
+
+  .contact {
+    margin-top: clamp(3.5rem, 8vw, 6rem);
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .label {
+    margin: 0;
+    font-family: var(--mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  .contact a {
+    justify-self: start;
+    font-size: clamp(1.125rem, 1rem + 0.5vw, 1.3125rem);
+  }
+
+  a {
+    color: inherit;
+    text-decoration-line: underline;
+    text-decoration-thickness: 1px;
+    text-decoration-color: var(--rule);
+    text-underline-offset: 0.25em;
+    transition: text-decoration-color 160ms ease, color 160ms ease;
+  }
+  a:hover { text-decoration-color: var(--accent); }
+
+  a:focus-visible,
+  .skip:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 4px;
+    border-radius: 2px;
+  }
+
+  footer.site {
+    border-top: 1px solid var(--rule);
+    padding-block: clamp(2rem, 4vw, 2.75rem);
+    font-size: 0.8125rem;
+    line-height: 1.7;
+    color: var(--muted);
+  }
+
+  .colophon {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    align-items: flex-end;
+    gap: 1.5rem 3rem;
+  }
+
+  address { font-style: normal; }
+
+  dl { margin: 0; }
+  .reg { display: flex; gap: 0.5em; }
+  dt, dd { margin: 0; }
+  dd { font-family: var(--mono); font-size: 0.78rem; letter-spacing: 0.02em; }
+
+  .sig {
+    font-family: var(--serif);
+    font-style: italic;
+    letter-spacing: 0.01em;
+  }
+  .sig b {
+    font-weight: 400;
+    font-style: normal;
+    color: var(--accent);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { transition: none !important; }
+  }
+
+  @media print {
+    body { background: #fff; color: #000; }
+    .skip { display: none; }
+  }
+</style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to content</a>
+
+  <header class="site">
+    <div class="wrap">
+      <a class="mark" href="https://7ea.st/" aria-label="Seven East, home">
+        <svg viewBox="0 0 32 32" aria-hidden="true" focusable="false">
+          <path d="M7 8h18L13 26" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="square"/>
+        </svg>
+        <span>7ea.st</span>
+      </a>
+    </div>
+  </header>
+
+  <main id="main" tabindex="-1">
+    <div class="wrap">
+      <h1>Seven East</h1>
+      <p class="lede">Independent software, made in Leiden, the&nbsp;Netherlands.</p>
+
+      <section class="contact" aria-labelledby="contact-label">
+        <h2 id="contact-label" class="label">Contact</h2>
+        <a href="mailto:contact@7ea.st">contact@7ea.st</a>
+      </section>
+    </div>
+  </main>
+
+  <footer class="site">
+    <div class="wrap colophon">
+      <div>
+        <address>
+          Seven East<br>
+          Langegracht 70<br>
+          2312 NV Leiden<br>
+          Netherlands
+        </address>
+        <dl>
+          <div class="reg">
+            <dt>KvK</dt>
+            <dd>96304731</dd>
+          </div>
+        </dl>
+      </div>
+      <p class="sig" aria-hidden="true">Seven <b>&rarr;</b> East</p>
+    </div>
+  </footer>
+</body>
+</html>

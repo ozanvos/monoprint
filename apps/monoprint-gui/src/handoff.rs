@@ -28,6 +28,10 @@ pub fn stage_png(renderer: &Renderer, document: &Document, revision: u64) -> Res
 /// Decode Launch Services URLs, including escaped spaces and non-ASCII filenames.
 pub fn source_url(value: &str) -> Result<PathBuf> {
     let url = url::Url::parse(value)?;
+    // Windows accepts remote file URLs as UNC paths; source handoff is local.
+    if url.host_str().is_some_and(|host| host != "localhost") {
+        bail!("Open a local UTF-8 source file.");
+    }
     match url.to_file_path() {
         Ok(path) => Ok(path),
         Err(_) => bail!("Open a local UTF-8 source file."),
@@ -40,7 +44,7 @@ mod tests {
 
     #[test]
     fn local_urls_decode_without_interpreting_remote_locations() {
-        let path = PathBuf::from("/tmp/Monoprint examples/示例 #1.ts");
+        let path = std::env::temp_dir().join("Monoprint examples/示例 #1.ts");
         let url = url::Url::from_file_path(&path).unwrap();
         assert_eq!(source_url(url.as_str()).unwrap(), path);
         assert!(source_url("https://example.com/code.ts").is_err());

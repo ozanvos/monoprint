@@ -14,6 +14,7 @@ jobs:
           cache-dependency-path: website/package-lock.json
       - run: npm ci --prefix website
       - run: npm run check --prefix website
+      - run: node --test scripts/verify-desktop-release.test.mjs
   native:
     strategy:
       matrix:
@@ -28,6 +29,7 @@ jobs:
       - run: node --test scripts/package-receipts.test.mjs
       - run: python3 scripts/test_macos_release.py
       - run: python3 scripts/test_desktop_updates.py
+      - run: python3 scripts/test_desktop_release.py
       - run: node --test scripts/grammar-policy.test.mjs
       - run: node scripts/import-grammar-metadata.mjs --check
       - run: node scripts/import-editor-themes.mjs --check

@@ -5,6 +5,11 @@ import { root, pkg, run, readJson } from '../bindings/node/scripts/shared.mjs';
 export async function checkRelease({ publicPublish = false, tag } = {}) {
   const config = await readJson(path.join(root, 'release/config.json'));
   if (!/^[\w.-]+\/[\w.-]+$/.test(config.repository ?? '')) throw new Error('Set release/config.json repository to OWNER/REPO');
+  if (!Array.isArray(config.desktopPlatforms) || !config.desktopPlatforms.length
+      || new Set(config.desktopPlatforms).size !== config.desktopPlatforms.length
+      || config.desktopPlatforms.some(runtime => !['macos-arm64', 'linux-x64', 'win-x64'].includes(runtime))) {
+    throw new Error('Configure the desktop release platforms explicitly');
+  }
   const url = `https://github.com/${config.repository}`;
   for (const manifest of ['Cargo.toml', 'bindings/node/Cargo.toml', 'apps/monoprint-gui/Cargo.toml']) {
     const text = await fs.readFile(path.join(root, manifest), 'utf8');

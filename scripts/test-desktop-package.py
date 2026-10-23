@@ -5,6 +5,7 @@ import json
 import os
 from pathlib import Path
 import subprocess
+import struct
 import sys
 import tempfile
 import zipfile
@@ -36,14 +37,19 @@ for package in packages:
         if receipt['runtime'].startswith('win-'):
             for suffix in ['monoprint-gui.exe', 'resources/LICENSE', 'resources/licenses/gui-dependencies.json']:
                 assert any(name.endswith('/' + suffix) for name in names), suffix
+            main_name = next(name for name in names if name.endswith('/monoprint-gui.exe'))
+            executable = archive.read(main_name)
+            pe = struct.unpack_from('<I', executable, 0x3c)[0]
+            assert executable[pe:pe + 4] == b'PE\0\0'
+            assert struct.unpack_from('<H', executable, pe + 24 + 68)[0] == 2, 'GUI releases must not open a console window'
             if receipt['signed'] and sys.platform == 'win32':
-                name = next(name for name in names if name.endswith('/monoprint-gui.exe'))
                 with tempfile.TemporaryDirectory() as temporary:
-                    binary = Path(temporary) / 'monoprint-gui.exe'
-                    binary.write_bytes(archive.read(name))
-                    subprocess.run(['powershell', '-NoProfile', '-Command',
-                        'if ((Get-AuthenticodeSignature -FilePath $env:MONOPRINT_VERIFY_EXE).Status -ne "Valid") { exit 1 }'],
-                        env=os.environ | {'MONOPRINT_VERIFY_EXE': str(binary)}, check=True)
+                    for index, name in enumerate(name for name in names if name.lower().endswith('.exe')):
+                        binary = Path(temporary) / f'{index}.exe'
+                        binary.write_bytes(archive.read(name))
+                        subprocess.run(['powershell', '-NoProfile', '-Command',
+                            'if ((Get-AuthenticodeSignature -FilePath $env:MONOPRINT_VERIFY_EXE).Status -ne "Valid") { exit 1 }'],
+                            env=os.environ | {'MONOPRINT_VERIFY_EXE': str(binary)}, check=True)
         else:
             assert any(name.endswith('.AppImage') for name in names)
 if receipt['runtime'].startswith('linux-'):

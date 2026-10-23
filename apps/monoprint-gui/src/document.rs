@@ -556,7 +556,7 @@ impl SessionStore {
         Ok(())
     }
 
-    #[cfg(any(target_os = "linux", test))]
+    #[cfg(any(target_os = "linux", all(test, unix)))]
     pub fn set_saving_enabled(&self, enabled: bool) {
         // Wait for an in-flight preview save before removing saved user data.
         self.saved_revision.lock().unwrap().1 = enabled;
