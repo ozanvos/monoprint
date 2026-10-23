@@ -1,0 +1,610 @@
+{
+  "label": "gpui-kit-0.8.0-gpui-fast-0.1.10",
+  "platform": "macOS-27.0-arm64-arm-64bit-Mach-O",
+  "machine": "arm64",
+  "rustc": "rustc 1.98.1 (48a229cea 2026-09-01) (built from a source tarball)",
+  "revision": "1c85da9437bb0682c771500494d994490cfcbafe",
+  "dirty": true,
+  "lock_sha256": "c64391224f55c1109f15730e801f2c6741437a64eb8e3199f5a75fa7667a635b",
+  "gpui_packages": [
+    {
+      "name": "gpui-base",
+      "version": "0.8.0"
+    },
+    {
+      "name": "gpui-component",
+      "version": "0.8.0"
+    },
+    {
+      "name": "gpui-component-macros",
+      "version": "0.8.0"
+    },
+    {
+      "name": "gpui-fast",
+      "version": "0.1.10"
+    },
+    {
+      "name": "gpui-fast-apple",
+      "version": "0.1.10"
+    },
+    {
+      "name": "gpui-fast-linux",
+      "version": "0.1.10"
+    },
+    {
+      "name": "gpui-fast-macos",
+      "version": "0.1.10"
+    },
+    {
+      "name": "gpui-fast-macros",
+      "version": "0.1.10"
+    },
+    {
+      "name": "gpui-fast-platform",
+      "version": "0.1.10"
+    },
+    {
+      "name": "gpui-fast-web",
+      "version": "0.1.10"
+    },
+    {
+      "name": "gpui-fast-wgpu",
+      "version": "0.1.10"
+    },
+    {
+      "name": "gpui-fast-windows",
+      "version": "0.1.10"
+    },
+    {
+      "name": "gpui-kit",
+      "version": "0.8.0"
+    },
+    {
+      "name": "gpui-kit-assets",
+      "version": "0.8.0"
+    },
+    {
+      "name": "gpui-pre",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-apple",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-collections",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-derive-refineable",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-http-client",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-ios",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-linux",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-macos",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-macros",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-platform",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-refineable",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-reqwest",
+      "version": "0.12.15"
+    },
+    {
+      "name": "gpui-pre-scheduler",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-shared-string",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-sum-tree",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-util",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-web",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-wgpu",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-windows",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-ztracing",
+      "version": "0.3.9"
+    },
+    {
+      "name": "gpui-pre-ztracing-macro",
+      "version": "0.3.9"
+    }
+  ],
+  "scope": "CPU scene construction and arena cleanup; excludes GPU present, VSync and preview worker",
+  "measurements": [
+    {
+      "workload": "unchanged",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        1.1927174999999999,
+        1.5255458299999998,
+        1.6037504200000001,
+        1.6946145800000003,
+        1.99599708,
+        2.5246133299999998,
+        3.38681166
+      ],
+      "median": 1.6946145800000003,
+      "run": 1
+    },
+    {
+      "workload": "studio-notify",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        5.5801549999999995,
+        5.97132791,
+        6.0569891600000005,
+        6.30405584,
+        7.01857292,
+        8.73068416,
+        13.5778675
+      ],
+      "median": 6.30405584,
+      "run": 1
+    },
+    {
+      "workload": "inspector-scroll",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        3.75243333,
+        4.77643584,
+        5.860751250000001,
+        7.02375,
+        10.41941625,
+        17.776917920000002,
+        31.35864333
+      ],
+      "median": 7.02375,
+      "run": 1
+    },
+    {
+      "workload": "theme-scroll",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        3.741545,
+        3.7768041699999997,
+        3.9560970899999996,
+        4.50574708,
+        8.89853667,
+        9.53210416,
+        12.180290419999999
+      ],
+      "median": 4.50574708,
+      "run": 1
+    },
+    {
+      "workload": "unchanged",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        0.75590208,
+        0.81294291,
+        0.9432591699999999,
+        0.98197584,
+        1.07823833,
+        1.16086292,
+        1.5014875
+      ],
+      "median": 0.98197584,
+      "run": 1
+    },
+    {
+      "workload": "studio-notify",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        2.0355575000000004,
+        2.27946333,
+        2.53419167,
+        2.83679958,
+        3.2597641700000004,
+        4.696974170000001,
+        8.47652042
+      ],
+      "median": 2.83679958,
+      "run": 1
+    },
+    {
+      "workload": "inspector-scroll",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        3.33443,
+        3.4443816599999995,
+        3.6718133400000004,
+        3.8481795899999995,
+        4.13209791,
+        4.37801834,
+        5.414907500000001
+      ],
+      "median": 3.8481795899999995,
+      "run": 1
+    },
+    {
+      "workload": "theme-scroll",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        4.91084292,
+        6.5758458399999995,
+        6.641152089999999,
+        7.25983834,
+        7.34297042,
+        7.5015908300000005,
+        7.564802080000001
+      ],
+      "median": 7.25983834,
+      "run": 1
+    },
+    {
+      "workload": "unchanged",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        1.05436292,
+        1.19510541,
+        1.33072459,
+        1.4595150000000001,
+        1.4979775000000002,
+        1.59253875,
+        1.71670625
+      ],
+      "median": 1.4595150000000001,
+      "run": 2
+    },
+    {
+      "workload": "studio-notify",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        3.3725316700000003,
+        3.7472766699999998,
+        4.04430084,
+        4.1336224999999995,
+        4.1908925,
+        4.74102708,
+        4.84458042
+      ],
+      "median": 4.1336224999999995,
+      "run": 2
+    },
+    {
+      "workload": "inspector-scroll",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        3.70854291,
+        3.9054850000000005,
+        4.07313708,
+        4.85465875,
+        4.8701075,
+        4.95117583,
+        5.41281208
+      ],
+      "median": 4.85465875,
+      "run": 2
+    },
+    {
+      "workload": "theme-scroll",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        3.6782291700000003,
+        3.7029887500000003,
+        3.7528020800000004,
+        3.99876125,
+        4.00910708,
+        4.79323917,
+        6.05023959
+      ],
+      "median": 3.99876125,
+      "run": 2
+    },
+    {
+      "workload": "unchanged",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        0.41123332999999995,
+        0.42318791000000006,
+        0.43880916999999997,
+        0.44364167000000004,
+        0.44506292000000003,
+        0.45082834000000005,
+        0.45864042
+      ],
+      "median": 0.44364167000000004,
+      "run": 2
+    },
+    {
+      "workload": "studio-notify",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        1.62146959,
+        1.6523287500000001,
+        1.6930075,
+        1.7471345799999998,
+        1.75006042,
+        1.7681304199999999,
+        1.80659292
+      ],
+      "median": 1.7471345799999998,
+      "run": 2
+    },
+    {
+      "workload": "inspector-scroll",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        1.63563,
+        1.68718708,
+        1.7322241699999998,
+        1.7680137500000002,
+        1.78284667,
+        1.7865029199999998,
+        1.81329083
+      ],
+      "median": 1.7680137500000002,
+      "run": 2
+    },
+    {
+      "workload": "theme-scroll",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        2.63119667,
+        2.635285,
+        2.7124012499999997,
+        2.76517834,
+        2.80736542,
+        2.8419991700000002,
+        2.842895
+      ],
+      "median": 2.76517834,
+      "run": 2
+    },
+    {
+      "workload": "unchanged",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        0.6588991700000001,
+        0.66831209,
+        0.69071292,
+        0.69382583,
+        0.8145754199999999,
+        0.8663179200000001,
+        0.9135333299999999
+      ],
+      "median": 0.69382583,
+      "run": 3
+    },
+    {
+      "workload": "studio-notify",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        2.0970637500000002,
+        2.1638975,
+        2.21278,
+        2.24411459,
+        2.32356,
+        2.38708375,
+        2.8361575
+      ],
+      "median": 2.24411459,
+      "run": 3
+    },
+    {
+      "workload": "inspector-scroll",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        2.02068375,
+        2.02152167,
+        2.16070333,
+        2.195395,
+        2.20134792,
+        2.49095291,
+        2.5663204099999994
+      ],
+      "median": 2.195395,
+      "run": 3
+    },
+    {
+      "workload": "theme-scroll",
+      "width": 1440.0,
+      "height": 900.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        3.21931917,
+        3.24049375,
+        3.2974025,
+        3.3748791700000003,
+        3.41621958,
+        3.6295391699999997,
+        3.77312125
+      ],
+      "median": 3.3748791700000003,
+      "run": 3
+    },
+    {
+      "workload": "unchanged",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        0.42343958,
+        0.42387541,
+        0.42396834,
+        0.42548207999999993,
+        0.43135625,
+        0.43709667,
+        0.44063583
+      ],
+      "median": 0.42548207999999993,
+      "run": 3
+    },
+    {
+      "workload": "studio-notify",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        1.69658667,
+        1.71370666,
+        1.98310333,
+        2.14383917,
+        2.15326417,
+        2.3142891700000003,
+        3.0924425
+      ],
+      "median": 2.14383917,
+      "run": 3
+    },
+    {
+      "workload": "inspector-scroll",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        1.58904584,
+        1.64271,
+        1.7084437499999998,
+        1.74385791,
+        1.75692458,
+        2.0038020800000003,
+        6.610285
+      ],
+      "median": 1.74385791,
+      "run": 3
+    },
+    {
+      "workload": "theme-scroll",
+      "width": 1100.0,
+      "height": 700.0,
+      "unit": "ms/frame",
+      "frames_per_batch": 100,
+      "warmup_batches": 1,
+      "samples": [
+        2.376025,
+        2.48407958,
+        2.5297670900000004,
+        2.5678387499999995,
+        2.6157404099999995,
+        2.7183275000000005,
+        2.7884491700000003
+      ],
+      "median": 2.5678387499999995,
+      "run": 3
+    }
+  ]
+}

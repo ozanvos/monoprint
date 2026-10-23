@@ -1493,6 +1493,74 @@ mod macos {
         );
     }
 
+    // CPU scene construction only: draw/arena cleanup, without screenshot readback,
+    // VSync, disk exports or preview-worker latency. Use the same release profile
+    // and this harness on both dependency stacks.
+    fn benchmark(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+        width: f32,
+        height: f32,
+    ) {
+        use std::io::Write;
+        for workload in [
+            "unchanged",
+            "studio-notify",
+            "inspector-scroll",
+            "theme-scroll",
+        ] {
+            if workload == "theme-scroll" {
+                cx.update_window(handle.into(), |_, window, cx| {
+                    studio.update(cx, |s, cx| s.browse_themes(window, cx));
+                })
+                .unwrap();
+                settle(cx, handle, studio);
+            }
+            let mut samples = Vec::new();
+            for batch in 0..8 {
+                let started = Instant::now();
+                for frame in 0..100 {
+                    cx.update_window(handle.into(), |_, window, cx| {
+                        match workload {
+                            "studio-notify" => studio.update(cx, |_, cx| cx.notify()),
+                            "inspector-scroll" => studio.update(cx, |s, cx| {
+                                s.settings_scroll
+                                    .set_offset(point(px(0.), px(-((frame % 20) as f32 * 8.))));
+                                cx.notify();
+                            }),
+                            "theme-scroll" => studio.update(cx, |s, cx| {
+                                s.theme_scroll
+                                    .scroll_to_item(frame % 20, ScrollStrategy::Top);
+                                cx.notify();
+                            }),
+                            _ => {}
+                        }
+                        window.draw(cx).clear(cx);
+                    })
+                    .unwrap();
+                }
+                if batch > 0 {
+                    samples.push(started.elapsed().as_secs_f64() * 1000. / 100.);
+                }
+            }
+            samples.sort_by(f64::total_cmp);
+            let result = serde_json::json!({
+                "workload": workload, "width": width, "height": height,
+                "unit": "ms/frame", "frames_per_batch": 100,
+                "warmup_batches": 1, "samples": samples, "median": samples[3],
+            });
+            println!("BENCHMARK {result}");
+            let path = std::env::var_os("MONOPRINT_GUI_BENCHMARK").unwrap();
+            let mut output = std::fs::OpenOptions::new()
+                .create(true)
+                .append(true)
+                .open(path)
+                .unwrap();
+            writeln!(output, "{result}").unwrap();
+        }
+    }
+
     pub fn run() {
         // Headless pixels cannot capture the WindowServer backdrop. Exercise the
         // actual AppKit view's material, blending, ownership and resizing instead.
@@ -1575,7 +1643,48 @@ mod macos {
             cx.read_entity(&studio, |s, _| {
                 assert!(s.preview.is_some(), "{:?}", s.error)
             });
+            if std::env::var_os("MONOPRINT_GUI_BENCHMARK").is_some() {
+                benchmark(&mut cx, handle, &studio, width, height);
+                continue;
+            }
             capture(&mut cx, handle, &format!("studio-{}", width as u32));
+            if std::env::var_os("MONOPRINT_GUI_BACKEND_CHECK").is_some() {
+                // Exercise notification-driven rendering without render_frame's
+                // forced refresh, so retained-mode invalidation is covered too.
+                for expanded in [true, false] {
+                    cx.update_window(handle.into(), |_, _, cx| {
+                        studio.update(cx, |s, cx| {
+                            s.open_sections[1] = expanded;
+                            cx.notify();
+                        });
+                    })
+                    .unwrap();
+                    cx.update_window(handle.into(), |_, window, cx| {
+                        window.draw(cx).clear(cx);
+                        assert_eq!(window.try_find("code-typeface").is_some(), expanded);
+                    })
+                    .unwrap();
+                }
+                assert_material_visible(&mut cx, handle, &studio);
+                assert_source_syntax_colored(&mut cx, handle, &studio);
+                assert_platform_keys(&mut cx, handle, &studio);
+                assert_syntax_survives_typing(&mut cx, handle, &studio);
+                assert_interaction_motion(&mut cx, handle, &studio);
+                assert_dropdown_motion(&mut cx, handle, &studio);
+                header_control_click(&mut cx, handle, &studio, "ui-appearance", 1);
+                assert_dropdown_motion(&mut cx, handle, &studio);
+                header_control_click(&mut cx, handle, &studio, "ui-appearance", 1);
+                assert_canvas_gestures(&mut cx, handle, &studio);
+                assert_canvas_resizing(&mut cx, handle, &studio);
+                assert_handoffs(&mut cx, handle, &studio);
+                inspector_click(&mut cx, handle, &studio, "section-typeface");
+                assert_fallback_glyphs(&mut cx, handle, &studio, width as u32);
+                println!(
+                    "Backend {}×{}: notifications, material, syntax, keyboard, motion, canvas, handoffs and fallback glyphs passed",
+                    width, height
+                );
+                continue;
+            }
             // The command popover uses the live draft, copies source and settings,
             // and keeps feedback local without requesting another render.
             let command_revision = cx.read_entity(&studio, |s, _| s.revision);

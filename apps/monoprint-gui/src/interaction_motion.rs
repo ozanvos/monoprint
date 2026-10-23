@@ -1,6 +1,7 @@
 //! Short interaction transitions without changing control semantics or layout.
 use crate::appearance::Palette;
 use gpui_kit::{
+    IntoElement,
     base::motion::{self, Transition},
     component::{
         Selectable,

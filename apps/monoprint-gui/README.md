@@ -1,6 +1,7 @@
 # Monoprint Studio
 
-A desktop code-image editor built with [GPUI Kit](https://gpui-kit.com/).
+A desktop code-image editor built with [GPUI Kit](https://gpui-kit.com/) 0.8.0
+and the [GPUI Fast](https://github.com/longbridge/gpui-fast) 0.1.10 backend.
 It uses the same renderer as the Monoprint CLI and library.
 
 ## Run
@@ -91,3 +92,34 @@ To save native test screenshots, set
 `MONOPRINT_GUI_SCREENSHOTS="$PWD/output/gui-validation"` when running the
 `studio` integration test. Native dialogs, clipboard delivery and installed
 update behavior also need manual testing on each platform.
+
+For a focused backend compatibility check (including notification-driven
+redraw without a forced refresh), run:
+
+```sh
+MONOPRINT_GUI_BACKEND_CHECK=1 cargo test --locked --release \
+  --manifest-path apps/monoprint-gui/Cargo.toml --test studio
+```
+
+This covers material pixels, syntax colors, keyboard input, popup motion,
+canvas gestures/resizing, file handoffs and fallback glyphs at both window sizes.
+The ordinary `studio` run remains the broader product integration suite.
+
+## Frame benchmarks
+
+On macOS with Metal available:
+
+```sh
+python3 apps/monoprint-gui/scripts/benchmark.py \
+  --label gpui-fast --output /tmp/monoprint-gpui-fast.json
+```
+
+This runs the real Studio view at 1440×900 and 1100×700, measuring unchanged
+frames, Studio notifications, inspector scrolling and theme-browser scrolling.
+Each of three independent processes discards a 100-frame warmup per workload
+and records seven batches of 100 frames. JSON includes every batch, its median,
+the platform, toolchain and source revision. Use a new output path for each run.
+The release profile is the same as the application. Measurements cover CPU scene
+construction and arena cleanup; they exclude GPU presentation, VSync, screenshot
+readback, preview-worker rendering and export time. Keep the machine otherwise
+idle and compare the same harness and build profile across dependency stacks.

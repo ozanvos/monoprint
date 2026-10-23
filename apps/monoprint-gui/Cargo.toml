@@ -14,7 +14,7 @@ publish = false
 app-store = ["dep:gpui-macos", "gpui-macos/app-store", "dep:objc2-foundation"]
 
 [dependencies]
-gpui-kit = { version = "=0.7.1", features = ["tree-sitter-rust", "tree-sitter-typescript", "tree-sitter-tsx", "tree-sitter-javascript", "tree-sitter-python"] }
+gpui-kit = { version = "=0.8.0", features = ["gpui-fast", "tree-sitter-rust", "tree-sitter-typescript", "tree-sitter-tsx", "tree-sitter-javascript", "tree-sitter-python"] }
 monoprint = { path = "../..", default-features = false }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
@@ -28,7 +28,7 @@ url = "2"
 velopack = "=1.2.161"
 
 [target.'cfg(target_os = "macos")'.dependencies]
-gpui-macos = { package = "gpui-pre-macos", version = "=0.3.8", optional = true, default-features = false }
+gpui-macos = { package = "gpui-fast-macos", version = "=0.1.10", optional = true, default-features = false }
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", optional = true, default-features = false, features = ["std", "NSArray", "NSData", "NSError", "NSString", "NSURL", "NSPathUtilities"] }
 objc2-app-kit = { version = "0.3", default-features = false, features = ["NSGraphics", "NSResponder", "NSView", "NSVisualEffectView"] }
@@ -40,7 +40,7 @@ raw-window-handle = "0.6"
 rust-embed = { version = "8", features = ["debug-embed"] }
 
 [dev-dependencies]
-gpui-kit = { version = "=0.7.1", features = ["test-support"] }
+gpui-kit = { version = "=0.8.0", features = ["test-support"] }
 
 [[test]]
 name = "studio"
@@ -59,4 +59,4 @@ strip = true
 # Retain Select's native behavior while synchronizing its popup/shadow fade.
 [patch.crates-io]
 gpui-component = { path = "../../vendor/gpui-component" }
-gpui-pre-macos = { path = "../../vendor/gpui-pre-macos" }
+gpui-fast-macos = { path = "../../vendor/gpui-fast-macos" }

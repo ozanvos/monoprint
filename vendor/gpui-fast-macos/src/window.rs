@@ -1,3 +1,4 @@
+// Modified by Longbridge for gpui-fast.
 use crate::{
     BoolExt, MacDisplay, NSRange, NSStringExt, TISCopyCurrentKeyboardInputSource,
     TISGetInputSourceProperty, WindowFrameSource, events::platform_input_from_native,
@@ -11,9 +12,10 @@ use cocoa::{
     appkit::{
         NSApplication, NSBackingStoreBuffered, NSColor, NSEvent, NSEventModifierFlags, NSEventType,
         NSFilenamesPboardType, NSPasteboard, NSRequestUserAttentionType, NSScreen, NSView,
-        NSViewHeightSizable, NSViewWidthSizable, NSVisualEffectMaterial, NSVisualEffectState,
-        NSVisualEffectView, NSWindow, NSWindowCollectionBehavior, NSWindowOcclusionState,
-        NSWindowOrderingMode, NSWindowStyleMask, NSWindowTitleVisibility,
+        NSViewHeightSizable, NSViewWidthSizable, NSVisualEffectBlendingMode,
+        NSVisualEffectMaterial, NSVisualEffectState, NSVisualEffectView, NSWindow,
+        NSWindowCollectionBehavior, NSWindowOcclusionState, NSWindowOrderingMode,
+        NSWindowStyleMask, NSWindowTitleVisibility,
     },
     base::{id, nil},
     foundation::{
@@ -80,7 +82,7 @@ use std::{
     time::Duration,
 };
 
-const WINDOW_STATE_IVAR: &str = "windowState";
+pub(crate) const WINDOW_STATE_IVAR: &str = "windowState";
 
 #[cfg(not(feature = "app-store"))]
 static RESTORES_WORKSPACE_AT_LAUNCH_DEFAULT: std::sync::Once = std::sync::Once::new();
@@ -106,7 +108,7 @@ const NSPopUpWindowLevel: NSInteger = 101;
 #[allow(non_upper_case_globals)]
 const NSWindowAnimationBehaviorUtilityWindow: NSInteger = 4;
 #[allow(non_upper_case_globals)]
-const NSViewLayerContentsRedrawDuringViewResize: NSInteger = 2;
+pub(crate) const NSViewLayerContentsRedrawDuringViewResize: NSInteger = 2;
 // https://developer.apple.com/documentation/appkit/nsdragoperation
 type NSDragOperation = NSUInteger;
 #[allow(non_upper_case_globals)]
@@ -304,6 +306,7 @@ unsafe fn build_classes() {
             );
             decl.register()
         };
+        crate::fast::composition::build_overlay_view_class();
         BLURRED_VIEW_CLASS = {
             let mut decl = ClassDecl::new("BlurredView", class!(NSVisualEffectView)).unwrap();
             decl.add_method(
@@ -443,6 +446,7 @@ unsafe fn build_window_class(name: &'static str, superclass: &Class) -> *const C
     unsafe {
         let mut decl = ClassDecl::new(name, superclass).unwrap();
         decl.add_ivar::<*mut c_void>(WINDOW_STATE_IVAR);
+        crate::fast::composition::register_window_input(&mut decl, superclass);
         decl.add_method(sel!(dealloc), dealloc_window as extern "C" fn(&Object, Sel));
 
         decl.add_method(
@@ -668,20 +672,21 @@ unsafe fn apply_simple_fullscreen_plan(
     }
 }
 
-struct MacWindowState {
+pub(crate) struct MacWindowState {
     handle: AnyWindowHandle,
     foreground_executor: ForegroundExecutor,
     background_executor: BackgroundExecutor,
     native_window: id,
-    native_view: NonNull<Object>,
+    pub(crate) native_view: NonNull<Object>,
+    pub(crate) fast_composition: crate::fast::composition::MacComposition,
     blurred_view: Option<id>,
     background_appearance: WindowBackgroundAppearance,
     cursor_style: CursorStyle,
     cursor_visible: Arc<AtomicBool>,
     frame_source: Option<WindowFrameSource>,
-    renderer: renderer::Renderer,
+    pub(crate) renderer: renderer::Renderer,
     request_frame_callback: Option<Box<dyn FnMut(RequestFrameOptions)>>,
-    event_callback: Option<Box<dyn FnMut(PlatformInput) -> gpui::DispatchEventResult>>,
+    pub(crate) event_callback: Option<Box<dyn FnMut(PlatformInput) -> gpui::DispatchEventResult>>,
     activate_callback: Option<Box<dyn FnMut(bool)>>,
     visibility_callback: Option<Box<dyn FnMut(WindowVisibility)>>,
     // `None` until a callback is registered, so notifications during
@@ -689,6 +694,7 @@ struct MacWindowState {
     last_visibility: Option<WindowVisibility>,
     resize_callback: Option<Box<dyn FnMut(Size<Pixels>, f32)>>,
     moved_callback: Option<Box<dyn FnMut()>>,
+    display_changed_callback: Option<Box<dyn FnMut()>>,
     should_close_callback: Option<Box<dyn FnMut() -> bool>>,
     close_callback: Option<Box<dyn FnOnce()>>,
     appearance_changed_callback: Option<Box<dyn FnMut()>>,
@@ -944,13 +950,13 @@ impl MacWindowState {
         )
     }
 
-    fn content_size(&self) -> Size<Pixels> {
+    pub(crate) fn content_size(&self) -> Size<Pixels> {
         let NSSize { width, height, .. } =
             unsafe { NSView::frame(self.native_window.contentView()) }.size;
         size(px(width as f32), px(height as f32))
     }
 
-    fn scale_factor(&self) -> f32 {
+    pub(crate) fn scale_factor(&self) -> f32 {
         get_scale_factor(self.native_window)
     }
 
@@ -985,6 +991,7 @@ impl MacWindow {
             display_id,
             window_min_size,
             tabbing_identifier,
+            use_display_p3,
             ..
         }: WindowParams,
         cursor_visible: Arc<AtomicBool>,
@@ -1107,6 +1114,9 @@ impl MacWindow {
                 background_executor,
                 native_window,
                 native_view: NonNull::new_unchecked(native_view),
+                fast_composition: crate::fast::composition::MacComposition::new(
+                    renderer_context.clone(),
+                ),
                 blurred_view: None,
                 background_appearance: WindowBackgroundAppearance::Opaque,
                 cursor_style: CursorStyle::Arrow,
@@ -1118,6 +1128,7 @@ impl MacWindow {
                     native_view as *mut _,
                     bounds.size.map(|pixels| pixels.as_f32()),
                     false,
+                    use_display_p3,
                 ),
                 request_frame_callback: None,
                 event_callback: None,
@@ -1126,6 +1137,7 @@ impl MacWindow {
                 last_visibility: None,
                 resize_callback: None,
                 moved_callback: None,
+                display_changed_callback: None,
                 should_close_callback: None,
                 close_callback: None,
                 appearance_changed_callback: None,
@@ -1806,14 +1818,18 @@ impl PlatformWindow for MacWindow {
     fn activate(&self) {
         let lock = self.0.lock();
         let window = lock.native_window;
+        let view = lock.native_view.as_ptr();
         let closed = lock.closed.clone();
         let executor = lock.foreground_executor.clone();
         executor
             .spawn(async move {
                 if !closed.load(Ordering::Acquire) {
-                    unsafe {
-                        let _: () = msg_send![window, makeKeyAndOrderFront: nil];
+                    let window = unsafe { &*window.cast::<Objc2NSWindow>() };
+                    if !window.isVisible() {
+                        let view = unsafe { &*view.cast::<Objc2NSView>() };
+                        view.setNeedsDisplay(true);
                     }
+                    window.makeKeyAndOrderFront(None);
                 }
             })
             .detach();
@@ -2053,6 +2069,10 @@ impl PlatformWindow for MacWindow {
         self.0.as_ref().lock().resize_callback = Some(callback);
     }
 
+    fn on_display_changed(&self, callback: Box<dyn FnMut()>) {
+        self.0.as_ref().lock().display_changed_callback = Some(callback);
+    }
+
     fn on_moved(&self, callback: Box<dyn FnMut()>) {
         self.0.as_ref().lock().moved_callback = Some(callback);
     }
@@ -2131,6 +2151,25 @@ impl PlatformWindow for MacWindow {
     fn draw(&self, scene: &gpui::Scene) {
         let mut this = self.0.lock();
         this.renderer.draw(scene);
+    }
+
+    fn draw_composed(&self, scene: gpui::ComposedScene<'_>) {
+        crate::fast::composition::draw_composed(&self.0, scene)
+    }
+
+    fn enable_window_composition(&self) -> anyhow::Result<()> {
+        crate::fast::composition::enable_window_composition(&self.0)
+    }
+
+    fn create_native_surface(&self) -> anyhow::Result<Rc<dyn gpui::PlatformSurfaceAttachment>> {
+        crate::fast::composition::create_native_surface(&self.0)
+    }
+
+    fn set_composition_order(
+        &self,
+        fast_surfaces: &[gpui::PlatformCompositionSurface],
+    ) -> anyhow::Result<()> {
+        crate::fast::composition::set_composition_order(&self.0, fast_surfaces)
     }
 
     fn sprite_atlas(&self) -> Arc<dyn PlatformAtlas> {
@@ -2473,7 +2512,7 @@ unsafe fn is_gpui_window(window: id) -> bool {
     }
 }
 
-unsafe fn get_window_state(object: &Object) -> Arc<Mutex<MacWindowState>> {
+pub(crate) unsafe fn get_window_state(object: &Object) -> Arc<Mutex<MacWindowState>> {
     unsafe {
         let raw: *mut c_void = *object.get_ivar(WINDOW_STATE_IVAR);
         let rc1 = Arc::from_raw(raw as *mut Mutex<MacWindowState>);
@@ -2483,7 +2522,7 @@ unsafe fn get_window_state(object: &Object) -> Arc<Mutex<MacWindowState>> {
     }
 }
 
-unsafe fn drop_window_state(object: &Object) {
+pub(crate) unsafe fn drop_window_state(object: &Object) {
     unsafe {
         let raw: *mut c_void = *object.get_ivar(WINDOW_STATE_IVAR);
         Arc::from_raw(raw as *mut Mutex<MacWindowState>);
@@ -2824,10 +2863,13 @@ extern "C" fn handle_key_event(this: &Object, native_event: id, key_equivalent: 
     }
 }
 
-extern "C" fn handle_view_event(this: &Object, _: Sel, native_event: id) {
+pub(crate) extern "C" fn handle_view_event(this: &Object, _: Sel, native_event: id) {
     let window_state = unsafe { get_window_state(this) };
     let weak_window_state = Arc::downgrade(&window_state);
     let mut lock = window_state.as_ref().lock();
+    if crate::fast::composition::native_event_observed(&lock, native_event) {
+        return;
+    }
     let window_height = lock.content_size().height;
     let native_event_type = unsafe { native_event.eventType() };
     match native_event_type {
@@ -2976,8 +3018,8 @@ extern "C" fn handle_view_event(this: &Object, _: Sel, native_event: id) {
 
         if let Some(mut callback) = lock.event_callback.take() {
             drop(lock);
-            callback(event);
-            window_state.lock().event_callback = Some(callback);
+            let result = callback(event);
+            crate::fast::composition::complete_event(&window_state, native_event, callback, result);
         }
     }
 }
@@ -3146,6 +3188,7 @@ fn update_window_scale_factor(window_state: &Arc<Mutex<MacWindowState>>) {
     }
 
     lock.renderer.update_drawable_size(drawable_size);
+    crate::fast::composition::scale_factor_changed(&mut lock, scale_factor, drawable_size);
 
     if let Some(mut callback) = lock.resize_callback.take() {
         let content_size = lock.content_size();
@@ -3162,6 +3205,25 @@ extern "C" fn window_did_change_screen(this: &Object, _: Sel, _: id) {
     lock.start_display_link();
     drop(lock);
     update_window_scale_factor(&window_state);
+    report_display_change(&window_state);
+}
+
+fn report_display_change(window_state: &Arc<Mutex<MacWindowState>>) {
+    let executor = window_state.lock().foreground_executor.clone();
+    // AppKit can post screen changes while GPUI is updating a window, e.g.
+    // from `setFrame:`, so deliver after that update completes.
+    executor
+        .spawn({
+            let window_state = window_state.clone();
+            async move {
+                let callback = window_state.lock().display_changed_callback.take();
+                if let Some(mut callback) = callback {
+                    callback();
+                    window_state.lock().display_changed_callback = Some(callback);
+                }
+            }
+        })
+        .detach();
 }
 
 extern "C" fn window_did_change_key_status(this: &Object, selector: Sel, _: id) {
@@ -3216,7 +3278,7 @@ extern "C" fn window_did_change_key_status(this: &Object, selector: Sel, _: id) 
 
         if lock.activated_least_once {
             if let Some(mut callback) = lock.request_frame_callback.take() {
-                lock.renderer.set_presents_with_transaction(true);
+                crate::fast::composition::set_presents_with_transaction(&mut lock, true);
                 lock.stop_display_link();
                 drop(lock);
                 callback(RequestFrameOptions {
@@ -3227,7 +3289,7 @@ extern "C" fn window_did_change_key_status(this: &Object, selector: Sel, _: id) 
 
                 let mut lock = window_state.lock();
                 lock.request_frame_callback = Some(callback);
-                lock.renderer.set_presents_with_transaction(false);
+                crate::fast::composition::set_presents_with_transaction(&mut lock, false);
                 lock.start_display_link();
             }
         } else {
@@ -3327,6 +3389,7 @@ extern "C" fn set_frame_size(this: &Object, _: Sel, size: NSSize) {
     let scale_factor = lock.scale_factor();
     let drawable_size = new_size.to_device_pixels(scale_factor);
     lock.renderer.update_drawable_size(drawable_size);
+    crate::fast::composition::drawable_size_changed(&mut lock, drawable_size);
 
     if let Some(mut callback) = lock.resize_callback.take() {
         let content_size = lock.content_size();
@@ -3342,7 +3405,7 @@ extern "C" fn display_layer(this: &Object, _: Sel, _: id) {
     let window_state = unsafe { get_window_state(this) };
     let mut lock = window_state.lock();
     if let Some(mut callback) = lock.request_frame_callback.take() {
-        lock.renderer.set_presents_with_transaction(true);
+        crate::fast::composition::set_presents_with_transaction(&mut lock, true);
         lock.stop_display_link();
         drop(lock);
         callback(RequestFrameOptions {
@@ -3353,7 +3416,7 @@ extern "C" fn display_layer(this: &Object, _: Sel, _: id) {
 
         let mut lock = window_state.lock();
         lock.request_frame_callback = Some(callback);
-        lock.renderer.set_presents_with_transaction(false);
+        crate::fast::composition::set_presents_with_transaction(&mut lock, false);
         lock.start_display_link();
     }
 }
@@ -3839,9 +3902,13 @@ fn display_id_for_screen(screen: id) -> Option<CGDirectDisplayID> {
 extern "C" fn blurred_view_init_with_frame(this: &Object, _: Sel, frame: NSRect) -> id {
     unsafe {
         let view = msg_send![super(this, class!(NSVisualEffectView)), initWithFrame: frame];
-        // Use a colorless semantic material. The default value `AppearanceBased`, though not
-        // manually set, is deprecated.
-        NSVisualEffectView::setMaterial_(view, NSVisualEffectMaterial::Selection);
+        // A window-background material, whose tint and extra saturation
+        // `blurred_view_update_layer` strips, leaving only the blur. `Selection`, used before,
+        // has no `CABackdropLayer` on macOS 27, so nothing behind the window was blurred. (Setting
+        // a material also avoids the deprecated default, `AppearanceBased`.)
+        NSVisualEffectView::setMaterial_(view, NSVisualEffectMaterial::UnderWindowBackground);
+        // The default, but blurring what's behind the window is this view's whole purpose.
+        NSVisualEffectView::setBlendingMode_(view, NSVisualEffectBlendingMode::BehindWindow);
         NSVisualEffectView::setState_(view, NSVisualEffectState::Active);
         view
     }

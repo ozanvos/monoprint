@@ -465,16 +465,16 @@ pub fn data_directory() -> Option<PathBuf> {
         not(target_os = "windows"),
         not(all(target_os = "macos", feature = "app-store"))
     ))]
-    let home = std::env::var_os("HOME")?;
+    let home = PathBuf::from(std::env::var_os("HOME")?);
     #[cfg(target_os = "macos")]
-    let dir = PathBuf::from(home).join("Library/Application Support/Monoprint");
+    let dir = home.join("Library/Application Support/Monoprint");
     #[cfg(target_os = "windows")]
     let dir = PathBuf::from(std::env::var_os("APPDATA")?).join("Monoprint");
     #[cfg(not(any(target_os = "windows", target_os = "macos")))]
     let dir = std::env::var_os("XDG_STATE_HOME")
         .map(PathBuf::from)
         .filter(|path| path.is_absolute())
-        .unwrap_or_else(|| PathBuf::from(home).join(".local/state"))
+        .unwrap_or_else(|| home.join(".local/state"))
         .join("monoprint");
     Some(dir)
 }

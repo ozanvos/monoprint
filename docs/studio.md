@@ -95,4 +95,4 @@ python3 apps/monoprint-gui/scripts/build-icon.py
 
 Toolkit patches are documented in
 [the popup patch notes](../vendor/gpui-component/MONOPRINT-PATCH.md)
-and [the macOS patch notes](../vendor/gpui-pre-macos/MONOPRINT-PATCH.md).
+and [the macOS patch notes](../vendor/gpui-fast-macos/MONOPRINT-PATCH.md).

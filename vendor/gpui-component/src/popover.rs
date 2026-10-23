@@ -1,8 +1,8 @@
 use gpui::{
-    Anchor, Animation, AnimationExt as _, AnyElement, App, Bounds, ContentMask, Context, Corners, Div, ElementId,
-    FocusHandle, Hsla, InteractiveElement as _, IntoElement, MouseButton, ParentElement, PathBuilder,
-    Pixels, Point, RenderOnce, Stateful, StyleRefinement, Styled, Window, canvas, point,
-    prelude::FluentBuilder as _, px, size,
+    Anchor, Animation, AnimationExt as _, AnyElement, App, Bounds, ContentMask, Context, Corners,
+    Div, ElementId, FocusHandle, Hsla, InteractiveElement as _, IntoElement, MouseButton,
+    ParentElement, PathBuilder, Pixels, Point, RenderOnce, Stateful, StyleRefinement, Styled,
+    Window, canvas, point, prelude::FluentBuilder as _, px, size,
 };
 use std::{cell::Cell, rc::Rc, time::Duration};
 

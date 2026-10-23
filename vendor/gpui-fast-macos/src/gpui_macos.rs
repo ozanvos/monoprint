@@ -1,3 +1,4 @@
+// Modified by Longbridge for gpui-fast.
 #![cfg(target_os = "macos")]
 //! macOS platform implementation for GPUI.
 //!
@@ -7,6 +8,7 @@
 mod display;
 mod display_link;
 mod events;
+mod fast;
 mod keyboard;
 mod pasteboard;
 mod system_notifications;
@@ -22,12 +24,6 @@ pub mod metal_renderer {
     #[cfg(any(test, feature = "bench-support", feature = "test-support"))]
     pub use gpui_apple::metal_renderer::MetalHeadlessRenderer;
 }
-
-#[cfg(feature = "font-kit")]
-mod open_type;
-
-#[cfg(feature = "font-kit")]
-mod text_system;
 
 mod platform;
 mod window;
@@ -50,9 +46,6 @@ pub(crate) use gpui_apple::{AppleActivity, AppleDispatcher};
 pub(crate) use keyboard::*;
 pub(crate) use platform::*;
 pub(crate) use window::*;
-
-#[cfg(feature = "font-kit")]
-pub(crate) use text_system::*;
 
 pub use platform::MacPlatform;
 

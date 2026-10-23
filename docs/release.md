@@ -48,7 +48,7 @@ Linux AppImages and update feeds.
 `--app-store` excludes the audited private macOS APIs, enables App Sandbox and
 omits the CLI and shell-based Shortcuts. The packager scans the executable and
 fails if an audited private API name remains. Patch details are in
-[the macOS patch notes](../vendor/gpui-pre-macos/MONOPRINT-PATCH.md).
+[the macOS patch notes](../vendor/gpui-fast-macos/MONOPRINT-PATCH.md).
 
 ```sh
 python3 apps/monoprint-gui/scripts/bundle-macos.py --app-store
