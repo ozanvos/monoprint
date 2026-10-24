@@ -6,6 +6,23 @@ Node.js APIs. Export PNG, SVG, or self-contained HTML.
 Fonts, themes, and syntax grammars are bundled. Rendering runs on your device
 without a browser, network connection, or installed fonts.
 
+## Install
+
+On an Apple Silicon Mac (macOS 12 or newer), install the signed and notarized
+app and its CLI with Homebrew:
+
+```sh
+brew install --cask ozanvos/tap/monoprint
+```
+
+The app includes automatic updates. To update through Homebrew, run
+`brew update && brew upgrade --cask --greedy monoprint`.
+See the [official tap](https://github.com/ozanvos/homebrew-tap) for uninstalling
+or adopting an existing manual installation.
+
+Direct downloads for macOS and Linux are on the
+[website](https://monoprint.7ea.st/#downloads). Windows downloads are coming later.
+
 ## Build from source
 
 Requires Rust 1.97 or newer and a C compiler. The desktop app also needs the
