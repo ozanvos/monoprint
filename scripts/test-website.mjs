@@ -81,7 +81,7 @@ try {
   const copy = page.getByRole('button', { name: 'Copy CLI command', exact: true });
   await copy.click();
   await page.waitForFunction(() => document.querySelector('#copy-command').title === 'Copied');
-  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'monoprint share.rs --theme night-owl --highlight 4');
+  assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'monoprint share.rs -o share.png --theme night-owl --highlight 4');
   await page.waitForFunction(() => !document.querySelector('#copy-command').disabled);
   for (const name of ['Support', 'Privacy']) {
     await page.goto(`${url}/${name.toLowerCase()}/`);

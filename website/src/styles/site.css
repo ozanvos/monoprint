@@ -193,10 +193,29 @@ img {
 }
 
 .brand {
+  gap: 8px;
   font-size: 15px;
   font-weight: 650;
   letter-spacing: -.02em;
   color: var(--ink);
+}
+
+/* The app icon's planes and connector, its ivory / silver / fold values inverted for a light ground. */
+.brand-mark {
+  width: 19px;
+  height: 15px;
+}
+
+.brand-mark .front {
+  fill: var(--ink);
+}
+
+.brand-mark .back {
+  fill: #8d8d88;
+}
+
+.brand-mark .connector {
+  fill: #5c5c58;
 }
 
 .strip nav {

@@ -16,5 +16,5 @@ export const source = [
 ];
 export const initialTheme = themes[2];
 export function command(theme) {
-  return `monoprint share.rs --theme ${theme.cli}${theme.appearance === 'light' ? ' --light' : ''} --highlight 4`;
+  return `monoprint share.rs -o share.png --theme ${theme.cli}${theme.appearance === 'light' ? ' --light' : ''} --highlight 4`;
 }
