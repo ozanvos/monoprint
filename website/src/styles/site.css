@@ -137,15 +137,24 @@ img {
   background: var(--canvas-raised);
   font-size: 12px;
   white-space: nowrap;
+  transition: background-color .15s, border-color .15s;
 }
 
 .button:not(:disabled):hover {
-  background: white;
+  background: var(--surface);
+  color: inherit;
 }
 
 .button.ink {
   background: var(--ink);
   border-color: var(--ink);
+  color: var(--canvas);
+}
+
+/* A slightly lifted ink, never a flip to white. */
+.button.ink:not(:disabled):hover {
+  background: #3d3d3a;
+  border-color: #3d3d3a;
   color: var(--canvas);
 }
 
@@ -298,6 +307,35 @@ img {
 
 #command-text {
   overflow-wrap: anywhere;
+}
+
+/* One line each; the copy button and the downloads section carry the full command. */
+.install code {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+/* Platform labels beside one copyable install command each. */
+.install {
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr);
+  align-items: center;
+  gap: 8px 14px;
+  max-width: 820px;
+}
+
+.install-row {
+  display: contents;
+}
+
+.install-platform {
+  font-size: 11px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+  color: var(--muted);
 }
 
 .icon-button {
@@ -559,6 +597,17 @@ img {
   }
   .strip nav .button {
     display: none;
+  }
+  .install {
+    grid-template-columns: minmax(0,1fr);
+    gap: 6px;
+  }
+  .install-platform:not(:first-child) {
+    margin-top: 6px;
+  }
+  .install code {
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   .strip:not(.foot) nav {
     gap: 12px;

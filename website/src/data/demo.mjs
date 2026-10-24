@@ -9,7 +9,7 @@ export const themes = [
 export const source = [
   'fn share(code: &str, theme: &Theme) -> Image {',
   '    let tokens = highlight(code, theme.syntax);',
-  '    // Rendered on this Mac. No network.',
+  '    // Rendered offline. No network.',
   '    let canvas = Canvas::new(640, 64);',
   '    canvas.draw(tokens).export(Png { scale: 2 })',
   '}',

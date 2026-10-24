@@ -4,7 +4,7 @@ import Icon from '../components/Icon.astro';
 import { themes, initialTheme, command } from '../data/demo.mjs';
 import { showcases } from '../data/showcase.mjs';
 import release from '../../../release/config.json';
-import { downloads, manifest } from '../data/downloads.mjs';
+import { downloads, installs, manifest } from '../data/downloads.mjs';
 import '../styles/site.css';
 const repository = `https://github.com/${release.repository}`;
 const docs = `${repository}/blob/main/README.md`;
@@ -41,8 +41,12 @@ const parts = [
           <p class="lede">Turn source code into PNG, SVG or HTML on your computer. Fonts, themes and grammars are bundled, so your code stays on the machine.</p>
           <div class="actions">
             {manifest ? <a class="button ink" href="#downloads">Download</a> : <button class="button ink" type="button" disabled title="Downloads are being prepared">Download</button>}
-            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id="command-text">{command(initialTheme)}</code><button class="icon-button" id="copy-command" aria-label="Copy CLI command" title="Copy command" type="button"><Icon name="copy"/></button></div>
+            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id="command-text">{command(initialTheme)}</code><button class="icon-button" id="copy-command" data-copy="command-text" aria-label="Copy CLI command" title="Copy command" type="button"><Icon name="copy"/></button></div>
           </div>
+          {installs.length > 0 && <div class="install" role="list" aria-label="Install from a terminal">{installs.map(install => <div class="install-row" role="listitem">
+            <span class="install-platform">{install.platform}</span>
+            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id={`install-${install.platform.toLowerCase()}`}>{install.command}</code><button class="icon-button" data-copy={`install-${install.platform.toLowerCase()}`} aria-label={`Copy ${install.platform} install command`} title="Copy command" type="button"><Icon name="copy"/></button></div>
+          </div>)}</div>}
         </section>
 
         <section class="app-section" aria-label="App screenshot"><AppScreenshot /></section>
@@ -56,7 +60,9 @@ const parts = [
             <p>{download.detail}</p>
           </div>)}</div>
           <p>On macOS, install the app and CLI with <a href="https://github.com/ozanvos/homebrew-tap">Homebrew</a>:</p>
-          <pre class="install-command"><code>brew install --cask ozanvos/tap/monoprint</code></pre>
+          <pre class="install-command"><code>{installs[0].command}</code></pre>
+          <p>On Linux, download and open the AppImage; it offers to install itself for your user:</p>
+          <pre class="install-command"><code>{installs[1].command}</code></pre>
           <p><a href={`${repository}/releases/tag/${manifest.tag}`}>Release notes, checksums and signatures ↗</a></p>
         </section>}
 
