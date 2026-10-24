@@ -3,6 +3,10 @@ name: Release candidate
 on:
   workflow_dispatch:
     inputs:
+      npm_only:
+        description: Only npm packages (with publish off, just verify trusted publishing)
+        type: boolean
+        default: false
       signed:
         description: Use private Apple signing/notarization credentials
         type: boolean
@@ -36,6 +40,7 @@ jobs:
           node-version: 22.23.0
       - name: Check source and publication policy
         env:
+          NPM_ONLY: ${{ inputs.npm_only }}
           PUBLIC: ${{ inputs.publish }}
           SIGNED: ${{ inputs.signed }}
           UPDATES: ${{ inputs.updates }}
@@ -47,22 +52,27 @@ jobs:
           import { checkRelease } from './scripts/release-config.mjs';
           const publish = process.env.PUBLIC === 'true';
           if (process.env.UPDATES === 'true' && process.env.SIGNED !== 'true') throw new Error('Sparkle distribution requires signing and notarization');
-          if (publish && (process.env.SIGNED !== 'true' || !process.env.RELEASE_TAG)) throw new Error('Public distribution requires signing and an existing release tag');
+          if (publish && !process.env.RELEASE_TAG) throw new Error('Publication requires an existing release tag');
+          if (publish && process.env.NPM_ONLY !== 'true' && process.env.SIGNED !== 'true') throw new Error('Desktop distribution requires signing');
           await checkRelease({ publicPublish: publish, tag: process.env.RELEASE_TAG || undefined });
           JS
   checks:
+    if: ${{ !inputs.npm_only || inputs.publish }}
     needs: preflight
     uses: ./.github/workflows/ci.yml
   cli:
+    if: ${{ !inputs.npm_only }}
     needs: preflight
     uses: ./.github/workflows/cli-release.yml
     with:
       signed: ${{ inputs.signed }}
     secrets: inherit
   npm:
+    if: ${{ !inputs.npm_only || inputs.publish }}
     needs: preflight
     uses: ./.github/workflows/npm-packages.yml
   app:
+    if: ${{ !inputs.npm_only }}
     needs: preflight
     uses: ./.github/workflows/macos-app.yml
     with:
@@ -70,6 +80,7 @@ jobs:
       updates: ${{ inputs.updates }}
     secrets: inherit
   assemble:
+    if: ${{ !inputs.npm_only }}
     needs: [checks, cli, npm, app]
     runs-on: ubuntu-22.04
     steps:
@@ -117,7 +128,7 @@ jobs:
             output/playwright/website/*
           if-no-files-found: error
   publish:
-    if: ${{ inputs.publish }}
+    if: ${{ inputs.publish && !inputs.npm_only }}
     needs: assemble
     runs-on: ubuntu-22.04
     environment: public-release
@@ -131,7 +142,7 @@ jobs:
       - uses: actions/setup-node@v4
         with:
           node-version: 24.20.0
-      - run: npm install --global npm@11.5.1 --ignore-scripts
+      - run: npm install --global npm@12.2.1 --ignore-scripts
       - uses: actions/download-artifact@v4
         with:
           path: output/publish
@@ -148,6 +159,8 @@ jobs:
         env:
           MONOPRINT_PUBLIC_PUBLISH: approved
           GITHUB_REPOSITORY_VISIBILITY: ${{ github.event.repository.private && 'private' || 'public' }}
+      - name: Wait for npm scanning and verify published artifacts
+        run: node scripts/wait-for-npm.mjs output/publish/npm-release
       - name: Verify a fresh registry install
         run: node bindings/node/scripts/test-registry.mjs
       - name: Create the GitHub release from the verified source tag
@@ -156,3 +169,49 @@ jobs:
           RELEASE_TAG: ${{ inputs.tag }}
         run: |
           gh release create "$RELEASE_TAG" --verify-tag --latest=false --title "Monoprint $RELEASE_TAG" --notes-file "release/notes/${RELEASE_TAG#v}.md" output/verified-public/* output/publish/source-snapshot/*
+  authentication:
+    if: ${{ inputs.npm_only }}
+    needs: preflight
+    runs-on: ubuntu-22.04
+    environment: public-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.20.0
+      - run: node scripts/verify-npm-trust.mjs
+  npm_publish:
+    if: ${{ inputs.npm_only && inputs.publish }}
+    needs: [authentication, checks, npm]
+    runs-on: ubuntu-22.04
+    environment: public-release
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24.20.0
+      - run: npm install --global npm@12.2.1 --ignore-scripts
+      - uses: actions/download-artifact@v4
+        with:
+          name: npm-release
+          path: output/npm-release
+      - name: Recheck source tag and publish verified artifacts through OIDC
+        env:
+          RELEASE_TAG: ${{ inputs.tag }}
+          MONOPRINT_PUBLIC_PUBLISH: approved
+          GITHUB_REPOSITORY_VISIBILITY: ${{ github.event.repository.private && 'private' || 'public' }}
+        run: |
+          node scripts/release.mjs check --public --tag "$RELEASE_TAG"
+          npm run publish:packages --prefix bindings/node -- --from "$GITHUB_WORKSPACE/output/npm-release" --publish --provenance
+      - name: Wait for npm scanning and verify the published CLI and API
+        run: |
+          node scripts/wait-for-npm.mjs output/npm-release
+          node bindings/node/scripts/test-registry.mjs
