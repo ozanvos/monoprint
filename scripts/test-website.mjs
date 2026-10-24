@@ -49,7 +49,7 @@ try {
     const manifest = JSON.parse(await fs.readFile(process.env.MONOPRINT_DOWNLOAD_MANIFEST, 'utf8'));
     assert.equal(await page.getByRole('link', { name: 'Download', exact: true }).count(), 2);
     assert.equal(await page.getByRole('button', { name: 'Download', exact: true }).count(), 0);
-    for (const [platform, runtime] of [['macOS', 'macos-arm64'], ['Windows', 'win-x64'], ['Linux', 'linux-x64']]) {
+    for (const [platform, runtime] of [['macOS', 'macos-arm64'], ['Windows', 'win-x64'], ['Linux x64', 'linux-x64'], ['Linux ARM64', 'linux-arm64']]) {
       const link = page.getByRole('link', { name: `Download for ${platform}`, exact: true });
       if (manifest.downloads[runtime]) assert.equal(await link.getAttribute('href'), manifest.downloads[runtime].url);
       else assert.equal(await link.count(), 0, `No download link for deferred ${platform}`);

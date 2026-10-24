@@ -7,7 +7,7 @@ export async function checkRelease({ publicPublish = false, tag } = {}) {
   if (!/^[\w.-]+\/[\w.-]+$/.test(config.repository ?? '')) throw new Error('Set release/config.json repository to OWNER/REPO');
   if (!Array.isArray(config.desktopPlatforms) || !config.desktopPlatforms.length
       || new Set(config.desktopPlatforms).size !== config.desktopPlatforms.length
-      || config.desktopPlatforms.some(runtime => !['macos-arm64', 'linux-x64', 'win-x64'].includes(runtime))) {
+      || config.desktopPlatforms.some(runtime => !['macos-arm64', 'linux-x64', 'linux-arm64', 'win-x64'].includes(runtime))) {
     throw new Error('Configure the desktop release platforms explicitly');
   }
   const url = `https://github.com/${config.repository}`;

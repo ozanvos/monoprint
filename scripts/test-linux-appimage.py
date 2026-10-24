@@ -25,7 +25,7 @@ args = parser.parse_args()
 source = args.source.resolve()
 root = Path(__file__).resolve().parents[1]
 receipt = json.loads((source / 'manifest.json').read_text())
-assert receipt['runtime'] == 'linux-x64'
+assert receipt['runtime'] in ('linux-x64', 'linux-arm64')
 original, = source.glob('*.AppImage')
 with tempfile.TemporaryDirectory(prefix='monoprint-linux-qualification-') as temporary:
     fixture = Path(temporary)
@@ -47,6 +47,7 @@ with tempfile.TemporaryDirectory(prefix='monoprint-linux-qualification-') as tem
         '--target-dir', str(root / 'target/gui'), '--test', 'linux_update', '--', '--ignored', '--nocapture',
     ], check=True, env=os.environ | {
         'MONOPRINT_UPDATE_FIXTURE': str(fixture), 'MONOPRINT_PACKAGE_SOURCE': str(source),
+        'MONOPRINT_TEST_UPDATE_CHANNEL': receipt['runtime'],
     })
     expected = digest(original)
     deadline = time.monotonic() + 60

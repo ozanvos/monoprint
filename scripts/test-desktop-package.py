@@ -54,7 +54,16 @@ for package in packages:
             assert any(name.endswith('.AppImage') for name in names)
 if receipt['runtime'].startswith('linux-'):
     images = list(args.source.glob('*.AppImage'))
-    assert images
+    assert len(images) == 1
+    machine = {'linux-x64': 62, 'linux-arm64': 183}[receipt['runtime']]
+
+    def verify_elf(path):
+        with path.open('rb') as binary:
+            header = binary.read(20)
+        assert header[:6] == b'\x7fELF\x02\x01', f'Expected little-endian ELF64: {path}'
+        assert struct.unpack_from('<H', header, 18)[0] == machine, f'Wrong architecture: {path}'
+
+    verify_elf(images[0])
     if sys.platform == 'linux':
         with tempfile.TemporaryDirectory(prefix='monoprint-appimage-check-') as temporary:
             image = images[0].resolve()
@@ -64,6 +73,8 @@ if receipt['runtime'].startswith('linux-'):
             for name in ['AppRun', 'usr/bin/monoprint-gui', 'usr/bin/UpdateNix', 'usr/bin/sq.version',
                          'usr/bin/resources/LICENSE', 'usr/bin/resources/licenses/gui-dependencies.json']:
                 assert (folder / name).is_file(), name
+            for name in ['monoprint-gui', 'UpdateNix']:
+                verify_elf(folder / 'usr/bin' / name)
             libraries = subprocess.check_output(['ldd', str(folder / 'usr/bin/monoprint-gui')],
                 env=os.environ | {'LD_LIBRARY_PATH': str(folder / 'usr/lib')}, text=True)
             assert 'not found' not in libraries, libraries

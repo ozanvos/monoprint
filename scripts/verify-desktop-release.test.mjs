@@ -5,8 +5,8 @@ import { verifyRelease } from './verify-desktop-release.mjs';
 function fixture() {
   const repository = 'ozanvos/monoprint';
   const base = `https://github.com/${repository}/releases`;
-  const names = { 'macos-arm64': 'Monoprint-0.1.0-aarch64-apple-darwin.zip', 'win-x64': 'Monoprint-win-Setup.exe', 'linux-x64': 'Monoprint-linux.AppImage' };
-  const files = [...Object.values(names), 'appcast-macos-arm64.xml', 'releases.win-x64.json', 'releases.linux-x64.json'].map(file => ({ file, bytes: 100, sha256: 'a'.repeat(64) }));
+  const names = { 'macos-arm64': 'Monoprint-0.1.0-aarch64-apple-darwin.zip', 'win-x64': 'Monoprint-win-Setup.exe', 'linux-x64': 'Monoprint-linux-x64.AppImage', 'linux-arm64': 'Monoprint-linux-arm64.AppImage' };
+  const files = [...Object.values(names), 'appcast-macos-arm64.xml', 'releases.win-x64.json', 'releases.linux-x64.json', 'releases.linux-arm64.json'].map(file => ({ file, bytes: 100, sha256: 'a'.repeat(64) }));
   const manifest = { version: '0.1.0', tag: 'v0.1.0', commit: 'b'.repeat(40), repository, distribution: true, files,
     downloads: Object.fromEntries(Object.entries(names).map(([runtime, file]) => [runtime, { ...files.find(entry => entry.file === file), url: `${base}/download/v0.1.0/${file}` }])) };
   const release = { tag_name: manifest.tag, draft: false, prerelease: false, html_url: `${base}/tag/v0.1.0`,
@@ -14,7 +14,7 @@ function fixture() {
   return { manifest, release, repository };
 }
 
-test('published complete release resolves all three platform downloads', () => {
+test('published complete release resolves all four platform downloads', () => {
   const { release, manifest, repository } = fixture();
   assert.equal(verifyRelease(release, manifest, repository, 'v0.1.0'), manifest);
 });
@@ -47,7 +47,7 @@ test('website rejects an unexpected latest tag', () => {
 function deferWindows(f) {
   const names = new Set([f.manifest.downloads['win-x64'].file, 'releases.win-x64.json']);
   delete f.manifest.downloads['win-x64'];
-  f.manifest.platforms = ['macos-arm64', 'linux-x64'];
+  f.manifest.platforms = ['macos-arm64', 'linux-x64', 'linux-arm64'];
   f.manifest.files = f.manifest.files.filter(file => !names.has(file.file));
   f.release.assets = f.release.assets.filter(asset => !names.has(asset.name));
   return f;
@@ -58,7 +58,7 @@ test('macOS/Linux release needs no Windows assets or feed', () => {
   assert.equal(verifyRelease(f.release, f.manifest, f.repository), f.manifest);
 });
 
-for (const runtime of ['macos-arm64', 'linux-x64']) {
+for (const runtime of ['macos-arm64', 'linux-x64', 'linux-arm64']) {
   test(`deferring Windows does not permit missing ${runtime}`, () => {
     const f = deferWindows(fixture());
     delete f.manifest.downloads[runtime];
@@ -69,5 +69,11 @@ for (const runtime of ['macos-arm64', 'linux-x64']) {
 test('a declared platform cannot silently lose its download', () => {
   const f = deferWindows(fixture());
   f.manifest.platforms.push('win-x64');
+  assert.throws(() => verifyRelease(f.release, f.manifest, f.repository));
+});
+
+test('ARM64 download cannot silently point to the x64 installer', () => {
+  const f = fixture();
+  f.manifest.downloads['linux-arm64'] = f.manifest.downloads['linux-x64'];
   assert.throws(() => verifyRelease(f.release, f.manifest, f.repository));
 });

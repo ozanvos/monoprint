@@ -20,7 +20,7 @@ fn packaged_linux_upgrade() {
     let manager = UpdateManager::new(
         velopack::sources::FileSource::new(source),
         Some(UpdateOptions {
-            ExplicitChannel: Some("linux-x64".into()),
+            ExplicitChannel: Some(env::var("MONOPRINT_TEST_UPDATE_CHANNEL").unwrap()),
             ..Default::default()
         }),
         Some(locator),

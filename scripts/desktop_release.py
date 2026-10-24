@@ -26,7 +26,8 @@ def assemble(source, output, *, version, commit, input_hash, repository, public_
     base = f'https://github.com/{repository}/releases'
     latest = base + '/latest/download/'
     tagged = base + f'/download/v{version}/'
-    supported = {'macos-arm64': 'macos-app', 'win-x64': 'desktop-win-x64', 'linux-x64': 'desktop-linux-x64'}
+    supported = {'macos-arm64': 'macos-app', 'win-x64': 'desktop-win-x64',
+                 'linux-x64': 'desktop-linux-x64', 'linux-arm64': 'desktop-linux-arm64'}
     if not platforms or len(set(platforms)) != len(platforms) or set(platforms) - supported.keys():
         raise ValueError('Invalid release platforms')
     files = {}
@@ -109,7 +110,7 @@ def assemble(source, output, *, version, commit, input_hash, repository, public_
                 full |= asset.get('Type') == 'Full' and asset['FileName'].endswith('-full.nupkg')
             if not full:
                 raise ValueError(f'Missing full update package: {runtime}')
-            suffix = 'Setup.exe' if runtime == 'win-x64' else '.AppImage'
+            suffix = 'Setup.exe' if runtime == 'win-x64' else f'-{runtime}.AppImage'
             installers = [entry['file'] for entry in artifacts if entry['file'].endswith(suffix)]
             if len(installers) != 1:
                 raise ValueError(f'Expected one installer: {runtime}')

@@ -16,14 +16,14 @@ import tomllib
 gui = Path(__file__).resolve().parents[1]
 root = gui.parents[1]
 sys.path.insert(0, str(root / 'scripts'))
-from desktop_updates import velopack_settings, configuration
+from desktop_updates import velopack_settings, linuxdeploy_settings
 from gui_notices import package_notices
 from macos_release import source_digest
 
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('--runtime', required=True, choices=['win-x64', 'linux-x64'])
+    parser.add_argument('--runtime', required=True, choices=['win-x64', 'linux-x64', 'linux-arm64'])
     parser.add_argument('--output', required=True, type=Path, help='Fresh output directory')
     parser.add_argument('--update-feed', help='HTTPS directory containing releases.CHANNEL.json and packages')
     parser.add_argument('--linuxdeploy', type=Path, help='Pinned linuxdeploy AppImage (Linux only)')
@@ -34,8 +34,9 @@ def main():
     is_windows = args.runtime == 'win-x64'
     if (is_windows and sys.platform != 'win32') or (not is_windows and sys.platform != 'linux'):
         parser.error('Package on the matching operating system')
-    if platform.machine().lower() not in ('amd64', 'x86_64'):
-        parser.error('This package targets x64; use an x64 build host')
+    machines = ('aarch64', 'arm64') if args.runtime == 'linux-arm64' else ('amd64', 'x86_64')
+    if platform.machine().lower() not in machines:
+        parser.error(f'{args.runtime} requires a matching native build host')
     if args.output.exists():
         parser.error('--output must be a fresh directory')
     feed, tool_version = velopack_settings(args.runtime, args.update_feed)
@@ -56,7 +57,7 @@ def main():
         parser.error('Windows distribution requires signing; use --local for unsigned verification')
     if not is_windows and (not args.linuxdeploy or not args.linuxdeploy.is_file()):
         parser.error('Linux packaging requires --linuxdeploy from prepare-linuxdeploy.py')
-    if not is_windows and hashlib.sha256(args.linuxdeploy.read_bytes()).hexdigest() != configuration()['linuxdeploy']['archiveSha256']:
+    if not is_windows and hashlib.sha256(args.linuxdeploy.read_bytes()).hexdigest() != linuxdeploy_settings(args.runtime)[1]:
         parser.error('linuxdeploy checksum differs from release/updates.json')
     commit = subprocess.check_output(['git', 'rev-parse', 'HEAD'], cwd=root, text=True).strip()
     dirty = bool(subprocess.check_output(['git', 'status', '--porcelain'], cwd=root, text=True).strip())

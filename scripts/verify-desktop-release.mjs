@@ -31,7 +31,8 @@ export function verifyRelease(release, manifest, repository, expectedTag) {
   const formats = {
     'macos-arm64': ['-aarch64-apple-darwin.zip', 'appcast-macos-arm64.xml'],
     'win-x64': ['Setup.exe', 'releases.win-x64.json'],
-    'linux-x64': ['.AppImage', 'releases.linux-x64.json'],
+    'linux-x64': ['-linux-x64.AppImage', 'releases.linux-x64.json'],
+    'linux-arm64': ['-linux-arm64.AppImage', 'releases.linux-arm64.json'],
   };
   const platforms = Object.keys(manifest.downloads ?? {});
   if (!platforms.length || platforms.some(runtime => !formats[runtime])

@@ -20,7 +20,7 @@ The app includes automatic updates. To update through Homebrew, run
 See the [official tap](https://github.com/ozanvos/homebrew-tap) for uninstalling
 or adopting an existing manual installation.
 
-Direct downloads for macOS and Linux are on the
+Direct downloads for macOS and Linux (x64 and ARM64 AppImages) are on the
 [website](https://monoprint.7ea.st/#downloads). Windows downloads are coming later.
 
 For Node.js 22+ applications:
