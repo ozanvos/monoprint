@@ -318,6 +318,15 @@ img {
   text-overflow: ellipsis;
 }
 
+/* No copy button: show it all, and one click selects the whole command. */
+.install code.select-only {
+  padding: 4px 8px 4px 0;
+  white-space: normal;
+  overflow-wrap: anywhere;
+  user-select: all;
+  -webkit-user-select: all;
+}
+
 /* Platform labels beside one copyable install command each. */
 .install {
   display: grid;

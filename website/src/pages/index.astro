@@ -58,7 +58,7 @@ const parts = [
           <p>Or install from a terminal: the app and CLI with <a href="https://github.com/ozanvos/homebrew-tap">Homebrew</a> on macOS, or the AppImage on Linux, which offers to install itself for your user.</p>
           <div class="install" role="list" aria-label="Install from a terminal">{installs.map(install => <div class="install-row" role="listitem">
             <span class="install-platform">{install.platform}</span>
-            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id={`install-${install.platform.toLowerCase()}`}>{install.command}</code><button class="icon-button" data-copy={`install-${install.platform.toLowerCase()}`} aria-label={`Copy ${install.platform} install command`} title="Copy command" type="button"><Icon name="copy"/></button></div>
+            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id={`install-${install.platform.toLowerCase()}`} class:list={{ 'select-only': !install.copy }}>{install.command}</code>{install.copy && <button class="icon-button" data-copy={`install-${install.platform.toLowerCase()}`} aria-label={`Copy ${install.platform} install command`} title="Copy command" type="button"><Icon name="copy"/></button>}</div>
           </div>)}</div>
           <p><a href={`${repository}/releases/tag/${manifest.tag}`}>Release notes, checksums and signatures ↗</a></p>
         </section>}
