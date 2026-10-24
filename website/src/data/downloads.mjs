@@ -11,8 +11,10 @@ if (manifest && (manifest.distribution !== true || manifest.repository !== relea
 // One terminal command per platform that installs the published app; shown with the downloads.
 const appImage = 'Monoprint-linux-x64.AppImage';
 export const installs = manifest ? [
-  { platform: 'macOS', command: 'brew install --cask ozanvos/tap/monoprint' },
-  { platform: 'Linux', command: `curl -fLO https://github.com/${release.repository}/releases/latest/download/${appImage} && chmod +x ${appImage} && ./${appImage}` },
+  { platform: 'macOS', command: 'brew install --cask ozanvos/tap/monoprint', copy: true },
+  // Download-and-run commands written to the clipboard by a script look like ClickFix
+  // malware to content blockers (uBlock Origin blocks the copy), so this one is select-only.
+  { platform: 'Linux', copy: false, command: `curl -fLO https://github.com/${release.repository}/releases/latest/download/${appImage} && chmod +x ${appImage} && ./${appImage}` },
 ] : [];
 export const downloads = manifest ? [
   { ...manifest.downloads['macos-arm64'], label: 'Download for macOS', detail: 'Apple Silicon · ZIP' },
