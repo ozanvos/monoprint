@@ -2,7 +2,11 @@
 
 Render code as PNG, SVG or HTML with the Monoprint Rust renderer.
 Prebuilt packages target Node.js 22+ on macOS arm64/x64, Linux glibc arm64/x64
-and Windows x64. The package has not been published to npm yet.
+and Windows x64.
+
+```sh
+npm install monoprint
+```
 
 ```ts
 import { writeFile } from 'node:fs/promises';
@@ -45,7 +49,7 @@ const svg = await renderer.svg('fn main() {}', {
 `getThemes()` and `getLanguages()` return the available IDs and aliases.
 `Font.fromBytes()` loads a single-face TTF/OTF. Rendering does not read files,
 load system fonts or access the network. The caller handles file IO.
-See the [API reference](../../docs/node-api.md) for options, defaults, fonts,
+See the [API reference](https://github.com/ozanvos/monoprint/blob/main/docs/node-api.md) for options, defaults, fonts,
 errors, limits and server bundling.
 
 ## Build
@@ -64,6 +68,6 @@ TypeScript consumers need `@types/node`. Prebuilt installations need no Rust
 toolchain or install script. Keep the native package external in server bundles;
 browser and edge runtimes are unsupported.
 
-See [package builds and publishing](../../docs/node-packaging.md) for tarballs,
+See [package builds and publishing](https://github.com/ozanvos/monoprint/blob/main/docs/node-packaging.md) for tarballs,
 the platform matrix and release commands. Original code is Apache-2.0;
-[third-party licenses](../../THIRD_PARTY_NOTICES.md) accompany the packages.
+[third-party licenses](https://github.com/ozanvos/monoprint/blob/main/THIRD_PARTY_NOTICES.md) accompany the packages.

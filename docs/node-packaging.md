@@ -22,14 +22,17 @@ The `npm-packages.yml` workflow builds and tests each target, collects the exact
    npm run publish:packages -- --from /path/to/npm-release --dry-run
    ```
 
-4. Public publication is disabled in `release/config.json`. After an approved
-   launch, configure account ownership and trusted publishing for all six names,
-   enable `publicPublishing` in `release/config.json`, and use the reviewed manual release workflow.
-   An explicit local invocation additionally requires:
+4. Public publication is enabled in `release/config.json`, but each invocation
+   still requires approval. Authenticate the npm account that owns all six names
+   with `npm login`, then publish the validated artifacts from that same checkout:
 
    ```sh
    MONOPRINT_PUBLIC_PUBLISH=approved npm run publish:packages -- --from /path/to/npm-release --publish
    ```
+
+   Complete npm's authentication prompts as requested. Do not put credentials in
+   Git or command arguments. `--provenance` is only for a supported CI publisher
+   with OIDC configured; a local first publication does not carry npm provenance.
 
 Platform packages publish first and the main package last. The script uses `--ignore-scripts`; neither packing nor a dry run can trigger hidden publication. Versions on npm are immutable and multi-package publication is not atomic. If publication stops partway, inventory the published versions, compare their archive integrity to the saved manifest, and publish only the remaining unchanged tarballs with `npm publish /path/to/file.tgz --access public --ignore-scripts`. Do not rebuild different binaries under the same version. Optional `--tag next` selects a prerelease dist-tag; prerelease versions default to `next`.
 
