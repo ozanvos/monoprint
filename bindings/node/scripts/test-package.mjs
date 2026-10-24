@@ -41,8 +41,9 @@ try {
   const cli = path.join(consumer, 'node_modules', pkg.name, installed.bin.monoprint);
   // npm exec uses the same bin inference as npx; run offline to forbid a registry fallback.
   const help = npm(['exec', '--offline', '--', `${pkg.name}@${pkg.version}`, '--help'], { cwd: consumer, stdio: 'pipe' }).toString();
-  assert.match(help, /Usage: monoprint/);
+  assert.match(help, /Usage: monoprint \[OPTIONS\]/);
   assert.match(help, /--highlight-text/);
+  assert.equal(npm(['exec', '--offline', '--', `${pkg.name}@${pkg.version}`], { cwd: consumer, stdio: 'pipe' }).toString(), help);
   assert.equal(npm(['exec', '--offline', '--', pkg.name, '--version'], { cwd: consumer, stdio: 'pipe' }).toString().trim(), `monoprint ${pkg.version}`);
   // Pass stdin and binary stdout through the wrapper, without an external CLI on PATH.
   const cleanEnv = { ...process.env, PATH: '' };

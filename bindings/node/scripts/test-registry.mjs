@@ -13,6 +13,8 @@ try {
   run(command, [...(npmCli ? [npmCli] : []), 'install', `${pkg.name}@${pkg.version}`, '--ignore-scripts', '--no-audit', '--no-fund', '--registry', 'https://registry.npmjs.org'], { cwd: folder });
   const version = run(command, [...(npmCli ? [npmCli] : []), 'exec', '--offline', '--', `${pkg.name}@${pkg.version}`, '--version'], { cwd: folder, stdio: 'pipe' }).toString().trim();
   assert.equal(version, `monoprint ${pkg.version}`);
+  const help = run(command, [...(npmCli ? [npmCli] : []), 'exec', '--offline', '--', `${pkg.name}@${pkg.version}`], { cwd: folder, stdio: 'pipe' }).toString();
+  assert.match(help, /Usage: monoprint/);
   const launcher = path.join(folder, 'node_modules', pkg.name, pkg.bin.monoprint);
   const image = run(process.execPath, [launcher, '-', '--language', 'ts', '--scale', '1', '--format', 'png', '-o', '-'],
     { cwd: folder, env: { ...process.env, PATH: '' }, input: 'const n = 42;\n', stdio: ['pipe', 'pipe', 'pipe'] });
