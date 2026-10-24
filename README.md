@@ -23,6 +23,15 @@ or adopting an existing manual installation.
 Direct downloads for macOS and Linux are on the
 [website](https://monoprint.7ea.st/#downloads). Windows downloads are coming later.
 
+For Node.js 22+ applications:
+
+```sh
+npm install monoprint
+```
+
+The [Node.js API](bindings/node/README.md) includes prebuilt bindings for macOS
+arm64/x64, Linux glibc arm64/x64, and Windows x64. No Rust toolchain is needed.
+
 ## Build from source
 
 Requires Rust 1.97 or newer and a C compiler. The desktop app also needs the
