@@ -5,6 +5,7 @@
   "homepage": "https://monoprint.7ea.st",
   "desktopPlatforms": [
     "macos-arm64",
-    "linux-x64"
+    "linux-x64",
+    "linux-arm64"
   ]
 }

@@ -8,11 +8,22 @@ import sys
 import tempfile
 import unittest
 from unittest.mock import patch
-from desktop_updates import https_url, sparkle_settings, velopack_settings
+from desktop_updates import https_url, sparkle_settings, velopack_settings, linuxdeploy_settings
 import macos_release as release
 
 
 class UpdateReleaseTests(unittest.TestCase):
+    def test_linuxdeploy_is_pinned_per_architecture(self):
+        x64_url, x64_hash = linuxdeploy_settings('linux-x64')
+        arm_url, arm_hash = linuxdeploy_settings('linux-arm64')
+        self.assertTrue(x64_url.endswith('/linuxdeploy-x86_64.AppImage'))
+        self.assertTrue(arm_url.endswith('/linuxdeploy-aarch64.AppImage'))
+        self.assertNotEqual(x64_hash, arm_hash)
+        for digest in [x64_hash, arm_hash]:
+            self.assertRegex(digest, r'^[a-f0-9]{64}$')
+        with self.assertRaises(KeyError):
+            linuxdeploy_settings('linux-armhf')
+
     def test_feed_generator_refuses_unsigned_local_artifacts_before_creating_output(self):
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)

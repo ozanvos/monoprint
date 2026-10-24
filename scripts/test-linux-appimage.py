@@ -25,7 +25,7 @@ args = parser.parse_args()
 source = args.source.resolve()
 root = Path(__file__).resolve().parents[1]
 receipt = json.loads((source / 'manifest.json').read_text())
-assert receipt['runtime'] == 'linux-x64'
+assert receipt['runtime'] in ('linux-x64', 'linux-arm64')
 original, = source.glob('*.AppImage')
 with tempfile.TemporaryDirectory(prefix='monoprint-linux-qualification-') as temporary:
     fixture = Path(temporary)
@@ -47,6 +47,7 @@ with tempfile.TemporaryDirectory(prefix='monoprint-linux-qualification-') as tem
         '--target-dir', str(root / 'target/gui'), '--test', 'linux_update', '--', '--ignored', '--nocapture',
     ], check=True, env=os.environ | {
         'MONOPRINT_UPDATE_FIXTURE': str(fixture), 'MONOPRINT_PACKAGE_SOURCE': str(source),
+        'MONOPRINT_TEST_UPDATE_CHANNEL': receipt['runtime'],
     })
     expected = digest(original)
     deadline = time.monotonic() + 60
@@ -80,8 +81,18 @@ with tempfile.TemporaryDirectory(prefix='monoprint-linux-qualification-') as tem
                     raise RuntimeError('Native Monoprint window did not open:\n' + log.read())
                 # Graceful application Quit flushes the saved draft. Testing the
                 # same session again catches startup and restart regressions.
-                subprocess.run(['xdotool', 'key', '--window', window, 'ctrl+q'], check=True)
-                assert process.wait(timeout=30) == 0
+                # Quit can destroy the window before xdotool sends its final
+                # key-release event (BadWindow). The actual success criteria
+                # are a clean application exit and a persisted draft below.
+                quit_input = subprocess.run(
+                    ['xdotool', 'key', '--window', window, 'ctrl+q'],
+                    capture_output=True, text=True,
+                )
+                try:
+                    exit_code = process.wait(timeout=30)
+                except subprocess.TimeoutExpired as error:
+                    raise RuntimeError('Application did not quit:\n' + quit_input.stderr) from error
+                assert exit_code == 0, f'Application exited with {exit_code}: {quit_input.stderr}'
                 assert session.is_file() and json.loads(session.read_text())
             finally:
                 if process.poll() is None:

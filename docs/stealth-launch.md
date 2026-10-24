@@ -1,10 +1,10 @@
 # Desktop launch
 
 The `Desktop release` workflow builds the platforms committed in
-`release/config.json` at one commit. The initial release includes macOS Apple
-Silicon and Linux x64; Windows is deferred until Microsoft verification and
+`release/config.json` at one commit. Releases include macOS Apple
+Silicon and Linux x64/ARM64; Windows is deferred until Microsoft verification and
 Authenticode signing are ready. Windows packaging remains covered by PR CI. It reuses the existing Sparkle and Velopack packagers. Intel
-Macs and ARM Windows/Linux are not included in this initial matrix. Linux builds
+Macs and ARM Windows are not included in this matrix. Linux builds
 require glibc 2.39 (Ubuntu 24.04 or newer) and may need FUSE 2.
 
 Nothing publishes on a push or tag. `publicPublishing` in `release/config.json`
@@ -138,7 +138,7 @@ formats against the shipping bytes.
 
 `release/updates.json` points at GitHub's `releases/latest/download/` directory.
 macOS uses `appcast-macos-arm64.xml`; Windows and Linux use separate
-`releases.win-x64.json` and `releases.linux-x64.json` feeds. Sparkle enclosures and
+`releases.win-x64.json`, `releases.linux-x64.json` and `releases.linux-arm64.json` feeds. Sparkle enclosures and
 website download links use immutable version-tag URLs. Keep old releases and
 packages available. Do not mark a release without all configured platform feeds as
 latest, or publish a lower version over the channel.

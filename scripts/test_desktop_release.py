@@ -22,7 +22,7 @@ class DesktopReleaseTests(unittest.TestCase):
         self.base = 'https://github.com/ozanvos/monoprint/releases'
         self.latest = self.base + '/latest/download/'
         self.receipts = {}
-        for folder in ['macos-app', 'macos-feed', 'desktop-win-x64', 'desktop-linux-x64']:
+        for folder in ['macos-app', 'macos-feed', 'desktop-win-x64', 'desktop-linux-x64', 'desktop-linux-arm64']:
             (self.source / folder).mkdir(parents=True)
         name = 'Monoprint-0.1.0-aarch64-apple-darwin.zip'
         archive = self.source / 'macos-app' / name
@@ -45,7 +45,7 @@ class DesktopReleaseTests(unittest.TestCase):
         (self.source / 'macos-feed/appcast.xml').write_bytes(appcast)
         self.receipts['macos-feed'] = {key: self.receipts['macos-app'][key] for key in ['version', 'commit', 'archive', 'archiveSha256', 'updateFeed']}
         self.receipts['macos-feed'].update(appcast='appcast.xml', appcastSha256=hashlib.sha256(appcast).hexdigest(), publicKey='key')
-        for runtime, suffix in [('win-x64', 'Setup.exe'), ('linux-x64', '.AppImage')]:
+        for runtime, suffix in [('win-x64', 'Setup.exe'), ('linux-x64', '.AppImage'), ('linux-arm64', '.AppImage')]:
             folder = f'desktop-{runtime}'
             self.receipts[folder] = common | {'runtime': runtime, 'channel': runtime,
                 'verified': True, 'updateFeed': self.latest, 'artifacts': []}
@@ -86,6 +86,22 @@ class DesktopReleaseTests(unittest.TestCase):
         self.receipts['macos-app']['signed'] = False
         with self.assertRaisesRegex(ValueError, 'macOS requires signing'):
             self.build(platforms=['macos-arm64', 'linux-x64'])
+
+    def test_linux_architectures_ship_distinct_installers_and_feeds(self):
+        manifest = self.build(platforms=['macos-arm64', 'linux-x64', 'linux-arm64'])
+        for runtime in ['linux-x64', 'linux-arm64']:
+            self.assertEqual(manifest['downloads'][runtime]['file'], f'Monoprint-{runtime}.AppImage')
+            self.assertTrue((self.output / f'releases.{runtime}.json').is_file())
+
+    def test_arm64_cannot_use_x64_update_channel(self):
+        self.receipts['desktop-linux-arm64']['channel'] = 'linux-x64'
+        with self.assertRaisesRegex(ValueError, 'update configuration: linux-arm64'):
+            self.build(platforms=['linux-x64', 'linux-arm64'])
+
+    def test_selected_arm64_artifacts_cannot_be_missing(self):
+        del self.receipts['desktop-linux-arm64']
+        with self.assertRaises(FileNotFoundError):
+            self.build(platforms=['linux-x64', 'linux-arm64'])
 
     def test_selected_linux_cannot_be_missing(self):
         del self.receipts['desktop-linux-x64']

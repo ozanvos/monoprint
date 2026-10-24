@@ -49,7 +49,7 @@ without configured updates make no update-feed requests. Configure the feeds
 before preparing distributable update-enabled packages.
 
 Use a separate feed for each runtime: macOS architecture-specific appcasts,
-`win-x64`, and `linux-x64`. Velopack's feed URL points to a directory
+`win-x64`, `linux-x64`, and `linux-arm64`. Velopack's feed URL points to a directory
 containing `releases.CHANNEL.json` and the package files it references; Sparkle's
 feed URL points to the architecture's appcast XML. Distinct channel filenames
 can share GitHub's latest-download directory; never mix architectures in a feed.
@@ -99,7 +99,9 @@ the complete feeds. See [desktop launch](stealth-launch.md).
 
 ## Prepare Windows and Linux packages
 
-Run these commands on the matching x64 operating system with .NET 8 installed:
+Run these commands on the matching operating system and architecture with .NET 8
+installed. Linux also requires `squashfs-tools` and the native libraries listed in
+`.github/workflows/desktop-app.yml`:
 
 ```sh
 dotnet tool install --global vpk --version 1.2.161
@@ -115,6 +117,12 @@ python3 apps/monoprint-gui/scripts/bundle-desktop.py \
   --linuxdeploy target/update-tools/linuxdeploy.AppImage
 python3 scripts/test-desktop-package.py --from output/linux-updates
 ```
+
+For Linux ARM64, use a native ARM64 host and pass `--runtime linux-arm64` to both
+`prepare-linuxdeploy.py` and `bundle-desktop.py`. The workflow uses Ubuntu 24.04
+ARM64 runners and the same package/update qualification as x64. Each architecture
+gets its own AppImage, full update package, and channel. Package verification checks
+the ELF architecture of the AppImage launcher, application and updater helper.
 
 Feed URLs may be provided with `--update-feed`. The scripts use isolated build
 directories and embed the feed and channel as build inputs. They stage only the
