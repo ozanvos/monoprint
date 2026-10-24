@@ -43,10 +43,6 @@ const parts = [
             {manifest ? <a class="button ink" href="#downloads">Download</a> : <button class="button ink" type="button" disabled title="Downloads are being prepared">Download</button>}
             <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id="command-text">{command(initialTheme)}</code><button class="icon-button" id="copy-command" data-copy="command-text" aria-label="Copy CLI command" title="Copy command" type="button"><Icon name="copy"/></button></div>
           </div>
-          {installs.length > 0 && <div class="install" role="list" aria-label="Install from a terminal">{installs.map(install => <div class="install-row" role="listitem">
-            <span class="install-platform">{install.platform}</span>
-            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id={`install-${install.platform.toLowerCase()}`}>{install.command}</code><button class="icon-button" data-copy={`install-${install.platform.toLowerCase()}`} aria-label={`Copy ${install.platform} install command`} title="Copy command" type="button"><Icon name="copy"/></button></div>
-          </div>)}</div>}
         </section>
 
         <section class="app-section" aria-label="App screenshot"><AppScreenshot /></section>
@@ -59,10 +55,11 @@ const parts = [
             <a class="button ink" href={download.url}>{download.label}</a>
             <p>{download.detail}</p>
           </div>)}</div>
-          <p>On macOS, install the app and CLI with <a href="https://github.com/ozanvos/homebrew-tap">Homebrew</a>:</p>
-          <pre class="install-command"><code>{installs[0].command}</code></pre>
-          <p>On Linux, download and open the AppImage; it offers to install itself for your user:</p>
-          <pre class="install-command"><code>{installs[1].command}</code></pre>
+          <p>Or install from a terminal: the app and CLI with <a href="https://github.com/ozanvos/homebrew-tap">Homebrew</a> on macOS, or the AppImage on Linux, which offers to install itself for your user.</p>
+          <div class="install" role="list" aria-label="Install from a terminal">{installs.map(install => <div class="install-row" role="listitem">
+            <span class="install-platform">{install.platform}</span>
+            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id={`install-${install.platform.toLowerCase()}`}>{install.command}</code><button class="icon-button" data-copy={`install-${install.platform.toLowerCase()}`} aria-label={`Copy ${install.platform} install command`} title="Copy command" type="button"><Icon name="copy"/></button></div>
+          </div>)}</div>
           <p><a href={`${repository}/releases/tag/${manifest.tag}`}>Release notes, checksums and signatures ↗</a></p>
         </section>}
 

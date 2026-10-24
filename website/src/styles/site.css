@@ -109,7 +109,7 @@ img {
 .downloads p { font-size: 12px; line-height: 1.7; }
 .download-platforms { display: flex; flex-wrap: wrap; gap: 24px; margin: 24px 0; }
 .download-platforms p { margin-top: 8px; color: var(--muted); }
-.downloads .install-command { margin: 8px 0 16px; font-size: 12px; line-height: 1.7; white-space: pre-wrap; overflow-wrap: anywhere; }
+.downloads .install { margin: 12px 0 20px; }
 
 .skip-link {
   position: absolute;
