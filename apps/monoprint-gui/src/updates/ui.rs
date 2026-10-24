@@ -1,4 +1,6 @@
 use crate::{studio::*, updates::Status};
+#[cfg(target_os = "linux")]
+use gpui_kit::component::menu::DropdownMenu;
 use gpui_kit::*;
 #[cfg(not(target_os = "macos"))]
 use gpui_kit::{
@@ -16,6 +18,8 @@ impl Studio {
         if let Status::Disabled(reason) = &self.updates.read(cx).status {
             self.notice = Some(reason.clone());
         } else {
+            self.show_update_status = true;
+            self.dismissed_update_status = None;
             self.updates.update(cx, |updates, cx| updates.check(cx));
         }
         cx.notify();
@@ -71,29 +75,159 @@ impl Studio {
         }
     }
 
-    pub fn update_bar(&self, cx: &Context<Self>) -> Option<AnyElement> {
-        #[cfg(target_os = "macos")]
+    /// App management stays in a menu; the workspace only shows actionable or
+    /// explicitly requested update feedback, which can always be dismissed.
+    pub fn update_notification(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        #[cfg(not(target_os = "linux"))]
         {
             let _ = cx;
             None
         }
-        #[cfg(not(target_os = "macos"))]
+        #[cfg(target_os = "linux")]
         {
             let updates = self.updates.read(cx);
-            #[cfg(target_os = "linux")]
-            let installed = super::linux_install::Installation::for_user()
-                .is_ok_and(|install| install.installed());
-            #[cfg(target_os = "linux")]
-            let installable = std::env::var_os("APPIMAGE").is_some() && !installed;
-            #[cfg(not(target_os = "linux"))]
-            let installable = false;
-            #[cfg(not(target_os = "linux"))]
-            let installed = false;
-            #[cfg(target_os = "linux")]
+            if self.dismissed_update_status.as_ref() == Some(&updates.status) {
+                return None;
+            }
+            let text = updates.status.notification(self.show_update_status)?;
+            let ready = matches!(updates.status, Status::Ready(_));
+            let failed = matches!(updates.status, Status::Failed(_));
             let installing = self.installing;
-            #[cfg(not(target_os = "linux"))]
-            let installing = false;
-            if !updates.available() && !installable && !installed {
+            let p = crate::appearance::palette(cx);
+            Some(
+                div()
+                    .id("update-notification")
+                    .flex()
+                    .items_center()
+                    .gap_2()
+                    .mx_5()
+                    .mb_3()
+                    .p_3()
+                    .rounded_md()
+                    .bg(rgb(p.accent).opacity(0.12))
+                    .text_color(rgb(p.accent))
+                    .child(div().flex_1().min_w_0().text_size(px(12.)).child(text))
+                    .when(ready, |view| {
+                        view.child(
+                            Button::new("restart-to-update")
+                                .small()
+                                .primary()
+                                .label("Restart to update")
+                                .disabled(installing)
+                                .on_click(cx.listener(|this, _, window, cx| {
+                                    this.restart_to_update(&RestartToUpdate, window, cx)
+                                })),
+                        )
+                    })
+                    .when(failed, |view| {
+                        view.child(Button::new("retry-update").small().label("Retry").on_click(
+                            cx.listener(|this, _, window, cx| {
+                                this.check_for_updates(&CheckForUpdates, window, cx)
+                            }),
+                        ))
+                    })
+                    .child(
+                        Button::new("dismiss-update")
+                            .small()
+                            .ghost()
+                            .label("Dismiss")
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.show_update_status = false;
+                                this.dismissed_update_status =
+                                    Some(this.updates.read(cx).status.clone());
+                                cx.notify();
+                            })),
+                    )
+                    .into_any_element(),
+            )
+        }
+    }
+
+    pub fn linux_title_bar(&self, cx: &Context<Self>) -> AnyElement {
+        #[cfg(not(target_os = "linux"))]
+        {
+            let _ = cx;
+            div().into_any_element()
+        }
+        #[cfg(target_os = "linux")]
+        {
+            let updates = self.updates.clone();
+            let focus = self.focus.clone();
+            let installed = self.installed_for_user;
+            let installing = self.installing;
+            let p = crate::appearance::palette(cx);
+            TitleBar::new()
+                .bg(rgb(p.surface))
+                .border_color(rgb(p.border))
+                .on_close_window(|_, _, cx| cx.quit())
+                .child(
+                    Button::new("application-menu")
+                        .small()
+                        .ghost()
+                        .label("Monoprint")
+                        .icon(gpui_kit::assets::IconName::ChevronDown)
+                        .accessibility_label("Monoprint menu")
+                        .dropdown_menu(move |menu, _, cx| {
+                            let installable = std::env::var_os("APPIMAGE").is_some() && !installed;
+                            let updates = updates.read(cx);
+                            let busy =
+                                matches!(updates.status, Status::Checking | Status::Downloading);
+                            let ready = matches!(updates.status, Status::Ready(_));
+                            menu.action_context(focus.clone())
+                                .menu("Open Source…", Box::new(OpenSource))
+                                .menu("Export Image…", Box::new(ExportImage))
+                                .separator()
+                                .menu_with_disabled(
+                                    "Check for Updates…",
+                                    Box::new(CheckForUpdates),
+                                    busy || ready,
+                                )
+                                .menu_with_check_and_disabled(
+                                    "Automatic Update Checks",
+                                    updates.automatic,
+                                    Box::new(ToggleAutomaticUpdates),
+                                    !updates.available(),
+                                )
+                                .when(ready, |menu| {
+                                    menu.menu_with_disabled(
+                                        "Restart to Update",
+                                        Box::new(RestartToUpdate),
+                                        installing,
+                                    )
+                                })
+                                .when(installable, |menu| {
+                                    menu.separator().menu_with_disabled(
+                                        "Install for This User…",
+                                        Box::new(InstallForUser),
+                                        installing,
+                                    )
+                                })
+                                .when(installed, |menu| {
+                                    menu.separator().menu_with_disabled(
+                                        "Uninstall Monoprint…",
+                                        Box::new(UninstallApp),
+                                        installing,
+                                    )
+                                })
+                                .separator()
+                                .menu("Monoprint Support", Box::new(OpenSupport))
+                                .menu("Quit Monoprint", Box::new(Quit))
+                        }),
+                )
+                .into_any_element()
+        }
+    }
+
+    pub fn update_bar(&self, cx: &Context<Self>) -> Option<AnyElement> {
+        #[cfg(not(target_os = "windows"))]
+        {
+            let _ = cx;
+            None
+        }
+        #[cfg(target_os = "windows")]
+        {
+            let updates = self.updates.read(cx);
+            if !updates.available() {
                 return None;
             }
             let text = match &updates.status {
@@ -153,30 +287,8 @@ impl Studio {
                                 .small()
                                 .primary()
                                 .label("Restart to update")
-                                .disabled(installing)
                                 .on_click(cx.listener(|this, _, window, cx| {
                                     this.restart_to_update(&RestartToUpdate, window, cx)
-                                })),
-                        )
-                    })
-                    .when(installable, |bar| {
-                        bar.child(
-                            Button::new("install-for-user")
-                                .small()
-                                .label("Install for this user")
-                                .disabled(installing)
-                                .on_click(cx.listener(|this, _, window, cx| {
-                                    this.install_for_user(&InstallForUser, window, cx)
-                                })),
-                        )
-                    })
-                    .when(installed, |bar| {
-                        bar.child(
-                            Button::new("uninstall-app")
-                                .small()
-                                .label("Uninstall…")
-                                .on_click(cx.listener(|this, _, window, cx| {
-                                    this.uninstall_app(&UninstallApp, window, cx)
                                 })),
                         )
                     })
@@ -222,6 +334,7 @@ impl Studio {
                 let _ = this.update(cx, |this, cx| {
                     this.installing = false;
                     match result.and_then(|path| {
+                        this.installed_for_user = true;
                         // Edits may have continued during the AppImage copy.
                         this.session.save(this.revision, &this.document)?;
                         std::process::Command::new(path)
@@ -285,6 +398,7 @@ impl Studio {
                     match result {
                         Ok(()) => cx.quit(),
                         Err(error) => {
+                            this.installed_for_user = install.installed();
                             this.session.set_saving_enabled(true);
                             this.notice = Some(format!("Could not uninstall: {error:#}"));
                             cx.notify();

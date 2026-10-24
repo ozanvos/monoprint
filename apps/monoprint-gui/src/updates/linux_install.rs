@@ -9,6 +9,27 @@ use std::{
 
 const ICON: &str = include_str!("../../assets/monoprint.svg");
 
+/// Velopack replaces the AppImage through its containing directory. Opening
+/// the running image for writing fails with ETXTBSY even when replacement is
+/// permitted, so probe a temporary sibling instead. Never modify the image.
+pub fn ensure_appimage_replaceable(image: &Path) -> Result<()> {
+    let image = image
+        .canonicalize()
+        .context("Cannot locate the running AppImage")?;
+    ensure!(image.is_file(), "The AppImage path is not a regular file");
+    let parent = image
+        .parent()
+        .context("The AppImage has no parent directory")?;
+    let probe = tempfile::Builder::new()
+        .prefix(".monoprint-update-check-")
+        .tempfile_in(parent)
+        .with_context(|| format!("Cannot create an update in {}. Move the AppImage to a writable folder or install it for this user", parent.display()))?;
+    probe
+        .close()
+        .context("Cannot remove the temporary update check")?;
+    Ok(())
+}
+
 #[derive(Clone)]
 pub struct Installation {
     pub image: PathBuf,
@@ -198,6 +219,34 @@ fn exec_path(path: &Path) -> Result<String> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn running_executable_can_be_replaced_without_opening_it_for_write() {
+        let directory = tempfile::tempdir().unwrap();
+        let image = directory.path().join("Monoprint.AppImage");
+        fs::copy("/bin/sleep", &image).unwrap();
+        let before = fs::read(&image).unwrap();
+        let mut process = std::process::Command::new(&image)
+            .arg("30")
+            .spawn()
+            .unwrap();
+        let write_error = fs::OpenOptions::new().write(true).open(&image).unwrap_err();
+        let replaceable = ensure_appimage_replaceable(&image);
+        process.kill().unwrap();
+        process.wait().unwrap();
+        assert_eq!(write_error.raw_os_error(), Some(26), "expected ETXTBSY");
+        replaceable.unwrap();
+        assert_eq!(fs::read(&image).unwrap(), before);
+        assert_eq!(fs::read_dir(directory.path()).unwrap().count(), 1);
+    }
+
+    #[test]
+    fn missing_image_and_directory_paths_are_not_update_targets() {
+        let directory = tempfile::tempdir().unwrap();
+        assert!(ensure_appimage_replaceable(&directory.path().join("missing")).is_err());
+        assert!(ensure_appimage_replaceable(directory.path()).is_err());
+    }
 
     #[test]
     fn install_is_executable_and_uninstall_preserves_draft_by_default() {

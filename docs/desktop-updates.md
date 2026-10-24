@@ -17,19 +17,22 @@ downloads run outside GPUI's foreground executor. A downloaded update displays
 **Restart to update**. The action saves the current draft before starting the
 Velopack helper and uses normal application quit. A failed save or helper launch
 keeps the application open. Pending updates survive relaunch; Velopack's
-automatic apply-on-startup is disabled so it cannot bypass this flow. The bottom
-bar includes manual checks and a persisted automatic-check switch.
+automatic apply-on-startup is disabled so it cannot bypass this flow. Windows
+keeps manual checks and the persisted automatic-check switch in its bottom bar;
+Linux exposes these through the Monoprint menu.
 
-On Linux, opening the AppImage offers **Install for this user**. This copies it
+On Linux, the **Monoprint** title-bar menu offers **Install for This User…**
+when running an AppImage that has not been integrated. This copies it
 to `~/Applications/Monoprint/Monoprint.AppImage`, registers an application menu
 entry under `$XDG_DATA_HOME/applications`, and installs the icon. The operation
 does not require root and does not overwrite existing files. After copying,
 Monoprint saves any edits made during installation and launches the installed
 copy. The original download remains available for the user to delete.
 
-**Uninstall…** removes that installation and launcher. It separately offers to
-keep or delete the saved draft and automatic-check setting. Deletion disables
-queued preview and quit saves before removing the data. Edited launchers and
+**Uninstall Monoprint…** in the same menu removes that installation and launcher.
+It separately offers to keep or delete the saved draft and automatic-check
+setting. Deletion disables queued preview and quit saves before removing the
+data. Edited launchers and
 unrecognized installations require manual removal; arbitrary folders and
 `MONOPRINT_SESSION` overrides are never recursively deleted.
 
@@ -38,7 +41,18 @@ Linux update downloads use a per-user cache at
 The update cache and original downloaded AppImage are not removed by uninstall.
 Flatpak and Snap defer to their package manager. Other packagers can set
 `MONOPRINT_UPDATE_EXPLANATION` to an explanation shown by Check for Updates.
-An AppImage in an unwritable location cannot self-update.
+An AppImage in an unwritable location cannot self-update. The startup check
+creates and removes a temporary file beside the image to verify that updates can
+be staged there. It never opens the running executable for writing, which Linux
+rejects with `ETXTBSY` even in a writable folder.
+
+Linux uses the GPUI Kit title bar for window controls, dragging, maximize/restore
+and the application menu, with Root owning resize borders. Initial bounds fit
+inside the display's visible area, and minimum bounds never exceed that area.
+Installation and update settings do not occupy a permanent footer. Background
+checks stay quiet unless an update is ready or a check fails; feedback can be
+dismissed, and manual checks show their progress and result. A dismissed ready
+update remains available through **Restart to Update** in the menu.
 
 ## Release configuration
 

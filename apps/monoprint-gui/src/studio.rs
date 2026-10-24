@@ -140,9 +140,13 @@ impl InspectorSection {
 
 pub struct Studio {
     pub updates: Entity<crate::updates::Updates>,
+    pub show_update_status: bool,
+    pub dismissed_update_status: Option<crate::updates::Status>,
     pub(super) session: Arc<document::SessionStore>,
     #[cfg(target_os = "linux")]
     pub(super) installing: bool,
+    #[cfg(target_os = "linux")]
+    pub(super) installed_for_user: bool,
     pub document: Document,
     pub editor: Entity<EditorState>,
     pub title: Entity<InputState>,
@@ -432,9 +436,14 @@ impl Studio {
         subscriptions.push(cx.observe(&updates, |_, _, cx| cx.notify()));
         let mut this = Self {
             updates,
+            show_update_status: false,
+            dismissed_update_status: None,
             session,
             #[cfg(target_os = "linux")]
             installing: false,
+            #[cfg(target_os = "linux")]
+            installed_for_user: crate::updates::linux_install::Installation::for_user()
+                .is_ok_and(|installation| installation.installed()),
             document,
             editor,
             title,

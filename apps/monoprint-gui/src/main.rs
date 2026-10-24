@@ -23,6 +23,7 @@ mod studio;
 mod updates;
 mod view;
 mod viewport;
+mod window_setup;
 use gpui_kit::{
     component::{Root, input},
     *,
@@ -154,11 +155,13 @@ fn main() {
                 ],
             },
         ]);
-        let bounds = Bounds::centered(None, size(px(1440.), px(900.)), cx);
+        let (bounds, minimum) = window_setup::initial_bounds(cx);
         cx.open_window(
             WindowOptions {
                 window_bounds: Some(WindowBounds::Windowed(bounds)),
-                window_min_size: Some(size(px(1100.), px(700.))),
+                window_min_size: Some(minimum),
+                app_id: cfg!(target_os = "linux").then(|| "app.monoprint.studio".into()),
+                window_decorations: cfg!(target_os = "linux").then_some(WindowDecorations::Client),
                 window_background: if cfg!(target_os = "macos") {
                     // The unmodified AppKit material is installed below.
                     WindowBackgroundAppearance::Transparent
@@ -167,7 +170,7 @@ fn main() {
                 },
                 titlebar: Some(TitlebarOptions {
                     title: Some("Monoprint".into()),
-                    appears_transparent: true,
+                    appears_transparent: !cfg!(target_os = "linux"),
                     traffic_light_position: Some(point(px(13.), px(14.))),
                 }),
                 // Route custom-header gestures through GPUI instead of AppKit,

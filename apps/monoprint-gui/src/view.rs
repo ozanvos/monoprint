@@ -126,6 +126,9 @@ impl Render for Studio {
                     cx.propagate();
                 }
             }))
+            .when(cfg!(target_os = "linux"), |view| {
+                view.child(self.linux_title_bar(cx))
+            })
             .child(
                 div()
                     .flex()
@@ -964,6 +967,7 @@ impl Studio {
                         }),
                 )
             })
+            .children(self.update_notification(cx))
             .when_some(self.notice.clone(), |view, notice| {
                 view.child(
                     div()

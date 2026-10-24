@@ -24,6 +24,22 @@ pub enum Status {
     Failed(String),
 }
 
+impl Status {
+    #[cfg_attr(not(target_os = "linux"), allow(dead_code))]
+    pub fn notification(&self, requested: bool) -> Option<String> {
+        match self {
+            Self::Ready(version) => Some(format!("Monoprint {version} is ready to install")),
+            Self::Failed(error) => Some(format!("Could not update: {error}")),
+            Self::Checking if requested => Some("Checking for updates…".into()),
+            Self::Downloading if requested => Some("Downloading update…".into()),
+            Self::Current if requested => Some("Monoprint is up to date".into()),
+            Self::Idle | Self::Disabled(_) | Self::Checking | Self::Downloading | Self::Current => {
+                None
+            }
+        }
+    }
+}
+
 pub struct Updates {
     pub status: Status,
     pub automatic: bool,
@@ -252,10 +268,7 @@ fn manager() -> anyhow::Result<UpdateManager> {
         );
         let image = std::env::var_os("APPIMAGE")
             .ok_or_else(|| anyhow::anyhow!("Updates are available in the AppImage"))?;
-        anyhow::ensure!(
-            std::fs::OpenOptions::new().write(true).open(image).is_ok(),
-            "Move the AppImage to a writable location to enable updates"
-        );
+        linux_install::ensure_appimage_replaceable(std::path::Path::new(&image))?;
     }
     let feed = option_env!("MONOPRINT_UPDATE_URL")
         .ok_or_else(|| anyhow::anyhow!("Updates are not configured for this build"))?;
@@ -305,4 +318,34 @@ fn linux_locator() -> anyhow::Result<velopack::locator::VelopackLocatorConfig> {
         PackagesDir: cache,
         IsPortable: true,
     })
+}
+
+#[cfg(test)]
+mod notification_tests {
+    use super::Status;
+
+    #[test]
+    fn background_checks_and_unavailable_updates_do_not_occupy_the_workspace() {
+        for status in [
+            Status::Idle,
+            Status::Disabled("Package managed".into()),
+            Status::Checking,
+            Status::Downloading,
+            Status::Current,
+        ] {
+            assert!(status.notification(false).is_none());
+        }
+    }
+
+    #[test]
+    fn manual_checks_and_actionable_results_have_feedback() {
+        assert!(Status::Checking.notification(true).is_some());
+        assert!(Status::Current.notification(true).is_some());
+        assert!(Status::Ready("1.2.3".into()).notification(false).is_some());
+        assert!(
+            Status::Failed("Offline".into())
+                .notification(false)
+                .is_some()
+        );
+    }
 }
