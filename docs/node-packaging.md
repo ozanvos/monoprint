@@ -14,7 +14,37 @@ The build produces both the Node binding and the existing Rust CLI for the selec
 
 The last command packs the host binaries and installs the tarballs into a clean, relocated consumer. It tests offline `npm exec` command discovery, CLI rendering and exit codes, ESM, CommonJS, TypeScript resolution and a server bundle with install scripts disabled. These local-only artifacts cannot be published by the release script.
 
-The `npm-packages.yml` workflow builds and tests each target, collects the exact binaries and their source/checksum receipts, then uploads a complete `npm-release` artifact. No workflow step publishes anything. To publish:
+The `npm-packages.yml` workflow builds and tests each target, collects the exact binaries and their source/checksum receipts, then uploads a complete `npm-release` artifact. It does not publish.
+
+## GitHub Actions publication
+
+The **Release candidate** workflow (`release.yml`) supports npm-only releases through GitHub OIDC. It uses the existing `public-release` environment, runs the source checks and all five native package tests, and publishes the verified tarballs with provenance. No npm token secret is needed. A push or tag never publishes by itself.
+
+For each release, update all package versions and the release notes, merge the source, and create its `vVERSION` tag. Dispatch from that tag:
+
+```sh
+gh workflow run release.yml --ref vVERSION -f npm_only=true -f publish=true -f tag=vVERSION
+```
+
+To check the live OIDC relationships without building or uploading packages:
+
+```sh
+gh workflow run release.yml --ref main -f npm_only=true -f publish=false
+```
+
+Each of the six npm packages must trust **ozanvos/monoprint**, workflow **release.yml**, environment **public-release**, with direct publishing allowed. Configure this once using npm 11.15+ and an interactive maintainer login:
+
+```sh
+npm trust github PACKAGE --repo ozanvos/monoprint --file release.yml --environment public-release --allow-publish --yes
+```
+
+Replace `PACKAGE` with `monoprint` and each platform package listed in `bindings/node/targets.json`. Inspect existing configurations with `npm trust list PACKAGE`; preserve unrelated publishers. Setup requires npm 2FA. A new configuration must complete its first successful publish within two days or npm expires it. See [npm trusted publishing](https://docs.npmjs.com/trusted-publishers/).
+
+The release waits up to 30 minutes for npm's publish-time scan, checks the public archive integrity against the CI artifacts, then installs the registry package and tests the CLI and Node API. Availability delay does not mean the upload failed; do not rebuild or replace an already accepted version.
+
+## Manual recovery publication
+
+For an explicitly authorized local publication:
 
 1. Set the final npm package name and optional repository metadata in `package.json`. The default name is `monoprint`; ownership/availability must be checked for it and all five platform names before publication. Keep the npm and `monoprint-node` Cargo versions equal, update the npm lock, and commit the intended source.
 2. Run the workflow and download its `npm-release` artifact into a fresh directory. Every declared target must pass its native runtime tests. The artifact contains `manifest.json` and `tarballs/`.
