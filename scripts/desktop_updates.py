@@ -11,6 +11,13 @@ def configuration():
     return json.loads((ROOT / 'release/updates.json').read_text())
 
 
+def linuxdeploy_settings(runtime):
+    config = configuration()['linuxdeploy']
+    archive = config['archives'][runtime]
+    return (f"https://github.com/linuxdeploy/linuxdeploy/releases/download/{config['version']}/{archive['file']}",
+            archive['sha256'])
+
+
 def https_url(value):
     parsed = urlsplit(value or '')
     if parsed.scheme != 'https' or not parsed.hostname or parsed.username or parsed.password or parsed.fragment:

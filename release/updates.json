@@ -7,13 +7,23 @@
   },
   "linuxdeploy": {
     "version": "1-alpha-20251107-1",
-    "archiveSha256": "c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d"
+    "archives": {
+      "linux-x64": {
+        "file": "linuxdeploy-x86_64.AppImage",
+        "sha256": "c20cd71e3a4e3b80c3483cef793cda3f4e990aca14014d23c544ca3ce1270b4d"
+      },
+      "linux-arm64": {
+        "file": "linuxdeploy-aarch64.AppImage",
+        "sha256": "620095110d693282b8ebeb244a95b5e911cf8f65f76c88b4b47d16ae6346fcff"
+      }
+    }
   },
   "velopack": {
     "version": "1.2.161",
     "feeds": {
       "win-x64": "https://github.com/ozanvos/monoprint/releases/latest/download/",
-      "linux-x64": "https://github.com/ozanvos/monoprint/releases/latest/download/"
+      "linux-x64": "https://github.com/ozanvos/monoprint/releases/latest/download/",
+      "linux-arm64": "https://github.com/ozanvos/monoprint/releases/latest/download/"
     }
   }
 }
