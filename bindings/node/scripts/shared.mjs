@@ -9,6 +9,7 @@ export const root = path.resolve(directory, '../..');
 export const readJson = async file => JSON.parse(await fs.readFile(file, 'utf8'));
 export const pkg = await readJson(path.join(directory, 'package.json'));
 export const targets = await readJson(path.join(directory, 'targets.json'));
+export const cliFile = target => `monoprint.${target.id}${target.os === 'win32' ? '.exe' : ''}`;
 export const sha256 = bytes => createHash('sha256').update(bytes).digest('hex');
 export const revision = () => run('git', ['rev-parse', 'HEAD'], { stdio: 'pipe' }).toString().trim();
 export const isDirty = () => run('git', ['status', '--porcelain'], { stdio: 'pipe' }).toString().trim() !== '';

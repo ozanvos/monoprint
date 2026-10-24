@@ -35,6 +35,32 @@ try {
   await fs.rename(original, consumer);
   const main = manifest.tarballs.find(t => t.name === pkg.name);
   assert.ok(!main.files.some(f => f.endsWith('.node')), 'Main package must not include the build host binary');
+  assert.ok(main.files.includes(pkg.bin.monoprint), 'Main package must include its npm executable');
+  const installed = await readJson(path.join(consumer, 'node_modules', pkg.name, 'package.json'));
+  assert.deepEqual(installed.bin, { monoprint: 'dist/cli.cjs' });
+  const cli = path.join(consumer, 'node_modules', pkg.name, installed.bin.monoprint);
+  // npm exec uses the same bin inference as npx; run offline to forbid a registry fallback.
+  const help = npm(['exec', '--offline', '--', `${pkg.name}@${pkg.version}`, '--help'], { cwd: consumer, stdio: 'pipe' }).toString();
+  assert.match(help, /Usage: monoprint \[OPTIONS\]/);
+  assert.match(help, /--highlight-text/);
+  assert.equal(npm(['exec', '--offline', '--', `${pkg.name}@${pkg.version}`], { cwd: consumer, stdio: 'pipe' }).toString(), help);
+  assert.equal(npm(['exec', '--offline', '--', pkg.name, '--version'], { cwd: consumer, stdio: 'pipe' }).toString().trim(), `monoprint ${pkg.version}`);
+  // Pass stdin and binary stdout through the wrapper, without an external CLI on PATH.
+  const cleanEnv = { ...process.env, PATH: '' };
+  const image = run(process.execPath, [cli, '-', '--language', 'ts', '--scale', '1', '--format', 'png', '-o', '-'],
+    { cwd: consumer, env: cleanEnv, input: 'const answer = 42;\n', stdio: ['pipe', 'pipe', 'pipe'] });
+  assert.equal(image.subarray(0, 8).toString('hex'), '89504e470d0a1a0a');
+  const input = path.join(consumer, 'example with spaces.ts');
+  const output = path.join(consumer, 'example with spaces.svg');
+  await fs.writeFile(input, 'const answer = 42;\n');
+  npm(['exec', '--offline', '--', pkg.name, input, '-o', output], { cwd: consumer });
+  assert.match(await fs.readFile(output, 'utf8'), /<svg/);
+  const invalid = spawnSync(process.execPath, [cli, '--not-a-real-option'], { cwd: consumer, env: cleanEnv, encoding: 'utf8' });
+  assert.equal(invalid.status, 2, 'Preserve the Rust CLI argument-error exit code');
+  assert.match(invalid.stderr, /unexpected argument/);
+  const inventory = await readJson(path.join(consumer, 'node_modules', pkg.name, 'licenses/rust-dependencies.json'));
+  assert.ok(inventory.some(p => p.name === 'clap'), 'Include CLI dependency notices');
+  assert.ok(inventory.some(p => p.name === 'napi'), 'Keep binding dependency notices');
   const sample = `import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 import { Renderer, png, getThemes } from ${JSON.stringify(pkg.name)};
@@ -48,7 +74,6 @@ assert.match(await new Renderer().html('مرحبا'), /font-family:'MonoprintAra
 assert.match(await new Renderer().html('hello'), /^<!doctype html>/);
 console.log('packed consumer passed');\n`;
   await fs.writeFile(path.join(consumer, 'consumer.mjs'), sample);
-  const cleanEnv = { ...process.env, PATH: '' }; // No cargo, CLI executable, browser or compiler available.
   run(process.execPath, ['consumer.mjs'], { cwd: consumer, env: cleanEnv });
   await build({ entryPoints: [path.join(consumer, 'consumer.mjs')], outfile: path.join(consumer, 'bundle.mjs'),
     platform: 'node', format: 'esm', bundle: true, external: [pkg.name, `${pkg.name}-*`] });
@@ -60,12 +85,16 @@ console.log('packed consumer passed');\n`;
   // Exercise missing-binary diagnostics using the installed layout.
   const platform = manifest.tarballs.find(t => t.name !== pkg.name);
   await fs.rename(path.join(consumer, 'node_modules', platform.name), path.join(temporary, 'hidden-native-package'));
+  const missingCli = spawnSync(process.execPath, [cli, '--help'], { cwd: consumer, env: cleanEnv, encoding: 'utf8' });
+  assert.equal(missingCli.status, 1);
+  assert.match(missingCli.stderr, /Missing Monoprint native package/);
+  assert.match(missingCli.stderr, /--include=optional/);
   await fs.writeFile(path.join(consumer, 'missing.mjs'), `import assert from 'node:assert/strict';
 import { png, MonoprintError } from ${JSON.stringify(pkg.name)};
 await assert.rejects(png('hello'), e => e instanceof MonoprintError && e.code === 'NATIVE_BINDING_UNAVAILABLE' && !!e.cause);
 `);
   run(process.execPath, ['missing.mjs'], { cwd: consumer });
-  console.log('Clean tarball install, relocation, externalized bundle, declarations and missing-native diagnostics passed.');
+  console.log('Clean tarball install, npm exec, CLI rendering, relocation, externalized bundle, declarations and missing-native diagnostics passed.');
 } finally {
   await fs.rm(temporary, { recursive: true, force: true });
 }

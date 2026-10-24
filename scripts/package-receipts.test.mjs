@@ -3,7 +3,7 @@ import fs from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
-import { pkg, targets, run, revision, inputHash, sha256 } from '../bindings/node/scripts/shared.mjs';
+import { pkg, targets, cliFile, run, revision, inputHash, sha256 } from '../bindings/node/scripts/shared.mjs';
 import { validatePackages } from '../bindings/node/scripts/release-validation.mjs';
 
 async function fixture(check) {
@@ -20,12 +20,17 @@ async function fixture(check) {
       const content = path.join(folder, 'package');
       await fs.mkdir(content, { recursive: true });
       const metadata = { name, version: pkg.version, repository: pkg.repository,
-        ...(!target ? { optionalDependencies: Object.fromEntries(targets.map(t => [`${pkg.name}-${t.id}`, pkg.version])) } : {}) };
+        ...(!target ? { bin: pkg.bin, optionalDependencies: Object.fromEntries(targets.map(t => [`${pkg.name}-${t.id}`, pkg.version])) } : {}) };
       await fs.writeFile(path.join(content, 'package.json'), JSON.stringify(metadata));
       if (target) {
         const native = Buffer.from(`test fixture ${id}`);
         await fs.writeFile(path.join(content, `monoprint.${id}.node`), native);
-        manifest.targets.push({ id, target: id, triple: target.triple, version: pkg.version, commit, inputHash: hash, dirty: false, sha256: sha256(native) });
+        const cli = Buffer.from(`test CLI fixture ${id}`);
+        await fs.writeFile(path.join(content, cliFile(target)), cli, { mode: 0o755 });
+        manifest.targets.push({ id, target: id, triple: target.triple, version: pkg.version, commit, inputHash: hash, dirty: false, sha256: sha256(native), cliSha256: sha256(cli) });
+      } else {
+        await fs.mkdir(path.join(content, 'dist'));
+        await fs.copyFile(new URL('../bindings/node/js/cli.cjs', import.meta.url), path.join(content, pkg.bin.monoprint));
       }
       const file = `tarballs/${id}.tgz`;
       run('tar', ['-czf', path.join(source, file), '-C', folder, 'package']);
@@ -64,4 +69,23 @@ test('changed native binary must agree with the independent build receipt', () =
   run('tar', ['-czf', path.join(source, entry.file), '-C', folder, 'package']);
   entry.sha256 = sha256(await fs.readFile(path.join(source, entry.file)));
   await assert.rejects(validatePackages(source, manifest), /Packed native binary/);
+}));
+test('missing npm executable metadata is rejected', () => fixture(async (source, manifest) => {
+  const entry = manifest.tarballs.at(-1);
+  const folder = path.join(source, 'main');
+  const file = path.join(folder, 'package/package.json');
+  const metadata = JSON.parse(await fs.readFile(file, 'utf8'));
+  delete metadata.bin;
+  await fs.writeFile(file, JSON.stringify(metadata));
+  run('tar', ['-czf', path.join(source, entry.file), '-C', folder, 'package']);
+  entry.sha256 = sha256(await fs.readFile(path.join(source, entry.file)));
+  await assert.rejects(validatePackages(source, manifest), /Packed CLI bin entry/);
+}));
+test('changed CLI binary must agree with the independent build receipt', () => fixture(async (source, manifest) => {
+  const entry = manifest.tarballs[0];
+  const folder = path.join(source, targets[0].id);
+  await fs.writeFile(path.join(folder, 'package', cliFile(targets[0])), 'changed CLI');
+  run('tar', ['-czf', path.join(source, entry.file), '-C', folder, 'package']);
+  entry.sha256 = sha256(await fs.readFile(path.join(source, entry.file)));
+  await assert.rejects(validatePackages(source, manifest), /Packed CLI binary/);
 }));

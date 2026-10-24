@@ -1,6 +1,6 @@
 {
   "name": "monoprint",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "description": "Offline code-image rendering for Node.js",
   "license": "Apache-2.0",
   "repository": {
@@ -15,6 +15,9 @@
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
   "types": "./dist/index.d.ts",
+  "bin": {
+    "monoprint": "dist/cli.cjs"
+  },
   "exports": {
     ".": {
       "import": {

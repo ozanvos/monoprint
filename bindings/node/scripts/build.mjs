@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { build } from 'esbuild';
-import { directory, root, pkg, targets, run, readJson, sha256, inputHash, revision, isDirty } from './shared.mjs';
+import { directory, root, pkg, targets, cliFile, run, readJson, sha256, inputHash, revision, isDirty } from './shared.mjs';
 
 const args = process.argv.slice(2);
 if (args.some((arg, index) => !['--js-only', '--target'].includes(arg) && args[index - 1] !== '--target')) throw new Error('Usage: npm run build -- [--js-only] [--target RUST_TRIPLE]');
@@ -21,6 +21,9 @@ await build({ entryPoints: [path.join(directory, 'js/index.ts')], outfile: path.
   external: ['./loader.cjs'], legalComments: 'none' });
 run(process.execPath, [path.join(directory, 'node_modules/typescript/bin/tsc'), '-p', path.join(directory, 'tsconfig.json')]);
 await fs.copyFile(path.join(directory, 'js/loader.cjs'), path.join(directory, 'dist/loader.cjs'));
+await fs.copyFile(path.join(directory, 'js/runtime.cjs'), path.join(directory, 'dist/runtime.cjs'));
+await fs.copyFile(path.join(directory, 'js/cli.cjs'), path.join(directory, 'dist/cli.cjs'));
+await fs.chmod(path.join(directory, 'dist/cli.cjs'), 0o755);
 await fs.writeFile(path.join(directory, 'dist/index.mjs'),
   "export { Renderer, Font, MonoprintError, limits, png, svg, html, pngSync, svgSync, htmlSync, getThemes, getLanguages, languageForFileName } from './index.js';\n");
 await fs.writeFile(path.join(directory, 'dist/index.d.mts'), "export * from './index.js';\n");
@@ -34,17 +37,19 @@ if (!args.includes('--js-only')) {
   if (!target) throw new Error(`Unsupported native build target ${triple}`);
   const manifest = await fs.readFile(path.join(directory, 'Cargo.toml'), 'utf8');
   if (!manifest.includes(`version = "${pkg.version}"`)) throw new Error('Keep the npm and monoprint-node Cargo versions equal');
-  run('cargo', ['build', '--locked', '--release', '-p', 'monoprint-node', ...(explicit < 0 ? [] : ['--target', triple])]);
+  run('cargo', ['build', '--locked', '--release', '-p', 'monoprint-node', '-p', 'monoprint', ...(explicit < 0 ? [] : ['--target', triple])]);
   const metadata = JSON.parse(run('cargo', ['metadata', '--locked', '--offline', '--no-deps', '--format-version', '1'], { stdio: 'pipe' }));
   const extension = target.os === 'darwin' ? 'dylib' : target.os === 'win32' ? 'dll' : 'so';
   const library = `${target.os === 'win32' ? '' : 'lib'}monoprint_node.${extension}`;
   const bytes = await fs.readFile(path.join(metadata.target_directory, ...(explicit < 0 ? [] : [triple]), 'release', library));
+  const cli = await fs.readFile(path.join(metadata.target_directory, ...(explicit < 0 ? [] : [triple]), 'release', target.os === 'win32' ? 'monoprint.exe' : 'monoprint'));
   const native = path.join(directory, 'native');
   if (hash !== await inputHash() || commit !== revision()) throw new Error('Native source changed while building; rebuild the addon');
   await fs.mkdir(native, { recursive: true });
   await fs.writeFile(path.join(native, `monoprint.${target.id}.node`), bytes);
+  await fs.writeFile(path.join(native, cliFile(target)), cli, { mode: 0o755 });
   await fs.writeFile(path.join(native, `monoprint.${target.id}.json`), JSON.stringify({
-    target: target.id, triple, version: pkg.version, sha256: sha256(bytes), inputHash: hash,
+    target: target.id, triple, version: pkg.version, sha256: sha256(bytes), cliSha256: sha256(cli), inputHash: hash,
     commit, dirty: dirty || isDirty(), compiler: run('rustc', ['-vV'], { stdio: 'pipe' }).toString().trim(),
   }, null, 2) + '\n');
   console.log(`Built ${target.id}: ${(bytes.length / 1048576).toFixed(2)} MiB`);
