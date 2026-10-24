@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { directory, root, pkg, targets, run, npm, readJson, filesUnder, sha256, inputHash, revision, isDirty } from './shared.mjs';
+import { directory, root, pkg, targets, cliFile, run, npm, readJson, filesUnder, sha256, inputHash, revision, isDirty } from './shared.mjs';
 import { prepareNotices } from './notices.mjs';
 
 const args = process.argv.slice(2);
@@ -29,15 +29,17 @@ for (const target of targets) {
   if (matches.length !== 1) throw new Error(`Expected one native artifact for ${target.id}, found ${matches.length}`);
   const bytes = await fs.readFile(matches[0]);
   const receipt = await readJson(matches[0].replace(/\.node$/, '.json'));
+  const cli = path.join(path.dirname(matches[0]), cliFile(target));
+  if (receipt.cliSha256 !== sha256(await fs.readFile(cli))) throw new Error(`Stale or mismatched CLI artifact ${target.id}; rebuild against the current source/version`);
   if (receipt.target !== target.id || receipt.triple !== target.triple || receipt.version !== pkg.version || receipt.sha256 !== sha256(bytes) || receipt.inputHash !== hash || receipt.commit !== commit || (!local && receipt.dirty)) {
     throw new Error(`Stale or mismatched native artifact ${target.id}; rebuild against the current source/version`);
   }
-  selected.push({ ...target, file: matches[0], receipt });
+  selected.push({ ...target, file: matches[0], cli, receipt });
 }
 if (!selected.length || artifacts.length !== selected.length) throw new Error('No supported artifacts, or unexpected/duplicate native artifacts');
 await fs.mkdir(destination, { recursive: true });
 const legal = path.join(destination, 'legal');
-await prepareNotices(legal, selected);
+await prepareNotices(legal, selected, ['monoprint-node', 'monoprint']);
 const tarballs = [];
 const packages = path.join(destination, 'packages');
 const packed = path.join(destination, 'tarballs');
@@ -53,7 +55,7 @@ async function pack(name, manifest, prepare) {
 }
 for (const target of selected) {
   await pack(target.id, { name: `${pkg.name}-${target.id}`, version: pkg.version,
-    description: `Monoprint native binding for ${target.id}`, license: pkg.license,
+    description: `Monoprint native binding and CLI for ${target.id}`, license: pkg.license,
     main: `monoprint.${target.id}.node`, os: [target.os], cpu: [target.cpu],
     ...(target.libc ? { libc: [target.libc] } : {}), engines: pkg.engines, publishConfig: pkg.publishConfig,
     ...(pkg.repository ? { repository: pkg.repository } : {}),
@@ -61,7 +63,9 @@ for (const target of selected) {
     ...(pkg.bugs ? { bugs: pkg.bugs } : {}),
   }, async folder => {
     await fs.copyFile(target.file, path.join(folder, `monoprint.${target.id}.node`));
-    await fs.writeFile(path.join(folder, 'README.md'), `# ${pkg.name}-${target.id}\n\nNative runtime dependency of \`${pkg.name}\`. Install the main package for its TypeScript interface. Third-party notices and corresponding Giallo/MPL dependency and grammar sources are included.\n`);
+    await fs.copyFile(target.cli, path.join(folder, cliFile(target)));
+    await fs.chmod(path.join(folder, cliFile(target)), 0o755);
+    await fs.writeFile(path.join(folder, 'README.md'), `# ${pkg.name}-${target.id}\n\nNative runtime dependency of \`${pkg.name}\`. Install the main package for its CLI and TypeScript interface. Third-party notices and corresponding Giallo/MPL dependency and grammar sources are included.\n`);
   });
 }
 const { scripts, devDependencies, ...publicPackage } = pkg;

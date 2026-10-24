@@ -10,7 +10,9 @@ npm run test:types
 npm run test:package
 ```
 
-The last command packs the host binary and installs the tarballs into a clean, relocated consumer. It tests ESM, CommonJS, TypeScript resolution and a server bundle with install scripts disabled. These local-only artifacts cannot be published by the release script.
+The build produces both the Node binding and the existing Rust CLI for the selected target. Each platform package contains both binaries; the main package exposes `monoprint` through its `bin` launcher and keeps the Node.js API exports.
+
+The last command packs the host binaries and installs the tarballs into a clean, relocated consumer. It tests offline `npm exec` command discovery, CLI rendering and exit codes, ESM, CommonJS, TypeScript resolution and a server bundle with install scripts disabled. These local-only artifacts cannot be published by the release script.
 
 The `npm-packages.yml` workflow builds and tests each target, collects the exact binaries and their source/checksum receipts, then uploads a complete `npm-release` artifact. No workflow step publishes anything. To publish:
 
@@ -37,8 +39,11 @@ The `npm-packages.yml` workflow builds and tests each target, collects the exact
 Platform packages publish first and the main package last. The script uses `--ignore-scripts`; neither packing nor a dry run can trigger hidden publication. Versions on npm are immutable and multi-package publication is not atomic. If publication stops partway, inventory the published versions, compare their archive integrity to the saved manifest, and publish only the remaining unchanged tarballs with `npm publish /path/to/file.tgz --access public --ignore-scripts`. Do not rebuild different binaries under the same version. Optional `--tag next` selects a prerelease dist-tag; prerelease versions default to `next`.
 
 Without `--publish`, the publisher only validates, even if `--dry-run` is omitted.
-Receipts bind native files and tarballs to one source commit and input hash;
+Receipts bind both native binaries and tarballs to one source commit and input hash;
 mixed revisions, dirty release builds and altered packed metadata are rejected.
+The publisher also checks the main package's executable entry and launcher.
+The already-published `0.1.0` has no CLI entry; ship this addition in a new
+version rather than attempting to republish `0.1.0`.
 See [release packaging](release.md) for workflow configuration and npm OIDC setup.
 
 To assemble already-built release artifacts yourself, use `npm run package -- --artifacts /path/to/native-artifacts --out /fresh/output`. It refuses missing, duplicate, stale, wrong-version, or altered native artifacts. `--local` creates an explicitly non-release subset for local testing. Output paths must be fresh; packaging never deletes an existing caller-selected directory.

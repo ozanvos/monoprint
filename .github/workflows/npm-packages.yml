@@ -43,10 +43,9 @@ jobs:
       - run: cargo fmt --package monoprint-node -- --check
       - run: cargo clippy --locked -p monoprint-node -- -D warnings
       - run: npm run build --prefix bindings/node -- --target ${{ matrix.triple }}
-      - run: cargo build --locked --release -p monoprint
       - run: npm test --prefix bindings/node
         env:
-          MONOPRINT_CLI: ${{ github.workspace }}/target/release/monoprint${{ matrix.os == 'win32' && '.exe' || '' }}
+          MONOPRINT_CLI: ${{ github.workspace }}/bindings/node/native/monoprint.${{ matrix.id }}${{ matrix.os == 'win32' && '.exe' || '' }}
       - run: npm run test:types --prefix bindings/node
       - run: npm run test:package --prefix bindings/node
       - uses: actions/upload-artifact@v4

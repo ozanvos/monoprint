@@ -1,6 +1,6 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { pkg, targets, run, sha256, inputHash, revision } from './shared.mjs';
+import { pkg, targets, cliFile, run, sha256, inputHash, revision } from './shared.mjs';
 
 export async function validatePackages(source, manifest) {
   if (!manifest.release || manifest.dirty || manifest.commit !== revision() || manifest.name !== pkg.name || manifest.version !== pkg.version || manifest.inputHash !== await inputHash()
@@ -16,10 +16,17 @@ export async function validatePackages(source, manifest) {
     const packed = JSON.parse(run('tar', ['-xOf', path.join(source, entry.file), 'package/package.json'], { stdio: 'pipe' }));
     if (packed.name !== entry.name || packed.version !== pkg.version || packed.repository?.url !== pkg.repository?.url) throw new Error(`Packed metadata mismatch: ${entry.name}`);
     if (entry.name === pkg.name && JSON.stringify(packed.optionalDependencies) !== JSON.stringify(Object.fromEntries(targets.map(t => [`${pkg.name}-${t.id}`, pkg.version])))) throw new Error('Packed optional dependencies must match all native packages exactly');
+    if (entry.name === pkg.name) {
+      if (JSON.stringify(packed.bin) !== JSON.stringify(pkg.bin)) throw new Error('Packed CLI bin entry must match the package manifest');
+      const launcher = run('tar', ['-xOf', path.join(source, entry.file), `package/${pkg.bin.monoprint}`], { stdio: 'pipe' });
+      if (launcher.toString() !== await fs.readFile(new URL('../js/cli.cjs', import.meta.url), 'utf8')) throw new Error('Packed CLI launcher must match the source');
+    }
     if (entry.name !== pkg.name) {
       const target = manifest.targets.find(t => entry.name === `${pkg.name}-${t.id}`);
       const native = run('tar', ['-xOf', path.join(source, entry.file), `package/monoprint.${target.id}.node`], { stdio: 'pipe', maxBuffer: 128 * 1024 * 1024 });
       if (sha256(native) !== target.sha256) throw new Error(`Packed native binary does not match its build receipt: ${entry.name}`);
+      const cli = run('tar', ['-xOf', path.join(source, entry.file), `package/${cliFile(targets.find(t => t.id === target.id))}`], { stdio: 'pipe', maxBuffer: 128 * 1024 * 1024 });
+      if (sha256(cli) !== target.cliSha256) throw new Error(`Packed CLI binary does not match its build receipt: ${entry.name}`);
     }
   }
 }

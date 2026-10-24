@@ -4,6 +4,22 @@ Render code as PNG, SVG or HTML with the Monoprint Rust renderer.
 Prebuilt packages target Node.js 22+ on macOS arm64/x64, Linux glibc arm64/x64
 and Windows x64.
 
+## CLI
+
+The npm package includes the same native CLI as the standalone download:
+
+```sh
+npx monoprint@latest --help
+npx monoprint@latest example.ts -o example.png
+```
+
+Or install with `npm install -g monoprint` and run `monoprint` directly.
+Keep npm's optional dependencies enabled; they contain the platform's CLI and
+Node binding. No Rust toolchain or install script is needed.
+See the [CLI reference](https://github.com/ozanvos/monoprint/blob/main/docs/cli.md) for all options.
+
+## Node.js
+
 ```sh
 npm install monoprint
 ```
