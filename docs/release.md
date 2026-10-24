@@ -47,6 +47,21 @@ final ZIP. Keep signing credentials outside Git.
 See [desktop updates](desktop-updates.md) for Sparkle, Windows installers,
 Linux AppImages and update feeds.
 
+## Homebrew cask
+
+The official [ozanvos/tap](https://github.com/ozanvos/homebrew-tap) distributes
+the macOS app and bundled CLI with `brew install --cask ozanvos/tap/monoprint`.
+Its daily/manual update workflow resolves the latest complete stable desktop
+release, verifies the archive and manifest against their GitHub attestations,
+and rejects version downgrades or changed bytes for an existing version.
+Before updating the tap it audits, installs, verifies notarization, renders a
+PNG with the CLI, and uninstalls on a macOS runner.
+
+After publishing a release, dispatch the tap's `Verify and update cask`
+workflow for immediate availability, or allow its next daily run to pick it up.
+No tap credential is needed in this repository. Keep the release ZIP immutable;
+the cask pins its versioned URL and SHA-256.
+
 ## Mac App Store
 
 `--app-store` excludes the audited private macOS APIs, enables App Sandbox and
