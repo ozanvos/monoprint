@@ -129,6 +129,13 @@ in every package.
 `release.yml` assembles CLI, Node, and desktop artifacts at one commit. These
 workflows are dispatched explicitly. A push or tag does not publish packages.
 
+For npm without desktop signing, dispatch `release.yml` with `npm_only: true`.
+With `publish: false`, this only verifies the six live GitHub-to-npm OIDC
+exchanges. With `publish: true`, an existing matching release tag is required;
+the workflow runs checks, builds all platforms, and publishes through the
+`public-release` environment. See [Node packaging](node-packaging.md) for the
+dispatch commands and one-time trusted publisher configuration.
+
 ```sh
 node scripts/release.mjs check
 node --test scripts/release.test.mjs scripts/package-receipts.test.mjs

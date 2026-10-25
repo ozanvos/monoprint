@@ -15,6 +15,7 @@ jobs:
       - run: npm ci --prefix website
       - run: npm run check --prefix website
       - run: node --test scripts/verify-desktop-release.test.mjs
+      - run: node --test scripts/npm-trust.test.mjs
   native:
     strategy:
       matrix:
