@@ -29,6 +29,10 @@ use gpui_kit::{
     *,
 };
 use studio::*;
+
+#[cfg(target_os = "macos")]
+gpui_kit::actions!(monoprint_gui, [AboutMonoprint]);
+
 fn main() {
     updates::startup();
     let session = document::session_path();
@@ -76,6 +80,13 @@ fn main() {
         platform_keys::init(cx);
         appearance::init(cx);
         cx.on_action(|_: &Quit, cx| cx.quit());
+        #[cfg(target_os = "macos")]
+        cx.on_action(|_: &AboutMonoprint, _| {
+            let main_thread =
+                objc2::MainThreadMarker::new().expect("App menu actions run on the main thread");
+            objc2_app_kit::NSApplication::sharedApplication(main_thread)
+                .orderFrontStandardAboutPanel(None);
+        });
         cx.on_action(|_: &OpenPrivacy, cx| cx.open_url("https://monoprint.7ea.st/privacy/"));
         cx.on_action(|_: &OpenSupport, cx| cx.open_url("https://monoprint.7ea.st/support/"));
         cx.bind_keys([
@@ -97,6 +108,11 @@ fn main() {
             ]);
         }
         let mut app_items = Vec::new();
+        #[cfg(target_os = "macos")]
+        app_items.extend([
+            MenuItem::action("About Monoprint", AboutMonoprint),
+            MenuItem::separator(),
+        ]);
         if !cfg!(feature = "app-store") {
             app_items.extend([
                 MenuItem::action("Check for Updates…", CheckForUpdates),
