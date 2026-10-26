@@ -31,7 +31,7 @@ velopack = "=1.2.161"
 gpui-macos = { package = "gpui-fast-macos", version = "=0.1.10", optional = true, default-features = false }
 objc2 = "0.6"
 objc2-foundation = { version = "0.3", optional = true, default-features = false, features = ["std", "NSArray", "NSData", "NSError", "NSString", "NSURL", "NSPathUtilities"] }
-objc2-app-kit = { version = "0.3", default-features = false, features = ["NSGraphics", "NSResponder", "NSView", "NSVisualEffectView"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["NSApplication", "NSGraphics", "NSResponder", "NSView", "NSVisualEffectView"] }
 raw-window-handle = "0.6"
 
 # Keep GPUI's default icons self-contained in development app bundles too.

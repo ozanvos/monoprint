@@ -20,6 +20,8 @@ macOS Apple Silicon is tested. Windows and Linux still need native validation.
 
 ## Use
 
+- On macOS, choose **Monoprint → About Monoprint** for the app icon, version,
+  build number and copyright. These details come from the packaged app bundle.
 - Open a UTF-8 file, paste code or type in the editor. Choose its language above
   the editor. TypeScript and TSX are separate languages.
 - Click the theme thumbnail to browse themes. Search and filter by appearance.

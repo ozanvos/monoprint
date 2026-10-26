@@ -123,11 +123,11 @@ if not args.app_store:
     'CFBundlePackageType': 'APPL', 'CFBundleIconFile': 'Monoprint.icns',
     'CFBundleIconName': 'Monoprint', 'CFBundleShortVersionString': version,
     'CFBundleVersion': args.build_number or version, 'NSHighResolutionCapable': True,
+    'NSHumanReadableCopyright': '2026 Seven East',
     'LSMinimumSystemVersion': '12.0',
     **update_settings,
     **({'LSApplicationCategoryType': 'public.app-category.developer-tools',
-        'ITSAppUsesNonExemptEncryption': False,
-        'NSHumanReadableCopyright': '2026 Seven East'} if args.app_store else {}),
+        'ITSAppUsesNonExemptEncryption': False} if args.app_store else {}),
     'CFBundleDocumentTypes': [{
         'CFBundleTypeName': 'UTF-8 Source Code', 'CFBundleTypeRole': 'Viewer',
         'LSHandlerRank': 'Alternate',
