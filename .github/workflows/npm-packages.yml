@@ -1,7 +1,30 @@
 name: npm packages
 on:
+  # Branches are checked through their pull request; pushes check main only. Changes that never
+  # reach the packages (site, company page, Studio app, docs other than bundled notices) skip it.
   push:
+    branches: [main]
+    paths:
+      - '**'
+      - '!website/**'
+      - '!company-site/**'
+      - '!.claude/**'
+      - '!apps/**'
+      - '!README.md'
+      - '!docs/**'
+      - 'docs/grammar-licenses.md'
+      - 'docs/font-fallback.md'
   pull_request:
+    paths:
+      - '**'
+      - '!website/**'
+      - '!company-site/**'
+      - '!.claude/**'
+      - '!apps/**'
+      - '!README.md'
+      - '!docs/**'
+      - 'docs/grammar-licenses.md'
+      - 'docs/font-fallback.md'
   workflow_dispatch:
   workflow_call:
 permissions:
