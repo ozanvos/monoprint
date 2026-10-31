@@ -8,7 +8,7 @@ export function shell(line) {
   let command = true;
   return line.split(/(\s+)/).map(word => {
     if (!word || /^\s+$/.test(word)) return escape(word);
-    if (word === '|') { command = true; return span('c', word); }
+    if (word === '|' || word === '&&') { command = true; return span('c', word); }
     if (command) { command = false; return span('f', word); }
     return span(word.startsWith('-') ? 'k' : 's', word);
   }).join('');

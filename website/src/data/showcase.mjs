@@ -1,4 +1,6 @@
 // Sources and CLI settings for the three real exports shown on the homepage.
+// Exports are rendered at `exportWidth` points and 2x scale.
+export const exportWidth = 480;
 export const showcases = [
   {
     id: 'typescript-monoprint', source: 'user.ts', theme: 'monoprint', appearance: 'dark', format: 'png',

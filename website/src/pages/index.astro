@@ -1,8 +1,10 @@
 ---
 import AppScreenshot from '../components/AppScreenshot.astro';
 import Icon from '../components/Icon.astro';
+import Proof from '../components/Proof.astro';
 import { themes, initialTheme, command } from '../data/demo.mjs';
-import { showcases } from '../data/showcase.mjs';
+import { showcases, exportWidth } from '../data/showcase.mjs';
+import { highlighters, shell } from '../scripts/highlight.mjs';
 import release from '../../../release/config.json';
 import { downloads, installs, manifest } from '../data/downloads.mjs';
 import '../styles/site.css';
@@ -10,10 +12,11 @@ const repository = `https://github.com/${release.repository}`;
 const docs = `${repository}/blob/main/README.md`;
 const cliDocs = `${repository}/blob/main/docs/cli.md`;
 const parts = [
-  { title: 'Studio', body: 'Live preview, line and text highlights, custom fonts, clipboard export and a saved local draft.', code: ['⌘O  Open source file', '⌘S  Export image', '⌘⇧C Copy image'] },
-  { title: 'CLI', body: 'Reads a file or stdin. The output extension picks the format; --list-themes shows every variant.', code: ['monoprint main.rs -o main.png', '  --theme nord --scale 4', 'pbpaste | monoprint -l ts -o a.svg'] },
-  { title: 'Library', body: 'Render in memory from Rust, or from Node.js 22+ with native packages for macOS, Linux and Windows.', code: ['Renderer::new().png(', '  &snippet, &Style::default(),', '  Scale::X2)?'] },
-];
+  { title: 'Studio', lang: 'keys', body: 'Live preview, line and text highlights, custom fonts, clipboard export and a saved local draft.', code: ['⌘O  Open source file', '⌘S  Export image', '⌘⇧C Copy image'] },
+  { title: 'CLI', lang: 'shell', body: 'Reads a file or stdin. The output extension picks the format; --list-themes shows every variant.', code: ['monoprint main.rs -o main.png', '  --theme nord --scale 4', 'pbpaste | monoprint -l ts -o a.svg'] },
+  { title: 'Library', lang: 'rust', body: 'Render in memory from Rust, or from Node.js 22+ with native packages for macOS, Linux and Windows.', code: ['Renderer::new().png(', '  &snippet, &Style::default(),', '  Scale::X2)?'] },
+] as const;
+const thumb = (palette: Record<string, string>) => Object.entries(palette).map(([key, value]) => `--${key}:${value}`).join(';');
 ---
 <!doctype html>
 <html lang="en">
@@ -26,6 +29,7 @@ const parts = [
     <title>Monoprint | Code images</title>
     <link rel="icon" href="/assets/icon.png" />
     <link rel="preload" href="/assets/jetbrains-mono.ttf" as="font" type="font/ttf" crossorigin />
+    <script is:inline>if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('motion');</script>
   </head>
   <body>
     <a class="skip-link" href="#main">Skip to content</a>
@@ -41,11 +45,15 @@ const parts = [
           <p class="lede">Turn source code into PNG, SVG or HTML on your computer. Fonts, themes and grammars are bundled, so your code stays on the machine.</p>
           <div class="actions">
             {manifest ? <a class="button ink" href="#downloads">Download</a> : <button class="button ink" type="button" disabled title="Downloads are being prepared">Download</button>}
-            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id="command-text">{command(initialTheme)}</code><button class="icon-button" id="copy-command" data-copy="command-text" aria-label="Copy CLI command" title="Copy command" type="button"><Icon name="copy"/></button></div>
+            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id="command-text" set:html={shell(command(initialTheme))} /><button class="icon-button" id="copy-command" data-copy="command-text" aria-label="Copy CLI command" title="Copy command" type="button"><Icon name="copy"/></button></div>
           </div>
+          <p class="render-status" aria-hidden="true"><span>→ <b>share.png</b></span><span>1280 × 666 px</span><span>rendered on this machine</span></p>
         </section>
 
-        <section class="app-section" aria-label="App screenshot"><AppScreenshot /></section>
+        <section class="app-section lattice" aria-label="App screenshot">
+          <p class="fig" aria-hidden="true">Fig. 1 <b>Studio</b> · macOS</p>
+          <Proof><AppScreenshot /></Proof>
+        </section>
 
         {manifest && <section class="downloads" id="downloads" aria-labelledby="downloads-title">
           <h2 id="downloads-title">Get Monoprint</h2>
@@ -58,7 +66,7 @@ const parts = [
           <p>Or install from a terminal: the app and CLI with <a href="https://github.com/ozanvos/homebrew-tap">Homebrew</a> on macOS, or the AppImage on Linux, which offers to install itself for your user.</p>
           <div class="install" role="list" aria-label="Install from a terminal">{installs.map(install => <div class="install-row" role="listitem">
             <span class="install-platform">{install.platform}</span>
-            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id={`install-${install.platform.toLowerCase()}`} class:list={{ 'select-only': !install.copy }}>{install.command}</code>{install.copy && <button class="icon-button" data-copy={`install-${install.platform.toLowerCase()}`} aria-label={`Copy ${install.platform} install command`} title="Copy command" type="button"><Icon name="copy"/></button>}</div>
+            <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id={`install-${install.platform.toLowerCase()}`} class:list={{ 'select-only': !install.copy }} set:html={shell(install.command)} />{install.copy && <button class="icon-button" data-copy={`install-${install.platform.toLowerCase()}`} aria-label={`Copy ${install.platform} install command`} title="Copy command" type="button"><Icon name="copy"/></button>}</div>
           </div>)}</div>
           <p><a href={`${repository}/releases/tag/${manifest.tag}`}>Release notes, checksums and signatures ↗</a></p>
         </section>}
@@ -68,25 +76,36 @@ const parts = [
             <h2 id="themes-title">Themes</h2>
             <p><code>--list-themes</code> lists every theme and appearance.</p>
             <div class="options" role="radiogroup" aria-label="Theme">
-              {themes.map(theme => <label class="option"><input type="radio" name="theme" value={theme.id} checked={theme.id === initialTheme.id} data-command={command(theme)} /><span class="swatch" aria-hidden="true" style={`--bg:${theme.bg};--fg:${theme.accent}`}></span><span>{theme.name}</span><code>{theme.cli}</code></label>)}
+              <div class="option-marker" aria-hidden="true"></div>
+              {themes.map(theme => <label class="option"><input type="radio" name="theme" value={theme.id} checked={theme.id === initialTheme.id} data-command={command(theme)} /><span class="thumb" aria-hidden="true" style={thumb(theme.palette)}><i class="kw"></i><i class="fn"></i><br /><i class="ty"></i><i class="num"></i><br /><i class="cm"></i></span><span class="option-name"><span>{theme.name}</span><small><code>{theme.cli}</code> · {theme.appearance}</small></span></label>)}
             </div>
           </div>
           <div class="stage lattice">
-            {themes.map(theme => <img src={`/assets/${theme.id}.png`} width="1280" height="666" alt={`Rust code in ${theme.name}, with line four highlighted`} data-theme={theme.id} hidden={theme.id !== initialTheme.id} />)}
+            <p class="fig" aria-hidden="true">Fig. 2 <b>share.rs</b> · <span id="stage-theme">{initialTheme.name}</span></p>
+            <Proof measure="640 pt × 2 = 1280 px">
+              <div class="sheet">{themes.map(theme => <img src={`/assets/${theme.id}.png`} width="1280" height="666" alt={`Rust code in ${theme.name}, with line four highlighted`} data-theme={theme.id} hidden={theme.id !== initialTheme.id} />)}</div>
+            </Proof>
           </div>
         </section>
 
         <section class="parts" aria-label="Interfaces">
-          {parts.map(part => <article><h2>{part.title}</h2><p>{part.body}</p><pre>{part.code.join('\n')}</pre></article>)}
+          {parts.map(part => <article><h2>{part.title}</h2><p>{part.body}</p><pre set:html={part.code.map(highlighters[part.lang]).join('\n')} /></article>)}
         </section>
 
         <section class="showcase" aria-label="Export examples">
-          {showcases.map(item => <figure><div class="showcase-tile"><img src={`/assets/${item.id}.${item.format}`} alt={item.alt} loading="lazy" /></div><figcaption><span>{item.name}</span><span>{item.detail}</span></figcaption></figure>)}
+          {showcases.map((item, i) => <figure>
+            <div class:list={['showcase-tile', 'lattice', { transparent: item.transparent }]}>
+              <p class="fig" aria-hidden="true">Fig. {i + 3} <b>{item.source}</b></p>
+              <Proof measure={item.format === 'svg' ? 'vector' : `${exportWidth * 2} px @2x`}><img src={`/assets/${item.id}.${item.format}`} alt={item.alt} loading="lazy" /></Proof>
+            </div>
+            <figcaption><span>{item.name}</span><span>{item.detail}</span><span class="spec">--theme {item.theme} --{item.appearance} · {item.format.toUpperCase()}</span></figcaption>
+          </figure>)}
         </section>
       </main>
       <footer class="strip foot"><span>Monoprint</span><nav aria-label="Resources"><a href="/support/">Support</a><a href="/privacy/">Privacy</a><a href="mailto:contact@7ea.st">Contact</a>{release.publicPublishing && <><a href={docs}>Docs</a><a href={cliDocs}>CLI</a><a href={`${repository}/blob/main/docs/library.md`}>Rust</a><a href={`${repository}/tree/main/bindings/node`}>TypeScript</a><a href={repository}>Source on GitHub ↗</a></>}</nav></footer>
     </div>
     <p class="sr-only" role="status" id="feedback" aria-live="polite"></p>
     <script src="../scripts/demo.ts"></script>
+    <script src="../scripts/proof.ts"></script>
   </body>
 </html>
