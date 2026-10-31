@@ -1,11 +1,39 @@
 name: npm packages
 on:
+  # Branches are checked through their pull request; pushes check main only. Changes that never
+  # reach the packages (site, company page, Studio app, docs other than bundled notices) skip it.
   push:
+    branches: [main]
+    paths:
+      - '**'
+      - '!website/**'
+      - '!company-site/**'
+      - '!.claude/**'
+      - '!apps/**'
+      - '!README.md'
+      - '!docs/**'
+      - 'docs/grammar-licenses.md'
+      - 'docs/font-fallback.md'
   pull_request:
+    paths:
+      - '**'
+      - '!website/**'
+      - '!company-site/**'
+      - '!.claude/**'
+      - '!apps/**'
+      - '!README.md'
+      - '!docs/**'
+      - 'docs/grammar-licenses.md'
+      - 'docs/font-fallback.md'
   workflow_dispatch:
   workflow_call:
 permissions:
   contents: read
+# A new push to a pull request cancels its older run; every other run (main, releases) is
+# its own group, so nothing outside a pull request is ever cancelled or queued behind another.
+concurrency:
+  group: npm-packages-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   targets:
     runs-on: ubuntu-22.04
