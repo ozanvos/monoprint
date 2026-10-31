@@ -164,3 +164,121 @@
 .hl-f { font-weight: 650; }
 .hl-s { color: #6e5a35; }
 .hl-c { color: var(--muted); }
+
+/* Theme picker: rows carry a thumbnail in the theme's own colours, and the selection is a
+   single raised marker with an ink rule that slides between rows. */
+.options {
+  position: relative;
+}
+
+.option {
+  position: relative;
+  z-index: 1;
+  grid-template-columns: auto minmax(0,1fr);
+  gap: 14px;
+  padding: 11px 12px;
+  color: var(--ink-2);
+  transition: color .15s ease;
+}
+
+.option:has(input:checked) {
+  background: transparent;
+  color: var(--ink);
+}
+
+.option:not(:has(input:checked)):hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.option-name {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.option:has(input:checked) .option-name {
+  font-weight: 600;
+}
+
+.option-name small {
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.option-name small code {
+  font-size: inherit;
+}
+
+.option-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  background: var(--canvas-raised);
+  box-shadow: inset 2px 0 0 var(--ink),0 0 0 1px var(--line-strong);
+  pointer-events: none;
+  transition: transform .22s cubic-bezier(.2,.7,.2,1),height .22s cubic-bezier(.2,.7,.2,1);
+}
+
+/* A three-line code thumbnail: keyword and call, type and number, then a comment. */
+.thumb {
+  width: 38px;
+  height: 28px;
+  padding: 6px 6px 0;
+  border-radius: 3px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
+  line-height: 6px;
+  font-size: 0;
+  transition: transform .2s cubic-bezier(.2,.7,.2,1);
+}
+
+.thumb i {
+  display: inline-block;
+  height: 3px;
+  margin-right: 2px;
+  border-radius: 1px;
+  vertical-align: top;
+}
+
+.thumb .kw { width: 6px; background: var(--kw); }
+.thumb .fn { width: 13px; background: var(--fn); }
+.thumb .ty { width: 9px; margin-left: 4px; background: var(--type); }
+.thumb .num { width: 5px; background: var(--num); }
+.thumb .cm { width: 18px; background: var(--comment); }
+
+.option:has(input:checked) .thumb {
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%),0 0 0 2px var(--canvas-raised),0 0 0 3px var(--ink);
+}
+
+/* On narrow screens the preview sits between the intro and the list, so a choice is visible. */
+@media(max-width:960px) {
+  .themes {
+    display: flex;
+    flex-direction: column;
+  }
+  .picker {
+    display: contents;
+  }
+  .picker>h2 {
+    padding: 32px var(--edge) 0;
+  }
+  .picker>p {
+    padding: 12px var(--edge) 24px;
+  }
+  .stage {
+    padding-top: 44px;
+    border-block: 1px solid var(--line);
+  }
+  .options {
+    order: 1;
+    margin: 24px var(--edge) 32px;
+  }
+}

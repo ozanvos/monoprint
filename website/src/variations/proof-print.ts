@@ -1,4 +1,5 @@
 import { shell } from './highlight.mjs';
+import { palettes } from './palettes.mjs';
 
 const motion = document.documentElement.classList.contains('motion');
 const GRID = 14;
@@ -33,6 +34,7 @@ function label(section: HTMLElement, html: string) {
   fig.setAttribute('aria-hidden', 'true');
   fig.innerHTML = html;
   section.prepend(fig);
+  return fig;
 }
 
 // A plain fade: the marks and measurements carry the character, the image just arrives.
@@ -45,7 +47,7 @@ function reveal(target: HTMLElement, duration: number, delay = 0) {
 const studio = proof(screenshot, '');
 const sample = proof(sheet, '640 pt × 2 = 1280 px');
 label(appSection, 'Fig. 1 <b>Studio</b> · macOS');
-label(stage, 'Fig. 2 <b>share.rs</b>');
+const stageLabel = label(stage, '');
 
 new ResizeObserver(([entry]) => {
   studio.label.textContent = `${Math.round(entry.contentRect.width)} px`;
@@ -145,6 +147,41 @@ for (const input of document.querySelectorAll<HTMLInputElement>('input[name="the
     });
   });
 }
+
+// Theme picker: code thumbnails in each theme's own colours, a light/dark tag, and one
+// selection marker that slides to the chosen row.
+const options = document.querySelector<HTMLElement>('.options')!;
+const marker = document.createElement('div');
+marker.className = 'option-marker';
+marker.setAttribute('aria-hidden', 'true');
+options.prepend(marker);
+for (const option of options.querySelectorAll<HTMLLabelElement>('.option')) {
+  const input = option.querySelector('input')!;
+  const palette = palettes[input.value as keyof typeof palettes];
+  const swatch = option.querySelector<HTMLElement>('.swatch')!;
+  swatch.className = 'thumb';
+  swatch.removeAttribute('style');
+  swatch.style.cssText = Object.entries(palette).map(([key, value]) => `--${key}:${value}`).join(';');
+  swatch.innerHTML = '<i class="kw"></i><i class="fn"></i><br><i class="ty"></i><i class="num"></i><br><i class="cm"></i>';
+  // Name on top; the CLI id and appearance underneath, so long names never wrap.
+  const name = option.querySelector<HTMLElement>('span:not(.thumb)')!;
+  name.className = 'option-name';
+  const meta = document.createElement('small');
+  meta.append(option.querySelector('code')!, ` · ${input.dataset.command!.includes('--light') ? 'light' : 'dark'}`);
+  name.append(meta);
+}
+
+function select(animate: boolean) {
+  const input = options.querySelector<HTMLInputElement>('input:checked')!;
+  const row = input.closest<HTMLElement>('.option')!;
+  marker.style.transition = animate && motion ? '' : 'none';
+  marker.style.transform = `translateY(${row.offsetTop}px)`;
+  marker.style.height = `${row.offsetHeight}px`;
+  stageLabel.innerHTML = `Fig. 2 <b>share.rs</b> · ${row.querySelector('.option-name')!.firstChild!.textContent}`;
+}
+for (const input of options.querySelectorAll<HTMLInputElement>('input')) input.addEventListener('change', () => select(true));
+new ResizeObserver(() => select(false)).observe(options);
+select(false);
 
 // Export examples: each sits on its own mat with marks and a measurement, captioned like a spec sheet.
 const tiles = [...document.querySelectorAll<HTMLElement>('.showcase figure')].map((figure, i) => {
