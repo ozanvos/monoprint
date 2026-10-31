@@ -1,0 +1,10 @@
+---
+// A figure on the proof sheet: crop marks just outside its trim and a dimension line beneath.
+interface Props { measure?: string; }
+const { measure = '' } = Astro.props;
+---
+<div class="proof">
+  <slot />
+  <div class="crop" aria-hidden="true">{Array.from({ length: 8 }, () => <i></i>)}</div>
+  <div class="dimension" aria-hidden="true"><span>{measure}</span></div>
+</div>

@@ -362,11 +362,9 @@ img {
 }
 
 .app-section {
-  padding: 40px var(--edge);
+  position: relative;
+  padding: 40px var(--edge) 56px;
   border-bottom: 1px solid var(--line);
-  background-color: var(--desktop);
-  background-image: var(--desktop-grid);
-  background-size: 14px 14px;
 }
 
 .app-screenshot {
@@ -420,64 +418,36 @@ img {
   border-top: 1px solid var(--line);
 }
 
-.option {
-  display: grid;
-  grid-template-columns: auto 1fr auto;
-  align-items: center;
-  gap: 12px;
-  padding: 10px 6px;
-  border-bottom: 1px solid var(--line);
-  font-size: 13px;
-  cursor: pointer;
-}
-
-.option:hover {
-  background: var(--surface);
-}
-
-.option:has(input:checked) {
-  background: var(--surface-2);
-}
-
-.option:has(input:focus-visible) {
-  outline: 2px solid var(--accent);
-  outline-offset: -2px;
-}
-
-.option input {
-  position: absolute;
-  opacity: 0;
-  pointer-events: none;
-}
-
-.option code {
-  font-size: 11px;
-  color: var(--faint);
-}
-
-.option:has(input:checked) code {
-  color: var(--accent);
-}
-
-.swatch {
-  width: 28px;
-  height: 20px;
-  border-radius: 3px;
-  background: var(--bg);
-  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%),inset -9px 0 0 var(--fg);
-}
-
 .stage {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: 40px;
+  padding: 44px 40px 64px;
   min-width: 0;
 }
 
-.stage img {
+.stage .proof {
   width: min(100%,720px);
+}
+
+/* Theme samples stack in one cell so the new one can fade in over the old. */
+.sheet {
+  display: grid;
+}
+
+.sheet img {
+  grid-area: 1 / 1;
+  width: 100%;
   filter: drop-shadow(0 18px 40px rgb(0 0 0 / 16%));
+}
+
+.sheet img.leaving {
+  z-index: 0;
+}
+
+.sheet img.arriving {
+  z-index: 1;
 }
 
 .parts {
@@ -520,8 +490,321 @@ img {
   grid-template-columns: repeat(3,minmax(0,1fr));
 }
 
+/* Proof sheet. The desktop lattice is a cutting mat: figures carry crop marks, a label and a
+   dimension line. With motion, marks register, the figure fades in, then it is measured. */
+.motion .app-screenshot:not(.printed),.motion .sheet:not(.printed),.motion .pending {
+  opacity: 0;
+}
+
+.fig {
+  position: absolute;
+  top: 15px;
+  left: calc(var(--edge) + 12px);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fig b {
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.proof {
+  position: relative;
+  z-index: 1;
+}
+
+/* Each corner gets two hairlines that stop short of the trim, as on a press sheet. */
+.crop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.crop i {
+  position: absolute;
+  background: #8d8d88;
+}
+
+.crop i:nth-child(odd) { width: 16px; height: 1px; }
+.crop i:nth-child(even) { width: 1px; height: 16px; }
+.crop i:nth-child(1) { top: 0; right: calc(100% + 8px); transform-origin: right; }
+.crop i:nth-child(2) { bottom: calc(100% + 8px); left: 0; transform-origin: bottom; }
+.crop i:nth-child(3) { top: 0; left: calc(100% + 8px); transform-origin: left; }
+.crop i:nth-child(4) { bottom: calc(100% + 8px); right: 0; transform-origin: bottom; }
+.crop i:nth-child(5) { bottom: 0; right: calc(100% + 8px); transform-origin: right; }
+.crop i:nth-child(6) { top: calc(100% + 8px); left: 0; transform-origin: top; }
+.crop i:nth-child(7) { bottom: 0; left: calc(100% + 8px); transform-origin: left; }
+.crop i:nth-child(8) { top: calc(100% + 8px); right: 0; transform-origin: top; }
+
+.motion .crop i {
+  transition: transform .28s cubic-bezier(.2,.7,.2,1);
+}
+
+.motion .crop i:nth-child(odd) { transform: scaleX(0); }
+.motion .crop i:nth-child(even) { transform: scaleY(0); }
+.motion .marked .crop i { transform: none; }
+.motion .marked .crop i:nth-child(n+3) { transition-delay: 20ms; }
+.motion .marked .crop i:nth-child(n+5) { transition-delay: 40ms; }
+.motion .marked .crop i:nth-child(n+7) { transition-delay: 60ms; }
+
+/* Dimension line under a figure: ticks at both ends, the measurement centred on a gap. */
+.dimension {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 14px);
+  height: 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.dimension::before,.dimension::after {
+  content: '';
+  flex: 1;
+  height: 9px;
+  background: linear-gradient(#8d8d88,#8d8d88) center / 100% 1px no-repeat;
+  border-inline: 1px solid #8d8d88;
+}
+
+.dimension::before { border-right: 0; transform-origin: right; }
+.dimension::after { border-left: 0; transform-origin: left; }
+
+.dimension span {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.motion .dimension::before,.motion .dimension::after {
+  transform: scaleX(0);
+  transition: transform .3s cubic-bezier(.2,.7,.2,1);
+}
+
+.motion .dimension span {
+  opacity: 0;
+  transition: opacity .2s ease .12s;
+}
+
+.motion .measured .dimension::before,.motion .measured .dimension::after {
+  transform: none;
+}
+
+.motion .measured .dimension span {
+  opacity: 1;
+}
+
+/* Crosshair lives under the figures, so it only ever reads on the open grid. */
+.crosshair {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+
+.crosshair.on {
+  opacity: 1;
+}
+
+.crosshair .h,.crosshair .v {
+  position: absolute;
+  background: rgb(82 111 210 / 45%);
+  transition: transform .09s linear;
+}
+
+.crosshair .h { left: 0; right: 0; top: 0; height: 1px; }
+.crosshair .v { top: 0; bottom: 0; left: 0; width: 1px; }
+
+.crosshair .readout {
+  position: absolute;
+  top: 0;
+  left: 0;
+  z-index: 2;
+  padding: 2px 5px;
+  background: var(--canvas-raised);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  font-size: 10px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: transform .09s linear;
+}
+
+/* Hero output line under the typed command. */
+.render-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  min-height: 16px;
+  margin-top: -8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.render-status b {
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.motion .render-status span {
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+
+.motion .render-status.shown span { opacity: 1; }
+.motion .render-status.shown span:nth-child(2) { transition-delay: 30ms; }
+.motion .render-status.shown span:nth-child(3) { transition-delay: 60ms; }
+
+#command-text.typing::after {
+  content: '';
+  display: inline-block;
+  width: .6em;
+  height: 1.2em;
+  margin-left: 1px;
+  vertical-align: -.25em;
+  background: var(--ink);
+  animation: caret .9s steps(1) infinite;
+}
+
+@keyframes caret {
+  50% { opacity: 0; }
+}
+
+/* Snippet colours from Monoprint Light, the app's own theme for this ground. */
+.hl-k { color: #a0452b; }
+.hl-f { font-weight: 650; }
+.hl-s { color: #6e5a35; }
+.hl-c { color: var(--muted); }
+
+/* Theme picker: rows carry a thumbnail in the theme's own colours, and the selection is a
+   single raised marker with an ink rule that slides between rows. */
+.options {
+  position: relative;
+}
+
+.option {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: auto minmax(0,1fr);
+  align-items: center;
+  gap: 14px;
+  padding: 11px 12px;
+  border-bottom: 1px solid var(--line);
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+  transition: color .15s ease;
+}
+
+.option:has(input:checked) {
+  color: var(--ink);
+}
+
+.option:not(:has(input:checked)):hover {
+  background: var(--surface);
+  color: var(--ink);
+}
+
+.option:has(input:focus-visible) {
+  outline: 2px solid var(--accent);
+  outline-offset: -2px;
+}
+
+.option input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.option-name {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.option:has(input:checked) .option-name {
+  font-weight: 600;
+}
+
+.option-name small {
+  overflow: hidden;
+  font-size: 10px;
+  font-weight: 400;
+  color: var(--faint);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+}
+
+.option:has(input:checked) .option-name code {
+  color: var(--accent);
+}
+
+.option-marker {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 0;
+  background: var(--canvas-raised);
+  box-shadow: inset 2px 0 0 var(--ink),0 0 0 1px var(--line-strong);
+  pointer-events: none;
+  transition: transform .22s cubic-bezier(.2,.7,.2,1),height .22s cubic-bezier(.2,.7,.2,1);
+}
+
+/* Without the script the marker has no row to sit on; the checked row raises itself instead. */
+.option-marker:not([style]) {
+  display: none;
+}
+
+.options:not(:has(.option-marker[style])) .option:has(input:checked) {
+  background: var(--canvas-raised);
+  box-shadow: inset 2px 0 0 var(--ink);
+}
+
+/* A three-line code thumbnail: keyword and call, type and number, then a comment. */
+.thumb {
+  width: 38px;
+  height: 28px;
+  padding: 6px 6px 0;
+  border-radius: 3px;
+  background: var(--bg);
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%);
+  font-size: 0;
+  line-height: 6px;
+}
+
+.thumb i {
+  display: inline-block;
+  height: 3px;
+  margin-right: 2px;
+  border-radius: 1px;
+  vertical-align: top;
+}
+
+.thumb .kw { width: 6px; background: var(--kw); }
+.thumb .fn { width: 13px; background: var(--fn); }
+.thumb .ty { width: 9px; margin-left: 4px; background: var(--type); }
+.thumb .num { width: 5px; background: var(--num); }
+.thumb .cm { width: 18px; background: var(--comment); }
+
+.option:has(input:checked) .thumb {
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 12%),0 0 0 2px var(--canvas-raised),0 0 0 3px var(--ink);
+}
+
+/* Export examples: one mat per export, tops aligned, captions read as a spec sheet. */
 .showcase figure {
-  padding: 24px var(--edge) 28px;
+  display: flex;
+  flex-direction: column;
 }
 
 .showcase figure+figure {
@@ -529,40 +812,78 @@ img {
 }
 
 .showcase-tile {
-  aspect-ratio: 420 / 390;
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
+  position: relative;
+  flex: 1;
+  padding: 52px 40px 60px;
+  border-bottom: 1px solid var(--line);
+}
+
+/* The transparent export sits on a checkerboard, so the missing backdrop is visible. */
+.showcase-tile.transparent {
+  background: repeating-conic-gradient(var(--surface-2) 0 25%,var(--canvas-raised) 0 50%) 0 0 / 14px 14px;
+}
+
+/* Exports are 960 px at 2x, so they never draw wider than their 480 px 1x size. */
+.showcase-tile .proof {
+  max-width: 480px;
+  margin: 0 auto;
 }
 
 .showcase-tile img {
   width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: top;
+  filter: drop-shadow(0 10px 24px rgb(0 0 0 / 10%));
+}
+
+.showcase-tile.transparent img {
+  filter: none;
 }
 
 .showcase figcaption {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 4px;
-  margin-top: 12px;
+  padding: 14px var(--edge) 20px;
   font-size: 11px;
 }
 
-.showcase figcaption span:last-child {
+.showcase figcaption span:first-child {
+  font-size: 12px;
+}
+
+.showcase figcaption span:nth-child(2) {
   color: var(--muted);
 }
 
+.showcase figcaption .spec {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--faint);
+}
+
+/* On narrow screens the preview sits between the intro and the list, so a choice is visible. */
 @media(max-width:960px) {
-  .showcase figure {
-    display: grid;
-    grid-template-columns: minmax(0,.9fr) minmax(0,1.1fr);
-    align-items: center;
-    gap: 24px;
+  .themes {
+    display: flex;
+    flex-direction: column;
   }
-  .showcase figcaption {
-    margin-top: 0;
+  .picker {
+    display: contents;
+  }
+  .picker>h2 {
+    padding: 32px var(--edge) 0;
+  }
+  .picker>p {
+    padding: 12px var(--edge) 24px;
+  }
+  .stage {
+    border-block: 1px solid var(--line);
+  }
+  .options {
+    order: 1;
+    margin: 24px var(--edge) 32px;
+  }
+  .showcase figure+figure {
+    border-left: 0;
+    border-top: 1px solid var(--line);
   }
 }
 
@@ -584,14 +905,10 @@ img {
   .hero {
     padding-top: 64px;
   }
-  .themes,.parts,.showcase {
+  .parts,.showcase {
     grid-template-columns: 1fr;
   }
-  .picker {
-    border-right: 0;
-    border-bottom: 1px solid var(--line);
-  }
-  .parts article+article,.showcase figure+figure {
+  .parts article+article {
     border-left: 0;
     border-top: 1px solid var(--line);
   }
@@ -638,10 +955,16 @@ img {
     border-left: 0!important;
   }
   .app-section {
-    padding: 20px var(--edge);
+    padding: 44px var(--edge) 48px;
   }
   .stage {
-    padding: 24px var(--edge);
+    padding: 44px var(--edge) 56px;
+  }
+  .showcase-tile {
+    padding: 44px var(--edge) 48px;
+  }
+  .crop {
+    display: none;
   }
   .cli-command {
     font-size: 10px;

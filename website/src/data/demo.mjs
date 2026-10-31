@@ -1,10 +1,11 @@
 // These are real CLI IDs and appearance flags, shared by the page and asset builder.
+// `palette` holds each theme's published token colours for the picker thumbnails.
 export const themes = [
-  { id: 'gruvbox', name: 'Gruvbox Dark', cli: 'gruvbox-medium', appearance: 'dark', bg: '#282828', accent: '#fabd2f' },
-  { id: 'ayu', name: 'Ayu Light', cli: 'ayu', appearance: 'light', bg: '#fcfcfc', accent: '#fa8d3e' },
-  { id: 'nightowl', name: 'Night Owl', cli: 'night-owl', appearance: 'dark', bg: '#011627', accent: '#82aaff' },
-  { id: 'catppuccin', name: 'Catppuccin Mocha', cli: 'catppuccin', appearance: 'dark', bg: '#1e1e2e', accent: '#cba6f7' },
-  { id: 'solarized', name: 'Solarized Light', cli: 'solarized', appearance: 'light', bg: '#fdf6e3', accent: '#268bd2' },
+  { id: 'gruvbox', name: 'Gruvbox Dark', cli: 'gruvbox-medium', appearance: 'dark', palette: { bg: '#282828', kw: '#fb4934', fn: '#b8bb26', type: '#fabd2f', num: '#d3869b', comment: '#928374' } },
+  { id: 'ayu', name: 'Ayu Light', cli: 'ayu', appearance: 'light', palette: { bg: '#fcfcfc', kw: '#fa8d3e', fn: '#f2ae49', type: '#399ee6', num: '#a37acc', comment: '#adaeb1' } },
+  { id: 'nightowl', name: 'Night Owl', cli: 'night-owl', appearance: 'dark', palette: { bg: '#011627', kw: '#c792ea', fn: '#82aaff', type: '#ffcb8b', num: '#f78c6c', comment: '#637777' } },
+  { id: 'catppuccin', name: 'Catppuccin Mocha', cli: 'catppuccin', appearance: 'dark', palette: { bg: '#1e1e2e', kw: '#cba6f7', fn: '#89b4fa', type: '#f9e2af', num: '#fab387', comment: '#7f849c' } },
+  { id: 'solarized', name: 'Solarized Light', cli: 'solarized', appearance: 'light', palette: { bg: '#fdf6e3', kw: '#859900', fn: '#268bd2', type: '#b58900', num: '#d33682', comment: '#93a1a1' } },
 ];
 export const source = [
   'fn share(code: &str, theme: &Theme) -> Image {',
