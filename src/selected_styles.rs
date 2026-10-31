@@ -12,6 +12,9 @@ struct Study {
     code_weight: u32,
     line_height: f32,
     base_font_size: Option<f32>,
+    /// Replaces drop shadows that would otherwise fringe a transparent canvas.
+    #[serde(default)]
+    clear_css: String,
 }
 
 pub(crate) fn frame(theme: &assets::Theme, style: &Style, lines: usize) -> Frame {
@@ -65,6 +68,9 @@ pub(crate) fn frame(theme: &assets::Theme, style: &Style, lines: usize) -> Frame
     );
     if style.background != Background::Theme {
         css += ".Original{background-image:none;background-color:transparent}.Original--holofoil .glow{display:none}";
+    }
+    if style.background == Background::None {
+        css += &study.clear_css;
     }
     if matches!(theme.id.as_str(), "label-tape" | "ragged-block") {
         css += ".Original .line.empty-line .lc{padding:0;background:none;box-shadow:none}";

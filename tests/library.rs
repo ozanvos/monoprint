@@ -132,12 +132,12 @@ fn raw_pixels_match_png_at_odd_and_even_scales_and_retain_validation() {
 
 #[test]
 fn catalog_parsing_discovery_and_filename_inference() {
-    assert_eq!(Theme::all().len(), 69);
+    assert_eq!(Theme::all().len(), 78);
     assert_eq!(
         Theme::all()
             .filter(|t| t.supports(Appearance::Light))
             .count(),
-        37
+        46
     );
     assert_eq!("MONOPRINT".parse::<Theme>().unwrap(), Theme::default());
     assert_eq!(Theme::default().to_string(), "monoprint");

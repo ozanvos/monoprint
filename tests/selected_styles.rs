@@ -1,4 +1,4 @@
-use monoprint::{Background, BundledFont, LineNumbers, Renderer, Scale, Snippet, Style, Theme};
+use monoprint::{Appearance, Background, BundledFont, LineNumbers, Renderer, Scale, Snippet, Style, Theme};
 
 macro_rules! selected_exports {
     ($($case:ident => $id:literal),* $(,)?) => {
@@ -24,17 +24,39 @@ selected_exports! {
     urushi => "urushi",
     one_bit => "one-bit",
     holofoil => "holofoil",
+    cyanotype => "cyanotype",
+    greenbar => "greenbar",
+    phosphor => "phosphor",
+    index_card => "index-card",
+    manila => "manila",
+    quadrangle => "quadrangle",
+    carbon_copy => "carbon-copy",
+    vellum => "vellum",
+    anodized => "anodized",
 }
 const SOURCE: &str = "// Make something worth sharing.\ntype Idea = { spark: string };\n\nexport async function create(idea: Idea) {\n  const colors = [\"ink\", \"light\", \"wonder\"];\n  const canvas = await render({\n    ...idea,\n    colors,\n    quality: 100,\n  });\n  return canvas.share();\n}";
 
 fn assert_native_exports(id: &str) {
+    let theme: Theme = id.parse().unwrap();
+    assert_eq!(theme.family(), "Monoprint Originals");
+    for appearance in [Appearance::Dark, Appearance::Light] {
+        if theme.supports(appearance) {
+            assert_appearance_exports(theme, appearance);
+        }
+    }
+}
+
+fn assert_appearance_exports(theme: Theme, appearance: Appearance) {
+    let id = &format!("{theme} {appearance}");
     let renderer = Renderer::new();
     let snippet = Snippet::new(SOURCE)
         .language("typescript".parse().unwrap())
         .title("create.ts");
-    let theme: Theme = id.parse().unwrap();
-    assert_eq!(theme.family(), "Monoprint Originals");
-    let style = Style::new(theme).width(1000).padding(64).font_size(25);
+    let style = Style::new(theme)
+        .appearance(appearance)
+        .width(1000)
+        .padding(64)
+        .font_size(25);
     // SVG uses a 2x viewBox internally. Compare at that same resolution so a
     // dense pixel pattern is not testing two different downsampling filters.
     let rgba = renderer
@@ -90,12 +112,12 @@ fn assert_native_exports(id: &str) {
         let dir = std::path::PathBuf::from(dir);
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(
-            dir.join(format!("{id}.png")),
+            dir.join(format!("{theme}-{appearance}.png")),
             renderer.png(&snippet, &style, Scale::X1).unwrap(),
         )
         .unwrap();
-        std::fs::write(dir.join(format!("{id}.svg")), svg).unwrap();
-        std::fs::write(dir.join(format!("{id}.html")), html).unwrap();
+        std::fs::write(dir.join(format!("{theme}-{appearance}.svg")), svg).unwrap();
+        std::fs::write(dir.join(format!("{theme}-{appearance}.html")), html).unwrap();
     }
     println!("{id}: {} × {}", rgba.width(), rgba.height());
 }

@@ -114,7 +114,7 @@ merge, and empty/reversed/out-of-bounds coordinates fail when rendered.
 
 The title is a label, not a filename hint. Use `Language::for_file_name()` explicitly; it does not read the file. Unknown filenames return `None`; parsing an unknown explicit language returns an error. TypeScript aliases (`ts`, `mts`, `cts`) select TypeScript; TSX remains separate. TeX selects LaTeX. `Language::all()` lists these unique selections (231 highlighting languages plus plain text, backed by 232 bundled named grammars).
 
-`Theme::all()` lists 69 curated presets; matching light/dark appearances appear once.
+`Theme::all()` lists 78 curated presets; matching light/dark appearances appear once.
 For example, `Style::new("ayu".parse()?).appearance(Appearance::Light)` selects
 Ayu Light, including its frame and background. Original IDs still work:
 `Style::new("ayu-light".parse()?)` keeps its light default. `Theme::aliases()`

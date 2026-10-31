@@ -63,8 +63,10 @@ pub(crate) fn css(theme: &assets::Theme, appearance: Appearance, background: Bac
         .as_ref()
         .map(|e| e.solid.as_str())
         .or_else(|| {
-            theme.syntax[appearance.as_str()]
+            let palette = &theme.syntax[appearance.as_str()];
+            palette
                 .get("--monoprint-stage")
+                .or_else(|| palette.get("--stage"))
                 .map(String::as_str)
         })
         .or_else(|| gradient.map(|g| g.from.as_str()))

@@ -1024,6 +1024,15 @@ mod macos {
             "flange",
             "inlay",
             "trace",
+            "cyanotype",
+            "greenbar",
+            "phosphor",
+            "index-card",
+            "manila",
+            "quadrangle",
+            "carbon-copy",
+            "vellum",
+            "anodized",
         ] {
             reveal_theme_gallery(cx, handle, studio);
             cx.update_window(handle.into(), |_, window, cx| {

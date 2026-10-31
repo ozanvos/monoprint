@@ -404,7 +404,7 @@ mod tests {
             Theme::all()
                 .filter(|t| t.family() == "Monoprint Originals")
                 .count(),
-            48
+            57
         );
     }
 

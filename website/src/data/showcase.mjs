@@ -4,7 +4,7 @@ export const exportWidth = 480;
 export const showcases = [
   {
     id: 'typescript-monoprint', source: 'user.ts', theme: 'monoprint', appearance: 'dark', format: 'png',
-    name: 'Pick your theme', detail: '69 themes',
+    name: 'Pick your theme', detail: '78 themes',
     alt: 'A typed TypeScript API request in the dark Monoprint style, with warm syntax accents',
   },
   {

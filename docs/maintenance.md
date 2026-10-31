@@ -4,8 +4,8 @@ Normal builds use the checked-in assets and need no importer or browser.
 
 ## Original styles
 
-The catalog contains 48 Monoprint Originals and 21 curated editor presets, with
-80 appearances. Original palettes and frames live in `assets/originals`,
+The catalog contains 57 Monoprint Originals and 21 curated editor presets, with
+98 appearances. Original palettes and frames live in `assets/originals`,
 `assets/selected`, and `assets/code-styles`; their native renderers live in `src/`.
 Edit the JSON and CSS directly. Keep matching palettes under `assets/themes`
 in sync, rebuild the registry after palette changes, then update the native tables:

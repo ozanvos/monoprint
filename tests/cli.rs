@@ -743,5 +743,5 @@ fn all_variants_export_all_formats() {
             }
         }
     }
-    assert_eq!(variants, 80);
+    assert_eq!(variants, 98);
 }

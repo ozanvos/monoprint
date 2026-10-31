@@ -287,5 +287,221 @@
       "from": "#0a0a0e",
       "to": "#0a0a0e"
     }
+  },
+  "cyanotype": {
+    "id": "cyanotype",
+    "name": "Cyanotype",
+    "font": "ibm-plex-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#e6eef8",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#143a62"
+      },
+      "light": {
+        "--ink-foreground": "#1d3f6e",
+        "--ink-highlight": "#00000016",
+        "--stage": "#cdd2ca"
+      }
+    },
+    "background": {
+      "from": "#143a62",
+      "to": "#143a62"
+    }
+  },
+  "greenbar": {
+    "id": "greenbar",
+    "name": "Greenbar",
+    "font": "roboto-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#d9dfd5",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#0c0e0c"
+      },
+      "light": {
+        "--ink-foreground": "#2a2e2a",
+        "--ink-highlight": "#00000016",
+        "--stage": "#3a3d39"
+      }
+    },
+    "background": {
+      "from": "#0c0e0c",
+      "to": "#0c0e0c"
+    }
+  },
+  "phosphor": {
+    "id": "phosphor",
+    "name": "Phosphor",
+    "font": "source-code-pro",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#ffb04a",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#17130d"
+      },
+      "light": {
+        "--ink-foreground": "#7a440c",
+        "--ink-highlight": "#00000016",
+        "--stage": "#e2dbcd"
+      }
+    },
+    "background": {
+      "from": "#17130d",
+      "to": "#17130d"
+    }
+  },
+  "index-card": {
+    "id": "index-card",
+    "name": "Index Card",
+    "font": "geist-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#dfe2e8",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#121316"
+      },
+      "light": {
+        "--ink-foreground": "#262b36",
+        "--ink-highlight": "#00000016",
+        "--stage": "#d9dde2"
+      }
+    },
+    "background": {
+      "from": "#121316",
+      "to": "#121316"
+    }
+  },
+  "manila": {
+    "id": "manila",
+    "name": "Manila",
+    "font": "google-sans-code",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#ecdfc3",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#131517"
+      },
+      "light": {
+        "--ink-foreground": "#35291a",
+        "--ink-highlight": "#00000016",
+        "--stage": "#2d3438"
+      }
+    },
+    "background": {
+      "from": "#131517",
+      "to": "#131517"
+    }
+  },
+  "quadrangle": {
+    "id": "quadrangle",
+    "name": "Quadrangle",
+    "font": "jetbrains-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#e3dfd2",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#151b1d"
+      },
+      "light": {
+        "--ink-foreground": "#2a2a26",
+        "--ink-highlight": "#00000016",
+        "--stage": "#efe9d8"
+      }
+    },
+    "background": {
+      "from": "#151b1d",
+      "to": "#151b1d"
+    }
+  },
+  "carbon-copy": {
+    "id": "carbon-copy",
+    "name": "Carbon Copy",
+    "font": "space-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 700,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#cfcdf5",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#2b2d34"
+      },
+      "light": {
+        "--ink-foreground": "#37368f",
+        "--ink-highlight": "#00000016",
+        "--stage": "#3c4450"
+      }
+    },
+    "background": {
+      "from": "#2b2d34",
+      "to": "#2b2d34"
+    }
+  },
+  "vellum": {
+    "id": "vellum",
+    "name": "Vellum",
+    "font": "commit-mono",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#e3e7ef",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#1e2a42"
+      },
+      "light": {
+        "--ink-foreground": "#1f2533",
+        "--ink-highlight": "#00000016",
+        "--stage": "#ebe4d6"
+      }
+    },
+    "background": {
+      "from": "#1e2a42",
+      "to": "#1e2a42"
+    }
+  },
+  "anodized": {
+    "id": "anodized",
+    "name": "Anodized",
+    "font": "fira-code",
+    "original": true,
+    "lineNumbers": false,
+    "syntaxWeight": 600,
+    "syntax": {
+      "dark": {
+        "--ink-foreground": "#dbe6ec",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#d4d6d9"
+      },
+      "light": {
+        "--ink-foreground": "#22303a",
+        "--ink-highlight": "#00000016",
+        "--stage": "#3a3f45"
+      }
+    },
+    "background": {
+      "from": "#d4d6d9",
+      "to": "#d4d6d9"
+    }
   }
 }
