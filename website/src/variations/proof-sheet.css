@@ -1,0 +1,187 @@
+/* Proof sheet: the desktop lattice becomes a cutting mat. Figures get crop marks and dimension
+   lines, and the grid answers the pointer with a snapped crosshair and coordinates. */
+:root {
+  --mark: #8d8d88;
+  --mark-ease: cubic-bezier(.2,.7,.2,1);
+}
+
+.app-section,.stage {
+  position: relative;
+}
+
+.proof {
+  position: relative;
+  z-index: 1;
+}
+
+.stage .proof {
+  width: min(100%,720px);
+}
+
+.stage .proof .sheet {
+  width: 100%;
+}
+
+/* Each corner gets two hairlines that stop short of the trim, as on a press sheet. */
+.crop {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+}
+
+.crop i {
+  position: absolute;
+  background: var(--mark);
+}
+
+.crop i:nth-child(odd) { width: 16px; height: 1px; }
+.crop i:nth-child(even) { width: 1px; height: 16px; }
+.crop i:nth-child(1) { top: 0; right: calc(100% + 8px); transform-origin: right; }
+.crop i:nth-child(2) { bottom: calc(100% + 8px); left: 0; transform-origin: bottom; }
+.crop i:nth-child(3) { top: 0; left: calc(100% + 8px); transform-origin: left; }
+.crop i:nth-child(4) { bottom: calc(100% + 8px); right: 0; transform-origin: bottom; }
+.crop i:nth-child(5) { bottom: 0; right: calc(100% + 8px); transform-origin: right; }
+.crop i:nth-child(6) { top: calc(100% + 8px); left: 0; transform-origin: top; }
+.crop i:nth-child(7) { bottom: 0; left: calc(100% + 8px); transform-origin: left; }
+.crop i:nth-child(8) { top: calc(100% + 8px); right: 0; transform-origin: top; }
+
+.motion .crop i:nth-child(odd) { transform: scaleX(0); }
+.motion .crop i:nth-child(even) { transform: scaleY(0); }
+
+.motion .crop i {
+  transition: transform .55s var(--mark-ease);
+}
+
+.motion .marked .crop i {
+  transform: none;
+}
+
+.motion .marked .crop i:nth-child(n+3) { transition-delay: 70ms; }
+.motion .marked .crop i:nth-child(n+5) { transition-delay: 140ms; }
+.motion .marked .crop i:nth-child(n+7) { transition-delay: 210ms; }
+
+/* Dimension line under a figure: ticks at both ends, the measurement centred on a gap. */
+.dimension {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(100% + 14px);
+  height: 9px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 10px;
+  color: var(--muted);
+  pointer-events: none;
+}
+
+.dimension::before,.dimension::after {
+  content: '';
+  flex: 1;
+  height: 9px;
+  background: linear-gradient(var(--mark),var(--mark)) center / 100% 1px no-repeat;
+  border-inline: 1px solid var(--mark);
+}
+
+.dimension::before { border-right: 0; }
+.dimension::after { border-left: 0; }
+
+.motion .dimension::before { transform-origin: right; }
+.motion .dimension::after { transform-origin: left; }
+
+.motion .dimension::before,.motion .dimension::after {
+  transform: scaleX(0);
+  transition: transform .7s var(--mark-ease) .25s;
+}
+
+.motion .dimension span {
+  opacity: 0;
+  transition: opacity .4s ease .55s;
+}
+
+.motion .marked .dimension::before,.motion .marked .dimension::after {
+  transform: none;
+}
+
+.motion .marked .dimension span {
+  opacity: 1;
+}
+
+.dimension span {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+.app-section {
+  padding-bottom: 56px;
+}
+
+.stage {
+  padding-bottom: 64px;
+}
+
+.fig {
+  position: absolute;
+  top: 15px;
+  left: calc(var(--edge) + 12px);
+  font-size: 10px;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.fig b {
+  font-weight: 400;
+  color: var(--ink);
+}
+
+/* Crosshair lives under the figures, so it only ever reads on the open grid. */
+.crosshair {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+
+.crosshair.on {
+  opacity: 1;
+}
+
+.crosshair .h,.crosshair .v {
+  position: absolute;
+  background: rgb(82 111 210 / 45%);
+  transition: transform .09s linear;
+}
+
+.crosshair .h { left: 0; right: 0; top: 0; height: 1px; }
+.crosshair .v { top: 0; bottom: 0; left: 0; width: 1px; }
+
+.crosshair .readout {
+  position: absolute;
+  top: 0;
+  left: 0;
+  padding: 2px 5px;
+  background: var(--canvas-raised);
+  border: 1px solid var(--line);
+  border-radius: 2px;
+  font-size: 10px;
+  color: var(--ink-2);
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+  transition: transform .09s linear;
+  z-index: 2;
+}
+
+.stage .sheet img.fading {
+  animation: develop .32s ease both;
+}
+
+@keyframes develop {
+  from { opacity: 0; }
+}
+
+@media(max-width:600px) {
+  .crop { display: none; }
+}

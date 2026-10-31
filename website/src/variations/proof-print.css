@@ -1,0 +1,166 @@
+/* Proof print: proof-sheet instrumentation with the typed hero from Print head. Marks register,
+   the figure fades in inside them, and the dimension line is drawn last. The export examples get
+   the same treatment, one mat each. */
+
+/* Hero output line under the typed command. */
+.render-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 18px;
+  min-height: 16px;
+  margin-top: -8px;
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.render-status b {
+  font-weight: 400;
+  color: var(--ink);
+}
+
+.motion .render-status span {
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+
+.motion .render-status.shown span {
+  opacity: 1;
+}
+
+.motion .render-status.shown span:nth-child(2) { transition-delay: 30ms; }
+.motion .render-status.shown span:nth-child(3) { transition-delay: 60ms; }
+
+#command-text.typing::after {
+  content: '';
+  display: inline-block;
+  width: .6em;
+  height: 1.2em;
+  margin-left: 1px;
+  vertical-align: -.25em;
+  background: var(--ink);
+  animation: caret .9s steps(1) infinite;
+}
+
+@keyframes caret {
+  50% { opacity: 0; }
+}
+
+/* Figures stay hidden until their marks are in, so nothing flashes first. */
+.motion .app-screenshot:not(.printed),.motion .stage .sheet:not(.printed),.motion .pending {
+  opacity: 0;
+}
+
+.stage .sheet img.leaving {
+  z-index: 0;
+}
+
+.stage .sheet img.arriving {
+  z-index: 1;
+}
+
+/* Quicker than Proof sheet: marks close in fast and nearly together. */
+.motion .crop i {
+  transition-duration: .28s;
+}
+
+.motion .marked .crop i:nth-child(n+3) { transition-delay: 20ms; }
+.motion .marked .crop i:nth-child(n+5) { transition-delay: 40ms; }
+.motion .marked .crop i:nth-child(n+7) { transition-delay: 60ms; }
+
+/* Measuring waits for `measured` rather than `marked`. */
+.motion .marked .dimension::before,.motion .marked .dimension::after {
+  transform: scaleX(0);
+  transition-duration: .3s;
+  transition-delay: 0s;
+}
+
+.motion .marked .dimension span {
+  opacity: 0;
+  transition-duration: .2s;
+  transition-delay: .12s;
+}
+
+.motion .marked.measured .dimension::before,.motion .marked.measured .dimension::after {
+  transform: none;
+}
+
+.motion .marked.measured .dimension span {
+  opacity: 1;
+}
+
+/* Export examples: one mat per export, tops aligned, captions read as a spec sheet. */
+.showcase figure {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+}
+
+.showcase-tile {
+  position: relative;
+  flex: 1;
+  aspect-ratio: auto;
+  display: block;
+  padding: 52px 40px 60px;
+  border-bottom: 1px solid var(--line);
+  background-color: var(--desktop);
+  background-image: var(--desktop-grid);
+  background-size: 14px 14px;
+}
+
+/* The transparent export sits on a checkerboard, so the missing backdrop is visible. */
+.showcase-tile.transparent {
+  background: repeating-conic-gradient(var(--surface-2) 0 25%,var(--canvas-raised) 0 50%) 0 0 / 14px 14px;
+}
+
+/* Exports are 960 px at 2x, so they never draw wider than their 480 px 1x size. */
+.showcase-tile .proof {
+  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
+}
+
+.showcase-tile img {
+  width: 100%;
+  height: auto;
+  object-fit: fill;
+  filter: drop-shadow(0 10px 24px rgb(0 0 0 / 10%));
+}
+
+.showcase-tile.transparent img {
+  filter: none;
+}
+
+.showcase figcaption {
+  display: grid;
+  gap: 4px;
+  margin: 0;
+  padding: 14px var(--edge) 20px;
+}
+
+.showcase figcaption span:first-child {
+  font-size: 12px;
+}
+
+.showcase figcaption span:nth-child(2) {
+  color: var(--muted);
+}
+
+.showcase figcaption .spec {
+  margin-top: 4px;
+  font-size: 10px;
+  color: var(--faint);
+}
+
+@media(max-width:600px) {
+  .showcase-tile {
+    padding: 44px var(--edge) 48px;
+  }
+}
+
+/* Snippet colours from Monoprint Light, the app's own theme for this ground. */
+.hl-k { color: #a0452b; }
+.hl-f { font-weight: 650; }
+.hl-s { color: #6e5a35; }
+.hl-c { color: var(--muted); }

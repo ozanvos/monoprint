@@ -1,0 +1,25 @@
+---
+import { variations } from '../../variations/list.mjs';
+import '../../styles/site.css';
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex,nofollow" />
+    <title>Monoprint | Variations</title>
+    <link rel="icon" href="/assets/icon.png" />
+  </head>
+  <body>
+    <div class="page">
+      <header class="strip"><a class="brand" href="/">Monoprint</a><nav><a href="/">Current site</a></nav></header>
+      <main class="parts" style="grid-template-columns:repeat(2,minmax(0,1fr))">
+        {variations.map((v, i) => <article style={i % 2 ? '' : 'border-left:0'}>
+          <h2><a href={`/variations/${v.id}/`}>{String(i + 1).padStart(2, '0')} {v.name} →</a></h2>
+          <p>{v.summary}</p>
+        </article>)}
+      </main>
+    </div>
+  </body>
+</html>

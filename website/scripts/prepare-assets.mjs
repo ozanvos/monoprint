@@ -18,7 +18,7 @@ export async function prepareAssets(directory = path.join(website, '.generated/p
   for (const sample of showcases) {
     const input = path.join(website, 'assets/examples', sample.source);
     const file = path.join(assets, `${sample.id}.${sample.format}`);
-    const flags = [input, '--theme', sample.theme, `--${sample.appearance}`, '--width', '420', '--padding', '16', '--scale', '2', '--font', 'jetbrains-mono', '--font-size', '16', '--ligatures', '--line-numbers', '--title', sample.source];
+    const flags = [input, '--theme', sample.theme, `--${sample.appearance}`, '--width', '480', '--padding', '16', '--scale', '2', '--font', 'jetbrains-mono', '--font-size', '16', '--ligatures', '--line-numbers', '--title', sample.source];
     if (sample.format === 'png') flags.push('--png-compression', 'balanced');
     if (sample.highlight) flags.push('--highlight', sample.highlight);
     if (sample.transparent) flags.push('--transparent');

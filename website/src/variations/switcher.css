@@ -1,0 +1,61 @@
+/* Review-only chrome: a small pager for stepping between variations. */
+.variation-switcher {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 20;
+  display: flex;
+  align-items: stretch;
+  height: 30px;
+  border: 1px solid var(--ink);
+  border-radius: 4px;
+  background: var(--canvas-raised);
+  font-size: 11px;
+  box-shadow: 0 6px 20px rgb(27 27 25 / 12%);
+}
+
+.variation-switcher a {
+  display: flex;
+  align-items: center;
+  padding: 0 10px;
+}
+
+.variation-switcher a+a {
+  border-left: 1px solid var(--line);
+}
+
+.variation-switcher .current {
+  color: var(--muted);
+}
+
+.hero.has-aside {
+  display: grid;
+  grid-template-columns: minmax(0,1fr) minmax(0,560px);
+  align-items: center;
+  gap: 48px;
+}
+
+.hero-copy {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  min-width: 0;
+}
+
+@media(max-width:960px) {
+  .hero.has-aside {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* Theme samples stack in one cell so a variation can transition between them. */
+.stage .sheet {
+  position: relative;
+  display: grid;
+  width: min(100%,720px);
+}
+
+.stage .sheet img {
+  grid-area: 1 / 1;
+  width: 100%;
+}
