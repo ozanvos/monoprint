@@ -1,4 +1,7 @@
-use crate::interaction_motion::{HoverStyle, MotionSegments, SmoothHover, hover_text};
+use crate::interaction_motion::{
+    Entrance, HoverStyle, MotionSegments, PopIcon, SmoothHover, hover_text, selection_ring,
+    track_selection,
+};
 use crate::{
     appearance::*, canvas_resize::ResizeEdge, document::Format, studio::*, viewport::PreviewZoom,
 };
@@ -227,11 +230,6 @@ impl Studio {
                     .text_size(px(11.))
                     // Reserve space for Copying… so feedback cannot resize Export.
                     .w(px(110.))
-                    .icon(if self.copy_state == CopyState::Copied {
-                        IconName::Check
-                    } else {
-                        IconName::Copy
-                    })
                     .label(match self.copy_state {
                         CopyState::Idle => "Copy",
                         CopyState::Copying => "Copying…",
@@ -242,7 +240,12 @@ impl Studio {
                     .on_click(
                         cx.listener(|this, _, window, cx| this.copy_image(&CopyImage, window, cx)),
                     )
-                    .smooth_hover(p, HoverStyle::Control),
+                    .smooth_hover(p, HoverStyle::Control)
+                    .pop_icon(if self.copy_state == CopyState::Copied {
+                        IconName::Check
+                    } else {
+                        IconName::Copy
+                    }),
             )
     }
 
@@ -505,83 +508,89 @@ impl Studio {
                     .left(left)
                     .top(top)
                     .w(width)
-                    .flex()
-                    .items_center()
-                    .gap(px(2.))
-                    .p(px(3.))
-                    .rounded(px(6.))
-                    .bg(rgb(p.overlay))
-                    .text_color(rgb(p.overlay_ink))
-                    .shadow_md()
-                    .child(
-                        canvas(
-                            |bounds, _, _| bounds,
-                            move |bounds, _, window, _| {
-                                let mut path = PathBuilder::fill();
-                                let edge = if above { 0. } else { 4. };
-                                let tip = if above { 4. } else { 0. };
-                                path.move_to(bounds.origin + point(px(0.), px(edge)));
-                                path.line_to(bounds.origin + point(px(8.), px(edge)));
-                                path.line_to(bounds.origin + point(px(4.), px(tip)));
-                                path.close();
-                                if let Ok(path) = path.build() {
-                                    window.paint_path(path, rgb(p.overlay));
-                                }
-                            },
-                        )
-                        .absolute()
-                        .left((anchor.center().x - left - px(4.)).clamp(px(8.), width - px(16.)))
-                        .top(px(if above { 30. } else { -4. }))
-                        .w(px(8.))
-                        .h(px(4.)),
-                    )
-                    .child(
-                        Button::new("highlight-selection")
-                            .custom(highlight_button_style(cx))
-                            .xsmall()
-                            .h(px(24.))
-                            .text_size(px(11.))
-                            .flex_1()
-                            .label(if marked {
-                                "Remove highlight"
-                            } else {
-                                "Highlight"
-                            })
-                            .tooltip(if marked {
-                                "Remove highlighting from this selection"
-                            } else {
-                                "Highlight the selected text in the image"
-                            })
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                if clicked {
-                                    this.remove_clicked_highlight(cx);
-                                } else {
-                                    this.highlight_selection(false, cx);
-                                }
-                            }))
-                            .smooth_hover(p, HoverStyle::Overlay),
-                    )
-                    .when(!clicked, |view| {
-                        view.child(
-                            Button::new("highlight-selected-lines")
-                                .custom(highlight_button_style(cx))
-                                .xsmall()
-                                .h(px(24.))
-                                .text_size(px(11.))
-                                .label(if marked_lines { "Clear lines" } else { "Lines" })
-                                .tooltip(if marked_lines {
-                                    "Remove highlights from the selected lines"
-                                } else {
-                                    "Highlight the selected source lines"
-                                })
-                                .on_click(
-                                    cx.listener(|this, _, _, cx| {
-                                        this.highlight_selection(true, cx)
-                                    }),
+                    .child(Entrance::new(
+                        "selection-toolbar",
+                        if above { 4. } else { -4. },
+                        div()
+                            .flex()
+                            .items_center()
+                            .gap(px(2.))
+                            .p(px(3.))
+                            .rounded(px(6.))
+                            .bg(rgb(p.overlay))
+                            .text_color(rgb(p.overlay_ink))
+                            .shadow_md()
+                            .child(
+                                canvas(
+                                    |bounds, _, _| bounds,
+                                    move |bounds, _, window, _| {
+                                        let mut path = PathBuilder::fill();
+                                        let edge = if above { 0. } else { 4. };
+                                        let tip = if above { 4. } else { 0. };
+                                        path.move_to(bounds.origin + point(px(0.), px(edge)));
+                                        path.line_to(bounds.origin + point(px(8.), px(edge)));
+                                        path.line_to(bounds.origin + point(px(4.), px(tip)));
+                                        path.close();
+                                        if let Ok(path) = path.build() {
+                                            window.paint_path(path, rgb(p.overlay));
+                                        }
+                                    },
                                 )
-                                .smooth_hover(p, HoverStyle::Overlay),
-                        )
-                    }),
+                                .absolute()
+                                .left(
+                                    (anchor.center().x - left - px(4.))
+                                        .clamp(px(8.), width - px(16.)),
+                                )
+                                .top(px(if above { 30. } else { -4. }))
+                                .w(px(8.))
+                                .h(px(4.)),
+                            )
+                            .child(
+                                Button::new("highlight-selection")
+                                    .custom(highlight_button_style(cx))
+                                    .xsmall()
+                                    .h(px(24.))
+                                    .text_size(px(11.))
+                                    .flex_1()
+                                    .label(if marked {
+                                        "Remove highlight"
+                                    } else {
+                                        "Highlight"
+                                    })
+                                    .tooltip(if marked {
+                                        "Remove highlighting from this selection"
+                                    } else {
+                                        "Highlight the selected text in the image"
+                                    })
+                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                        if clicked {
+                                            this.remove_clicked_highlight(cx);
+                                        } else {
+                                            this.highlight_selection(false, cx);
+                                        }
+                                    }))
+                                    .smooth_hover(p, HoverStyle::Overlay),
+                            )
+                            .when(!clicked, |view| {
+                                view.child(
+                                    Button::new("highlight-selected-lines")
+                                        .custom(highlight_button_style(cx))
+                                        .xsmall()
+                                        .h(px(24.))
+                                        .text_size(px(11.))
+                                        .label(if marked_lines { "Clear lines" } else { "Lines" })
+                                        .tooltip(if marked_lines {
+                                            "Remove highlights from the selected lines"
+                                        } else {
+                                            "Highlight the selected source lines"
+                                        })
+                                        .on_click(cx.listener(|this, _, _, cx| {
+                                            this.highlight_selection(true, cx)
+                                        }))
+                                        .smooth_hover(p, HoverStyle::Overlay),
+                                )
+                            }),
+                    )),
             )
             .with_priority(1),
         )
@@ -598,6 +607,7 @@ impl Studio {
     fn preview_canvas(
         &mut self,
         size: gpui_kit::Size<Pixels>,
+        window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
         let p = palette(cx);
@@ -614,6 +624,7 @@ impl Studio {
                     return;
                 }
                 if let Some(image) = this.preview_size() {
+                    this.zoom_motion.follow();
                     this.viewport
                         .pan_by(event.delta.pixel_delta(px(24.)), image);
                     cx.stop_propagation();
@@ -626,6 +637,7 @@ impl Studio {
                     return;
                 }
                 if let Some(image) = this.preview_size() {
+                    this.zoom_motion.follow();
                     this.viewport.zoom_by(event.delta, event.position, image);
                     cx.stop_propagation();
                     cx.notify();
@@ -646,9 +658,20 @@ impl Studio {
             if self.canvas_resize.is_none() {
                 self.viewport.constrain_pan(image_size);
             }
+            let active = self.canvas_resize.is_some();
+            if active || self.viewport.is_dragging() {
+                self.zoom_motion.follow();
+            }
             let scale = self.viewport.scale(image_size);
-            let displayed = image_size.map(|length| length * scale);
-            let image_origin = self.viewport.origin(image_size);
+            let shown = self.zoom_motion.bounds(
+                Bounds::new(
+                    self.viewport.origin(image_size),
+                    image_size.map(|length| length * scale),
+                ),
+                window,
+                cx,
+            );
+            let (image_origin, displayed) = (shown.origin, shown.size);
             let (origin, width) = self
                 .canvas_resize
                 .as_ref()
@@ -657,7 +680,6 @@ impl Studio {
                     (resize.origin(width), width * resize.scale)
                 })
                 .unwrap_or((image_origin, displayed.width));
-            let active = self.canvas_resize.is_some();
             let handle_y = ((px(0.) - origin.y).max(px(0.))
                 + (size.height - origin.y).min(displayed.height))
                 / 2.;
@@ -907,6 +929,7 @@ impl Studio {
                                     .toggled(self.viewport.zoom == zoom)
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         this.canvas_resize = None;
+                                        this.zoom_motion.spring();
                                         this.viewport.reset(zoom);
                                         cx.notify();
                                     }))
@@ -947,8 +970,8 @@ impl Studio {
                     .relative()
                     .flex()
                     .overflow_hidden()
-                    .child(container_query(cx.processor(|this, size, _, cx| {
-                        this.preview_canvas(size, cx).into_any_element()
+                    .child(container_query(cx.processor(|this, size, window, cx| {
+                        this.preview_canvas(size, window, cx).into_any_element()
                     }))),
             )
             .when_some(self.error.clone(), |view, error| {
@@ -1146,10 +1169,12 @@ impl Studio {
     fn theme_browser(&self, cx: &Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         let count = self.filtered_themes.len();
+        let selected_bounds = std::rc::Rc::new(std::cell::Cell::new(None));
+        let tracked = selected_bounds.clone();
         let gallery = uniform_list(
             "theme-gallery",
             count.div_ceil(3),
-            cx.processor(|this, rows: std::ops::Range<usize>, _, cx| {
+            cx.processor(move |this, rows: std::ops::Range<usize>, _, cx| {
                 rows.map(|row| {
                     let mut tiles = div().flex().gap(px(7.)).w_full().h(px(73.)).pb(px(7.));
                     for column in 0..3 {
@@ -1157,7 +1182,7 @@ impl Studio {
                             div().flex_1().min_w_0().children(
                                 this.filtered_themes
                                     .get(row * 3 + column)
-                                    .map(|index| this.theme_tile(*index, cx)),
+                                    .map(|index| this.theme_tile(*index, &tracked, cx)),
                             ),
                         );
                     }
@@ -1241,32 +1266,45 @@ impl Studio {
                         .overflow_hidden()
                         .when(count > 0, |view| {
                             view.child(gallery)
+                                .child(selection_ring(
+                                    "theme-selection-ring",
+                                    selected_bounds,
+                                    self.selected_theme(),
+                                    self.theme_motion.generation(),
+                                    self.theme_scroll.clone(),
+                                    rgb(p.accent).into(),
+                                ))
                                 .child(Scrollbar::vertical(&self.theme_scroll))
                         })
                         .when(count == 0, |view| {
                             view.child(
-                                div()
-                                    .size_full()
-                                    .flex()
-                                    .flex_col()
-                                    .items_center()
-                                    .justify_center()
-                                    .gap_2()
-                                    .text_size(px(12.))
-                                    .text_color(rgb(p.muted))
-                                    .child("No matching themes")
-                                    .child(
-                                        Button::new("clear-theme-search")
-                                            .ghost()
-                                            .small()
-                                            .label("Clear search")
-                                            .on_click(cx.listener(|this, _, window, cx| {
-                                                this.theme_search.update(cx, |input, cx| {
-                                                    input.replace_all("", window, cx)
-                                                });
-                                            }))
-                                            .smooth_hover(p, HoverStyle::Ghost),
-                                    ),
+                                Entrance::new(
+                                    "no-matching-themes",
+                                    6.,
+                                    div()
+                                        .size_full()
+                                        .flex()
+                                        .flex_col()
+                                        .items_center()
+                                        .justify_center()
+                                        .gap_2()
+                                        .text_size(px(12.))
+                                        .text_color(rgb(p.muted))
+                                        .child("No matching themes")
+                                        .child(
+                                            Button::new("clear-theme-search")
+                                                .ghost()
+                                                .small()
+                                                .label("Clear search")
+                                                .on_click(cx.listener(|this, _, window, cx| {
+                                                    this.theme_search.update(cx, |input, cx| {
+                                                        input.replace_all("", window, cx)
+                                                    });
+                                                }))
+                                                .smooth_hover(p, HoverStyle::Ghost),
+                                        ),
+                                )
+                                .fill(),
                             )
                         }),
                 ),
@@ -1282,7 +1320,26 @@ impl Studio {
             }))
     }
 
-    fn theme_tile(&self, index: usize, cx: &Context<Self>) -> impl IntoElement {
+    fn selected_theme(&self) -> Option<&'static str> {
+        let theme = self.document.theme.as_str();
+        self.filtered_themes
+            .iter()
+            .map(|&index| self.thumbnails[index].0)
+            .find(|candidate| candidate.id() == theme)
+            .filter(|_| {
+                self.theme_filter.appearance().is_none_or(|appearance| {
+                    self.document.light == (appearance == Appearance::Light)
+                })
+            })
+            .map(|theme| theme.id())
+    }
+
+    fn theme_tile(
+        &self,
+        index: usize,
+        selected_bounds: &std::rc::Rc<std::cell::Cell<Option<Bounds<Pixels>>>>,
+        cx: &Context<Self>,
+    ) -> impl IntoElement {
         let p = palette(cx);
         let (theme, image) = &self.thumbnails[index];
         let image = if self.theme_filter == ThemeFilter::Light {
@@ -1296,7 +1353,7 @@ impl Studio {
                 .theme_filter
                 .appearance()
                 .is_none_or(|appearance| self.document.light == (appearance == Appearance::Light));
-        Button::new(("theme-swatch", index))
+        let tile = Button::new(("theme-swatch", index))
             .ghost()
             .p_0()
             .w_full()
@@ -1305,7 +1362,8 @@ impl Studio {
             .rounded(px(5.))
             .overflow_hidden()
             .border_1()
-            .border_color(rgb(if selected { p.accent } else { p.strong }))
+            // The shared selection ring draws the accent border above the grid.
+            .border_color(rgb(p.strong))
             .bg(rgb(p.canvas))
             .selected(selected)
             .child(
@@ -1338,19 +1396,23 @@ impl Studio {
                             .text_size(px(10.))
                             .text_color(rgb(if selected { p.ink } else { p.muted }))
                             .child(div().flex_1().min_w_0().truncate().child(theme.name()))
-                            .when(selected, |view| {
-                                view.child(
-                                    Icon::new(IconName::Check)
-                                        .size(px(11.))
-                                        .text_color(rgb(p.accent)),
-                                )
-                            }),
+                            .child(PopIcon::new(
+                                (ElementId::from(theme.id()), "selected"),
+                                selected.then_some(IconName::Check),
+                                px(11.),
+                                rgb(p.accent).into(),
+                            )),
                     ),
             )
             .accessibility_label(format!("{} theme", theme.name()))
             .tooltip(theme.name())
             .on_click(cx.listener(move |this, _, window, cx| this.select_theme(theme, window, cx)))
-            .smooth_hover(p, HoverStyle::Ghost)
+            .smooth_hover(p, HoverStyle::Ghost);
+        self.theme_motion.tile(
+            index,
+            theme.id(),
+            track_selection(tile, selected, selected_bounds),
+        )
     }
 
     fn typography_settings(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -1646,11 +1708,11 @@ impl Studio {
                     .primary()
                     .h(px(32.))
                     .w_full()
-                    .icon(if self.command_copied { IconName::Check } else { IconName::Copy })
                     .label(if self.command_copied { "Copied command" } else { "Copy command" })
                     .disabled(!valid)
                     .on_click(move |_, _, cx| studio.update(cx, |this, cx| this.copy_command(cx)))
-                    .smooth_hover(p, HoverStyle::Primary),
+                    .smooth_hover(p, HoverStyle::Primary)
+                    .pop_icon(if self.command_copied { IconName::Check } else { IconName::Copy }),
             )
             .test_support()
     }

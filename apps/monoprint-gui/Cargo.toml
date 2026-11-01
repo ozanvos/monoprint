@@ -16,6 +16,7 @@ app-store = ["dep:gpui-macos", "gpui-macos/app-store", "dep:objc2-foundation"]
 [dependencies]
 gpui-kit = { version = "=0.8.0", features = ["gpui-fast", "tree-sitter-rust", "tree-sitter-typescript", "tree-sitter-tsx", "tree-sitter-javascript", "tree-sitter-python"] }
 monoprint = { path = "../..", default-features = false }
+gpui-motion-kit = { path = "../../vendor/gpui-motion-kit" }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

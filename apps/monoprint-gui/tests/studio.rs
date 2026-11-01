@@ -93,6 +93,16 @@ mod macos {
         }
     }
 
+    // Zoom presets spring the preview; the headless clock only moves when told.
+    fn settle_motion(cx: &mut HeadlessAppContext, handle: WindowHandle<Root>) {
+        for _ in 0..10 {
+            cx.advance_clock(Duration::from_millis(100));
+            cx.run_until_parked();
+            cx.update_window(handle.into(), |_, window, cx| window.render_frame(cx))
+                .unwrap();
+        }
+    }
+
     fn capture(cx: &mut HeadlessAppContext, handle: WindowHandle<Root>, name: &str) {
         let pixels = cx
             .capture_screenshot(handle.into())
@@ -623,6 +633,7 @@ mod macos {
     ) {
         // Actual pointer hit targets, not calls to the resize methods.
         click(cx, handle, studio, "half-preview");
+        settle_motion(cx, handle);
         let (source, initial_width, initial_height, initial_revision) =
             cx.read_entity(studio, |s, _| {
                 (

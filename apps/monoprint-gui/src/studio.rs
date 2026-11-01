@@ -175,6 +175,8 @@ pub struct Studio {
     pub copy_state: CopyState,
     pub command_copied: bool,
     pub viewport: PreviewViewport,
+    pub zoom_motion: crate::interaction_motion::ZoomMotion,
+    pub theme_motion: crate::interaction_motion::ThemeMotion,
     pub canvas_resize: Option<CanvasResize>,
     live_preview_since: Option<u64>,
     pub theme_filter: ThemeFilter,
@@ -472,6 +474,8 @@ impl Studio {
             copy_state: CopyState::Idle,
             command_copied: false,
             viewport: PreviewViewport::default(),
+            zoom_motion: Default::default(),
+            theme_motion: Default::default(),
             canvas_resize: None,
             live_preview_since: None,
             theme_filter: ThemeFilter::All,
@@ -775,6 +779,7 @@ impl Studio {
 
     pub fn filter_themes(&mut self, cx: &mut Context<Self>) {
         let query = self.theme_search.read(cx).value().trim().to_lowercase();
+        let previous = std::mem::take(&mut self.filtered_themes);
         self.filtered_themes = self
             .thumbnails
             .iter()
@@ -801,6 +806,7 @@ impl Studio {
             })
             .map(|(index, _)| index)
             .collect();
+        self.theme_motion.reflow(&previous, &self.filtered_themes);
         self.theme_scroll
             .scroll_to_item_strict(0, ScrollStrategy::Top);
         cx.notify();

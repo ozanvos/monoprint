@@ -2286,6 +2286,16 @@ dependencies = [
 ]
 
 [[package]]
+name = "gpui-ce-motion"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "02abe0a96698ecae757fb8fbb170b0eb2e9123355775a9bb1c4d8dd26b081ab7"
+dependencies = [
+ "svgtypes 0.15.3",
+ "unicode-segmentation",
+]
+
+[[package]]
 name = "gpui-component"
 version = "0.8.0"
 dependencies = [
@@ -2692,6 +2702,14 @@ dependencies = [
  "rust-embed",
  "wasm-bindgen",
  "wasm-bindgen-futures",
+]
+
+[[package]]
+name = "gpui-motion-kit"
+version = "0.5.0"
+dependencies = [
+ "gpui-ce-motion",
+ "gpui-kit",
 ]
 
 [[package]]
@@ -4415,6 +4433,7 @@ dependencies = [
  "async-channel",
  "gpui-fast-macos",
  "gpui-kit",
+ "gpui-motion-kit",
  "image",
  "monoprint",
  "objc2 0.6.4",
