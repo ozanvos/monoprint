@@ -1139,7 +1139,7 @@ impl Studio {
             .theme
             .parse::<ImageTheme>()
             .unwrap_or_default();
-        (theme.supports(Appearance::Light) && theme.supports(Appearance::Dark)).then(|| {
+        has_light_and_dark(theme).then(|| {
             row(
                 p,
                 "Appearance",
@@ -1320,7 +1320,8 @@ impl Studio {
             }))
     }
 
-    fn selected_theme(&self) -> Option<&'static str> {
+    /// The theme whose tile shows as selected under the current filter.
+    pub fn selected_theme(&self) -> Option<&'static str> {
         let theme = self.document.theme.as_str();
         self.filtered_themes
             .iter()
@@ -1405,7 +1406,17 @@ impl Studio {
                     ),
             )
             .accessibility_label(format!("{} theme", theme.name()))
-            .tooltip(theme.name())
+            .tooltip(
+                if selected && self.theme_filter == ThemeFilter::All && has_light_and_dark(theme) {
+                    format!(
+                        "{} · click again for {}",
+                        theme.name(),
+                        if self.document.light { "dark" } else { "light" }
+                    )
+                } else {
+                    theme.name().to_owned()
+                },
+            )
             .on_click(cx.listener(move |this, _, window, cx| this.select_theme(theme, window, cx)))
             .smooth_hover(p, HoverStyle::Ghost);
         self.theme_motion.tile(

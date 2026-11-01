@@ -2293,7 +2293,31 @@ mod macos {
                 });
                 capture(&mut cx, handle, &format!("ayu-{control}-{}", width as u32));
             }
+            // A dark filter keeps the displayed variant on a repeat click.
+            reveal_theme_swatch(&mut cx, handle, &studio, ayu);
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.click(("theme-swatch", ayu), cx)
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| assert!(!s.document.light));
+            // Under all themes, clicking the selected tile again switches variants.
             inspector_click(&mut cx, handle, &studio, "themes-all");
+            reveal_theme_swatch(&mut cx, handle, &studio, ayu);
+            for light in [true, false] {
+                cx.update_window(handle.into(), |_, window, cx| {
+                    window.click(("theme-swatch", ayu), cx)
+                })
+                .unwrap();
+                settle(&mut cx, handle, &studio);
+                cx.read_entity(&studio, |s, _| {
+                    assert_eq!(s.document.theme, "ayu");
+                    assert_eq!(s.document.light, light, "repeat click toggles");
+                    assert_eq!(s.selected_theme(), Some("ayu"));
+                    assert!(s.error.is_none());
+                    assert_eq!(s.preview_revision, s.revision);
+                });
+            }
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
                     s.theme_search

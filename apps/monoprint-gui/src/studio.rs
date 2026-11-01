@@ -204,6 +204,11 @@ pub struct Studio {
     last_visible_rows: Option<std::ops::Range<usize>>,
 }
 
+/// Whether a theme offers both variants, so its appearance can be switched.
+pub fn has_light_and_dark(theme: Theme) -> bool {
+    theme.supports(monoprint::Appearance::Light) && theme.supports(monoprint::Appearance::Dark)
+}
+
 impl Studio {
     pub fn new(
         mut document: Document,
@@ -828,6 +833,16 @@ impl Studio {
     }
 
     pub fn select_theme(&mut self, theme: Theme, _window: &mut Window, cx: &mut Context<Self>) {
+        // Clicking the selected theme again switches between its variants.
+        // A light or dark filter instead always picks the variant it displays.
+        if self.theme_filter == ThemeFilter::All
+            && self.selected_theme() == Some(theme.id())
+            && has_light_and_dark(theme)
+        {
+            self.document.light = !self.document.light;
+            self.changed(cx);
+            return;
+        }
         self.document.select_theme(theme);
         if let Some(appearance) = self.theme_filter.appearance()
             && theme.supports(appearance)
