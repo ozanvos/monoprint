@@ -1,9 +1,57 @@
 name: Checks
-on: [push, pull_request, workflow_call, workflow_dispatch]
+on:
+  # Branches are checked through their pull request; pushes check main only.
+  push:
+    branches: [main]
+  pull_request:
+  workflow_call:
+  workflow_dispatch:
 permissions:
   contents: read
+# A new push to a pull request cancels its older run; every other run (main, releases) is
+# its own group, so nothing outside a pull request is ever cancelled or queued behind another.
+concurrency:
+  group: checks-${{ github.event.pull_request.number && format('pr-{0}', github.event.pull_request.number) || github.run_id }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
+  # Pull requests and pushes run only the jobs their changed files can affect.
+  # Release and manual runs (workflow_call, workflow_dispatch) always run everything.
+  scope:
+    runs-on: ubuntu-24.04
+    outputs:
+      website: ${{ steps.scope.outputs.website }}
+      app: ${{ steps.scope.outputs.app }}
+      studio: ${{ steps.scope.outputs.studio }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - id: scope
+        env:
+          EVENT: ${{ github.event_name }}
+          BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          if [[ "$EVENT" != pull_request && "$EVENT" != push ]] || ! git cat-file -e "$BASE^{commit}" 2>/dev/null; then
+            printf 'website=true\napp=true\nstudio=true\n' >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          files=$(git diff --name-only "$BASE" HEAD)
+          printf '%s\n' "$files"
+          # Lists the changed files matching (-E) or not matching (-vE) a pattern; empty is fine.
+          pick() { printf '%s\n' "$files" | grep "$@" || true; }
+          # The site, company page, docs and top-level README never reach the app, CLI or
+          # packages, except the two docs bundled as license notices.
+          app=$(pick -vE '^(website/|company-site/|\.claude/|docs/)|^README\.md$'; pick -E '^docs/(grammar-licenses|font-fallback)\.md$')
+          website=$(pick -E '^(website/|release/|scripts/|\.github/workflows/ci\.yml)')
+          studio=$(printf '%s\n' "$app" | grep -vE '^bindings/|^$' || true)
+          {
+            echo "website=$([[ -n "$website" ]] && echo true || echo false)"
+            echo "app=$([[ -n "$app" ]] && echo true || echo false)"
+            echo "studio=$([[ -n "$studio" ]] && echo true || echo false)"
+          } | tee -a "$GITHUB_OUTPUT"
   website:
+    needs: scope
+    if: needs.scope.outputs.website == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
@@ -17,6 +65,8 @@ jobs:
       - run: node --test scripts/verify-desktop-release.test.mjs
       - run: node --test scripts/npm-trust.test.mjs
   native:
+    needs: scope
+    if: needs.scope.outputs.app == 'true'
     strategy:
       matrix:
         os: [macos-15, ubuntu-24.04]
@@ -50,6 +100,8 @@ jobs:
       - run: cargo build --locked --release
       - run: ./target/release/monoprint fixtures/example.ts -o example.png
   studio:
+    needs: scope
+    if: needs.scope.outputs.studio == 'true'
     runs-on: macos-26
     steps:
       - uses: actions/checkout@v4
@@ -70,6 +122,8 @@ jobs:
           MONOPRINT_CLI: target/gui/debug/monoprint
       - run: codesign --verify --deep --strict target/gui/Monoprint.app
   msrv:
+    needs: scope
+    if: needs.scope.outputs.app == 'true'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4

@@ -7,8 +7,11 @@ on:
       - 'scripts/**'
       - 'release/**'
       - 'src/**'
+      - 'assets/**'
       - 'vendor/**'
       - 'Cargo.*'
+      - 'LICENSE'
+      - 'THIRD_PARTY_NOTICES.md'
   workflow_dispatch:
     inputs:
       include_windows:
