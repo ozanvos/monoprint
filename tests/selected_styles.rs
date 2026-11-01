@@ -1,4 +1,6 @@
-use monoprint::{Appearance, Background, BundledFont, LineNumbers, Renderer, Scale, Snippet, Style, Theme};
+use monoprint::{
+    Appearance, Background, BundledFont, LineNumbers, Renderer, Scale, Snippet, Style, Theme,
+};
 
 macro_rules! selected_exports {
     ($($case:ident => $id:literal),* $(,)?) => {
@@ -8,19 +10,12 @@ macro_rules! selected_exports {
 }
 selected_exports! {
     the_impression => "the-impression",
-    carrier_sheet => "carrier-sheet",
-    ultraviolet_drum => "ultraviolet-drum",
-    die_cut => "die-cut",
     counterform => "counterform",
-    gallery_recess => "gallery-recess",
     light_table => "light-table",
     ragged_block => "ragged-block",
-    quiet_typesetter => "quiet-typesetter",
     spot_colour => "spot-colour",
-    press_proof => "press-proof",
     segment_glass => "segment-glass",
     label_tape => "label-tape",
-    two_colour_thermal => "two-colour-thermal",
     urushi => "urushi",
     one_bit => "one-bit",
     holofoil => "holofoil",
@@ -222,7 +217,8 @@ fn material_strips_contain_wrapped_custom_font_text() {
         let mut bottom = 0;
         for (index, &[r, g, b, _]) in image.pixels().as_chunks::<4>().0.iter().enumerate() {
             let strip = if id == "label-tape" {
-                r > 130 && g < 80 && b < 80
+                // Neutral black tape, not the brown pegboard holes.
+                r < 60 && r.abs_diff(g) < 6 && g.abs_diff(b) < 6
             } else {
                 r < 50 && (50..80).contains(&g) && (60..90).contains(&b)
             };
@@ -285,11 +281,5 @@ fn selected_annotations_use_real_metadata_and_preserve_literal_text() {
             html.contains("class=\"line highlighted-line\" data-line=\"3\""),
             "{id}"
         );
-        if id == "segment-glass" {
-            assert!(html.contains("LN 3"));
-        }
-        if id == "two-colour-thermal" {
-            assert!(html.contains("3 LINES"));
-        }
     }
 }

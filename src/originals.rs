@@ -1,6 +1,6 @@
 //! Monoprint's own compositions. Layout stays in normal flow so decorations
 //! follow wrapped code, custom fonts and arbitrarily long snippets in every format.
-use crate::{Background, Snippet, Style, assets};
+use crate::{Appearance, Background, Snippet, Style, assets};
 use base64::{Engine, engine::general_purpose::STANDARD};
 use std::fmt::Write;
 
@@ -35,29 +35,6 @@ pub(crate) fn frame(
         "single-ink" => format!(
             "<div class=\"Original__paper\"><i class=\"Ink__mark\"></i><div class=\"Ink__body\">{editor}</div><div class=\"Ink__foot\">{label}</div></div>"
         ),
-        "swatch-card" => {
-            let mut swatches = String::new();
-            for (role, key) in [
-                ("ink", "--ink-foreground"),
-                ("keyword", "--ink-token-keyword"),
-                ("type", "--ink-token-type"),
-                ("string", "--ink-token-string"),
-                ("function", "--ink-token-function"),
-                ("comment", "--ink-token-comment"),
-                ("number", "--ink-token-number"),
-                ("field", ""),
-            ] {
-                let color = if key.is_empty() {
-                    surface
-                } else {
-                    &palette[key]
-                };
-                write!(swatches, "<div class=\"Swatch__item\"><i style=\"background:{color}\"></i><span>{role}</span><b>{}</b></div>", color.to_uppercase()).unwrap();
-            }
-            format!(
-                "<div class=\"Swatch__stack\"><div class=\"Swatch__back\"></div><div class=\"Original__paper\"><div class=\"Swatch__field\"><i class=\"Swatch__hole\"></i>{label}{editor}</div><div class=\"Swatch__band\">{swatches}</div></div></div>"
-            )
-        }
         "wayfinding" => {
             // Stops identify real source-line groups, never invented declarations.
             let mut start = true;
@@ -91,9 +68,6 @@ pub(crate) fn frame(
         ),
         "gallery-wall" => format!(
             "<div class=\"Gallery__lamp\"></div><div class=\"Gallery__frame\"><div class=\"Gallery__mat\"><div class=\"Original__paper\">{editor}</div></div></div><div class=\"Gallery__label\">{label}<div>__LANGUAGE__</div></div>"
-        ),
-        "departure-board" => format!(
-            "<div class=\"Departure__housing\"><i class=\"Departure__screw tl\"></i><i class=\"Departure__screw tr\"></i><i class=\"Departure__screw bl\"></i><i class=\"Departure__screw br\"></i><div class=\"Departure__lamps\"><i></i><i></i><i></i></div>{label}<div class=\"Original__paper\">{editor}</div></div>"
         ),
         "dither-light" => format!("<div class=\"Original__paper\">{editor}{label}</div>"),
         "cutting-mat" => format!(
@@ -139,19 +113,17 @@ pub(crate) fn frame(
         for line in marked {
             let selector = format!(".Original .line[data-line=\"{line}\"]");
             if theme.id == "highlighter-pass" {
-                write!(extra, "{selector}{{background-color:transparent}}{selector}>span{{background-color:#d6ff26}}{selector}:after{{content:\"\u{200b}\";font-size:0;line-height:0;position:absolute;left:-12px;top:5px;width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:8px solid #111}}" ).unwrap();
+                write!(extra, "{selector}{{background-color:transparent}}{selector}>span{{background-color:var(--marker,#d6ff26)}}{selector}:after{{content:\"\u{200b}\";font-size:0;line-height:0;position:absolute;left:-12px;top:5px;width:0;height:0;border-top:6px solid transparent;border-bottom:6px solid transparent;border-left:8px solid var(--marker-arrow,#111)}}" ).unwrap();
             } else {
-                write!(extra, "{selector}{{box-shadow:inset 3px 0 #e2401b}}{selector}>span{{text-decoration:underline;text-decoration-color:#1f4fd1;text-decoration-thickness:1.5px;text-underline-offset:4px}}" ).unwrap();
+                write!(extra, "{selector}{{box-shadow:inset 3px 0 #e2401b}}{selector}>span{{text-decoration:underline;text-decoration-color:var(--proof-underline,#1f4fd1);text-decoration-thickness:1.5px;text-underline-offset:4px}}" ).unwrap();
             }
         }
     }
     let treatment = match theme.id.as_str() {
         "single-ink" => include_str!("../assets/originals/single-ink.css"),
-        "swatch-card" => include_str!("../assets/originals/swatch-card.css"),
         "wayfinding" => include_str!("../assets/originals/wayfinding.css"),
         "highlighter-pass" => include_str!("../assets/originals/highlighter-pass.css"),
         "gallery-wall" => include_str!("../assets/originals/gallery-wall.css"),
-        "departure-board" => include_str!("../assets/originals/departure-board.css"),
         "dither-light" => include_str!("../assets/originals/dither-light.css"),
         "cutting-mat" => include_str!("../assets/originals/cutting-mat.css"),
         "thermal-receipt" => include_str!("../assets/originals/thermal-receipt.css"),
@@ -167,10 +139,10 @@ pub(crate) fn frame(
     );
     // Artwork is a backdrop. A transparent export retains its reading surface.
     if style.background != Background::Theme {
-        css += ".Original{background-image:none;background-color:transparent}.Gallery__lamp,.Cutting__top,.Cutting__left{display:none}";
+        css += "#capture[data-theme] .Original{background-image:none;background-color:transparent}.Gallery__lamp,.Cutting__top,.Cutting__left{display:none}";
     }
     if style.background == Background::None {
-        css += "#capture{background:transparent}.Original__paper,.Gallery__frame,.Swatch__stack,.Departure__housing,.Receipt__strip{box-shadow:none}";
+        css += "#capture{background:transparent}#capture[data-theme] .Original__paper,#capture[data-theme] .Gallery__frame,#capture[data-theme] .Receipt__strip{box-shadow:none}";
     }
     Frame {
         template: format!(
@@ -206,8 +178,12 @@ pub(crate) fn measured_css(style: &Style, width: f32, height: f32) -> String {
             }
         }
     }
+    let (paper, ink) = match style.appearance {
+        Appearance::Light => ("white", "black"),
+        Appearance::Dark => ("black", "white"),
+    };
     let url = svg_url(&format!(
-        "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'><rect width='100%' height='100%' fill='white'/><g fill='black'>{dots}</g></svg>"
+        "<svg xmlns='http://www.w3.org/2000/svg' width='{width}' height='{height}' viewBox='0 0 {width} {height}'><rect width='100%' height='100%' fill='{paper}'/><g fill='{ink}'>{dots}</g></svg>"
     ));
     format!(".dither-light{{background-image:url({url});background-size:{width}px {height}px}}")
 }

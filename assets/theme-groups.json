@@ -1,0 +1,9 @@
+[
+  { "name": "Monoprint", "themes": ["monoprint"] },
+  { "name": "Print and paper", "themes": ["single-ink", "spot-colour", "proof-marks", "the-impression", "cyanotype", "vellum", "carbon-copy"] },
+  { "name": "Office and stationery", "themes": ["index-card", "manila", "greenbar", "thermal-receipt", "label-tape", "cutting-mat", "quadrangle"] },
+  { "name": "Screens and signage", "themes": ["phosphor", "segment-glass", "one-bit", "dither-light"] },
+  { "name": "Objects", "themes": ["gallery-wall", "light-table", "anodized", "holofoil", "urushi", "counterform", "ragged-block"] },
+  { "name": "Annotation", "themes": ["highlighter-pass", "wayfinding"] },
+  { "name": "Quiet frames", "themes": ["ground", "dusk", "galley", "inlay", "ordinal", "aside", "cantilever", "jetty", "capsule", "flange"] }
+]

@@ -1,6 +1,7 @@
 # Code-only styles
 
-Twenty Monoprint presets that frame source code without title or language labels.
+Ten Monoprint presets that frame source code without title or language labels.
+Each pairs light and dark; `#capture[data-theme]` rules recolor the frame.
 `themes.json` defines palettes and fonts; `frames.json` defines content-sized
 surfaces consumed by `src/selected_styles.rs`.
 

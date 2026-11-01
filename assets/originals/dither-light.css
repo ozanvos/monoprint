@@ -1,2 +1,3 @@
 .dither-light .Original__paper{padding:calc(var(--inset) + 4px);background:#fff}
 .dither-light .Original__title{margin-top:22px;color:#777}
+#capture[data-theme="dark"]{--surface:#000000;--outer:#000000}#capture[data-theme="dark"] .dither-light .Original__paper{background:#000}#capture[data-theme="dark"] .dither-light .Original__title{color:#8a8a8a}

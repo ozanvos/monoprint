@@ -786,6 +786,9 @@ impl Studio {
                     && (theme.name().to_lowercase().contains(&query)
                         || theme.id().contains(&query)
                         || theme.family().to_lowercase().contains(&query)
+                        || theme
+                            .group()
+                            .is_some_and(|group| group.to_lowercase().contains(&query))
                         || theme.aliases().any(|alias| {
                             alias.contains(&query)
                                 || alias

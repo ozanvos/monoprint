@@ -67,7 +67,8 @@ pub(crate) fn frame(theme: &assets::Theme, style: &Style, lines: usize) -> Frame
         study.code_weight,
     );
     if style.background != Background::Theme {
-        css += ".Original{background-image:none;background-color:transparent}.Original--holofoil .glow{display:none}";
+        // Match the specificity of appearance-scoped artwork colors; later wins.
+        css += "#capture[data-theme] .Original{background-image:none;background-color:transparent}.Original--holofoil .glow{display:none}";
     }
     if style.background == Background::None {
         css += &study.clear_css;

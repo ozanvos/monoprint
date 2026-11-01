@@ -50,7 +50,7 @@ const lightThemes = getThemes().filter(t => t.appearances.includes('light'));
 const languages = getLanguages();
 ```
 
-The immutable catalogs include names, canonical IDs, legacy theme aliases, language aliases, supported appearances, and theme line-number policies. `getThemes()` lists 78 curated presets, pairing matching light/dark palettes. Use `{ theme: 'ayu', appearance: 'light' }` or the compatible `{ theme: 'ayu-light' }` alias. They contain 232 named grammars represented as 231 selectable highlighting languages plus plain text. The [grammar review](grammar-licenses.md) lists intentionally excluded source grammars.
+The immutable catalogs include names, canonical IDs, legacy theme aliases, language aliases, supported appearances, and theme line-number policies. `getThemes()` lists 59 curated presets, pairing matching light/dark palettes. Use `{ theme: 'ayu', appearance: 'light' }` or the compatible `{ theme: 'ayu-light' }` alias. They contain 232 named grammars represented as 231 selectable highlighting languages plus plain text. The [grammar review](grammar-licenses.md) lists intentionally excluded source grammars.
 
 ## Fonts and errors
 

@@ -6,6 +6,11 @@
     "original": true,
     "lineNumbers": false,
     "syntax": {
+      "light": {
+        "--ink-foreground": "#1c1e1d",
+        "--ink-highlight": "#00000016",
+        "--stage": "#d7d7cd"
+      },
       "dark": {
         "--ink-foreground": "#f0f0dd",
         "--ink-highlight": "#ffffff24"
@@ -14,57 +19,6 @@
     "background": {
       "from": "#d7d7cd",
       "to": "#d7d7cd"
-    }
-  },
-  "carrier-sheet": {
-    "id": "carrier-sheet",
-    "name": "Carrier Sheet",
-    "font": "ibm-plex-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntax": {
-      "dark": {
-        "--ink-foreground": "#edf3e8",
-        "--ink-highlight": "#ffffff24"
-      }
-    },
-    "background": {
-      "from": "#b8bab5",
-      "to": "#b8bab5"
-    }
-  },
-  "ultraviolet-drum": {
-    "id": "ultraviolet-drum",
-    "name": "Ultraviolet Drum",
-    "font": "geist-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntax": {
-      "dark": {
-        "--ink-foreground": "#eeedff",
-        "--ink-highlight": "#ffffff24"
-      }
-    },
-    "background": {
-      "from": "#dadbd5",
-      "to": "#dadbd5"
-    }
-  },
-  "die-cut": {
-    "id": "die-cut",
-    "name": "Die Cut",
-    "font": "jetbrains-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntax": {
-      "dark": {
-        "--ink-foreground": "#e8b17a",
-        "--ink-highlight": "#ffffff24"
-      }
-    },
-    "background": {
-      "from": "#ed773f",
-      "to": "#ed773f"
     }
   },
   "counterform": {
@@ -77,28 +31,16 @@
       "light": {
         "--ink-foreground": "#242824",
         "--ink-highlight": "#00000016"
+      },
+      "dark": {
+        "--ink-foreground": "#e4e8e2",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#e4e3da"
       }
     },
     "background": {
       "from": "#171a18",
       "to": "#171a18"
-    }
-  },
-  "gallery-recess": {
-    "id": "gallery-recess",
-    "name": "Gallery Recess",
-    "font": "jetbrains-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntax": {
-      "light": {
-        "--ink-foreground": "#333c49",
-        "--ink-highlight": "#00000016"
-      }
-    },
-    "background": {
-      "from": "#dfdcd4",
-      "to": "#dfdcd4"
     }
   },
   "light-table": {
@@ -111,6 +53,11 @@
       "light": {
         "--ink-foreground": "#433b3c",
         "--ink-highlight": "#00000016"
+      },
+      "dark": {
+        "--ink-foreground": "#e7dfe0",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#1d1621"
       }
     },
     "background": {
@@ -125,6 +72,11 @@
     "original": true,
     "lineNumbers": false,
     "syntax": {
+      "light": {
+        "--ink-foreground": "#14262c",
+        "--ink-highlight": "#00000016",
+        "--stage": "#f1ead0"
+      },
       "dark": {
         "--ink-foreground": "#edf2df",
         "--ink-highlight": "#ffffff24"
@@ -133,23 +85,6 @@
     "background": {
       "from": "#e5dba9",
       "to": "#e5dba9"
-    }
-  },
-  "quiet-typesetter": {
-    "id": "quiet-typesetter",
-    "name": "Quiet Typesetter",
-    "font": "ibm-plex-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntax": {
-      "light": {
-        "--ink-foreground": "#2c343b",
-        "--ink-highlight": "#00000016"
-      }
-    },
-    "background": {
-      "from": "#f7f7f4",
-      "to": "#f7f7f4"
     }
   },
   "spot-colour": {
@@ -162,28 +97,16 @@
       "light": {
         "--ink-foreground": "#141414",
         "--ink-highlight": "#00000016"
+      },
+      "dark": {
+        "--ink-foreground": "#ecebe7",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#161615"
       }
     },
     "background": {
       "from": "#f6f5f1",
       "to": "#f6f5f1"
-    }
-  },
-  "press-proof": {
-    "id": "press-proof",
-    "name": "Press Proof",
-    "font": "jetbrains-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntax": {
-      "light": {
-        "--ink-foreground": "#1a1c22",
-        "--ink-highlight": "#00000016"
-      }
-    },
-    "background": {
-      "from": "#d9d6ce",
-      "to": "#d9d6ce"
     }
   },
   "segment-glass": {
@@ -196,6 +119,11 @@
       "light": {
         "--ink-foreground": "#1d2418",
         "--ink-highlight": "#00000016"
+      },
+      "dark": {
+        "--ink-foreground": "#d6e4fb",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#26231f"
       }
     },
     "background": {
@@ -210,6 +138,11 @@
     "original": true,
     "lineNumbers": false,
     "syntax": {
+      "light": {
+        "--ink-foreground": "#1b1b1b",
+        "--ink-highlight": "#00000016",
+        "--stage": "#d9d0bf"
+      },
       "dark": {
         "--ink-foreground": "#f4f4f2",
         "--ink-highlight": "#ffffff24"
@@ -220,23 +153,6 @@
       "to": "#a87d52"
     }
   },
-  "two-colour-thermal": {
-    "id": "two-colour-thermal",
-    "name": "Two-Colour Thermal",
-    "font": "jetbrains-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntax": {
-      "light": {
-        "--ink-foreground": "#2a2a2a",
-        "--ink-highlight": "#00000016"
-      }
-    },
-    "background": {
-      "from": "#141517",
-      "to": "#141517"
-    }
-  },
   "urushi": {
     "id": "urushi",
     "name": "Urushi",
@@ -244,6 +160,11 @@
     "original": true,
     "lineNumbers": false,
     "syntax": {
+      "light": {
+        "--ink-foreground": "#3a2414",
+        "--ink-highlight": "#00000016",
+        "--stage": "#e9dfcf"
+      },
       "dark": {
         "--ink-foreground": "#dcc79a",
         "--ink-highlight": "#ffffff24"
@@ -264,6 +185,11 @@
       "light": {
         "--ink-foreground": "#000000",
         "--ink-highlight": "#00000016"
+      },
+      "dark": {
+        "--ink-foreground": "#ffffff",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#000000"
       }
     },
     "background": {
@@ -278,6 +204,11 @@
     "original": true,
     "lineNumbers": false,
     "syntax": {
+      "light": {
+        "--ink-foreground": "#24232e",
+        "--ink-highlight": "#00000016",
+        "--stage": "#e8e7ee"
+      },
       "dark": {
         "--ink-foreground": "#ecebf3",
         "--ink-highlight": "#ffffff24"
@@ -322,12 +253,12 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#d9dfd5",
-        "--ink-highlight": "#ffffff24",
+        "--ink-highlight": "#e0b07c33",
         "--stage": "#0c0e0c"
       },
       "light": {
         "--ink-foreground": "#2a2e2a",
-        "--ink-highlight": "#00000016",
+        "--ink-highlight": "#f2c94c4d",
         "--stage": "#3a3d39"
       }
     },
@@ -393,9 +324,9 @@
     "syntaxWeight": 600,
     "syntax": {
       "dark": {
-        "--ink-foreground": "#ecdfc3",
+        "--ink-foreground": "#e3e7ee",
         "--ink-highlight": "#ffffff24",
-        "--stage": "#131517"
+        "--stage": "#121417"
       },
       "light": {
         "--ink-foreground": "#35291a",
@@ -404,8 +335,8 @@
       }
     },
     "background": {
-      "from": "#131517",
-      "to": "#131517"
+      "from": "#121417",
+      "to": "#121417"
     }
   },
   "quadrangle": {

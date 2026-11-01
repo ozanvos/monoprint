@@ -5,3 +5,4 @@
 .wayfinding .line:after{position:absolute;left:-28px;top:1px;width:19px;height:19px;border-radius:4px;text-align:center;font-family:Inter;font-size:9px;line-height:19px;font-weight:700;color:#111}
 
 .wayfinding .Editor__showLineNumbers .line:after{display:none}
+#capture[data-theme="light"]{--surface:#f6f7f5;--outer:#e7eae6}#capture[data-theme="light"] .wayfinding .Original__paper{border-color:#cfd5d0;background:linear-gradient(#fbfcfa,#f3f5f2)}#capture[data-theme="light"] .wayfinding .Original__title{color:#5e6670}#capture[data-theme="light"] .Wayfinding__route{border-left-color:#c9cfd4}

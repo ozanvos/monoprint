@@ -64,6 +64,33 @@ impl Theme {
             .as_ref()
             .map_or("Monoprint", |e| e.family.as_str())
     }
+    /// Curated group for Monoprint Originals, such as `Print and paper`.
+    /// Editor palettes have none.
+    pub fn group(self) -> Option<&'static str> {
+        self.curated().map(|(group, _)| group)
+    }
+    /// Position in the curated Originals order: groups first, then the
+    /// recommended order within each group. Editor palettes have none.
+    pub fn curated_rank(self) -> Option<usize> {
+        self.curated().map(|(_, rank)| rank)
+    }
+    fn curated(self) -> Option<(&'static str, usize)> {
+        #[derive(serde::Deserialize)]
+        struct Group {
+            name: String,
+            themes: Vec<String>,
+        }
+        static GROUPS: LazyLock<Vec<Group>> = LazyLock::new(|| {
+            serde_json::from_str(include_str!("../assets/theme-groups.json"))
+                .expect("bundled theme groups")
+        });
+        GROUPS
+            .iter()
+            .flat_map(|group| group.themes.iter().map(move |id| (group.name.as_str(), id)))
+            .enumerate()
+            .find(|(_, (_, id))| *id == self.0)
+            .map(|(rank, (group, _))| (group, rank))
+    }
     /// Preferred appearance: dark for presets; legacy light-palette IDs keep
     /// their original light default.
     pub fn default_appearance(self) -> Appearance {
