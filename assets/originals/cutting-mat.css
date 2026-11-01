@@ -4,3 +4,4 @@
 .Cutting__top{position:absolute;left:0;right:0;top:-22px;height:12px;background:linear-gradient(90deg,#e9e2b8 1px,transparent 1px) 0 0/32px 12px repeat-x,linear-gradient(90deg,#e9e2b880 1px,transparent 1px) 0 0/8px 5px repeat-x}
 .Cutting__left{position:absolute;top:0;bottom:0;left:-22px;width:12px;background:linear-gradient(#e9e2b8 1px,transparent 1px) 0 0/12px 32px repeat-y,linear-gradient(#e9e2b880 1px,transparent 1px) 0 0/5px 8px repeat-y}
 .cutting-mat .Original__title{margin-top:20px;color:#6f7c71}
+#capture[data-theme="dark"]{--surface:#1d2622;--outer:#0f2a1f}#capture[data-theme="dark"] .cutting-mat{background:linear-gradient(90deg,#dcf0cd24 1px,transparent 1px) 0 0/80px 80px,linear-gradient(#dcf0cd24 1px,transparent 1px) 0 0/80px 80px,linear-gradient(90deg,#dcf0cd0d 1px,transparent 1px) 0 0/16px 16px,linear-gradient(#dcf0cd0d 1px,transparent 1px) 0 0/16px 16px,#0f2a1f}#capture[data-theme="dark"] .cutting-mat .Original__title{color:#84948a}

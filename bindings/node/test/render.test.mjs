@@ -100,12 +100,12 @@ test('styles are reusable snapshots and explicit auto/null restore defaults', as
 });
 
 test('catalog discovery is immutable, canonical, and follows reviewed grammar exclusions', () => {
-  assert.equal(getThemes().length, 69);
+  assert.equal(getThemes().length, 59);
   const signature = getThemes().find(t => t.id === 'monoprint');
   assert.equal(signature.name, 'Monoprint');
   assert.deepEqual(signature.appearances, ['dark', 'light']);
   assert.equal(getLanguages().length, 232);
-  assert.deepEqual(getThemes().find(t => t.id === 'dusk').appearances, ['dark']);
+  assert.deepEqual(getThemes().find(t => t.id === 'nord').appearances, ['dark']);
   assert.ok(getLanguages().some(l => l.id === 'typescript' && l.aliases.includes('ts')));
   assert.ok(!getLanguages().some(l => l.id === 'nginx'));
   assert.equal(languageForFileName('src/main.rs'), 'rust');
@@ -201,7 +201,7 @@ test('native failures expose stable codes and structured context, then renderer 
   const renderer = new Renderer();
   await assert.rejects(renderer.html(source, { theme: 'missing' }), code('UNKNOWN_THEME'));
   await assert.rejects(renderer.html(source, { language: 'nginx' }), code('UNKNOWN_LANGUAGE'));
-  await assert.rejects(renderer.html(source, { theme: 'dusk', appearance: 'light' }), error => code('INVALID_OPTION')(error) && error.details.option === 'appearance');
+  await assert.rejects(renderer.html(source, { theme: 'nord', appearance: 'light' }), error => code('INVALID_OPTION')(error) && error.details.option === 'appearance');
   await assert.rejects(renderer.html(source, { highlight: [0] }), error => code('INVALID_OPTION')(error) && error.details.lineCount === 3);
   await assert.rejects(renderer.png(source, { scale: 0 }), code('INVALID_OPTION'));
   await assert.rejects(renderer.png(source, { width: 8192, padding: 0, scale: 6 }), code('IMAGE_TOO_LARGE'));
@@ -226,7 +226,7 @@ test('async rendering leaves the event loop responsive and retains dropped rende
 
 test('TypeScript results are byte-identical to the Rust CLI', { skip: !process.env.MONOPRINT_CLI }, async () => {
   const renderer = new Renderer();
-  for (const theme of ['monoprint', 'dusk', 'contour', 'inlay', 'ground', 'ayu', 'ayu-light', 'solarized', 'solarized-light']) {
+  for (const theme of ['monoprint', 'dusk', 'aside', 'inlay', 'ground', 'ayu', 'ayu-light', 'solarized', 'solarized-light']) {
     for (const format of ['png', 'svg', 'html']) {
       const args = ['-l', 'tsx', '--theme', theme, '--padding', '16', '--width', '400', '--highlight', '1', '--scale', '2', '--format', format, '-o', '-'];
       const cli = spawnSync(process.env.MONOPRINT_CLI, args, { input: source, maxBuffer: 16 * 1024 * 1024 });

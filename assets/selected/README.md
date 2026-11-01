@@ -1,9 +1,14 @@
 # Selected styles
 
-Seventeen Monoprint presets with content-sized frames.
+Nineteen Monoprint presets with content-sized frames.
 
 - `themes.json` defines palettes, fonts, and supported appearances.
-- `frames.json` contains frame markup and material treatments.
+- `frames.json` contains frame markup and material treatments. Every preset
+  pairs light and dark: its base colors serve one appearance and
+  `#capture[data-theme="light"]` or `#capture[data-theme="dark"]` overrides
+  them for the other. `#capture[data-untitled]` marks a snippet
+  without a file name, so a frame can hide its file-name furniture. `clearCss` removes
+  drop shadows for transparent exports.
 - `frame.css` provides wrapping, line-number, and text-selection behavior.
 - `src/selected_styles.rs` applies font scaling and layout settings.
 

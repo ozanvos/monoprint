@@ -132,12 +132,12 @@ fn raw_pixels_match_png_at_odd_and_even_scales_and_retain_validation() {
 
 #[test]
 fn catalog_parsing_discovery_and_filename_inference() {
-    assert_eq!(Theme::all().len(), 69);
+    assert_eq!(Theme::all().len(), 59);
     assert_eq!(
         Theme::all()
             .filter(|t| t.supports(Appearance::Light))
             .count(),
-        37
+        48
     );
     assert_eq!("MONOPRINT".parse::<Theme>().unwrap(), Theme::default());
     assert_eq!(Theme::default().to_string(), "monoprint");
@@ -206,7 +206,7 @@ fn invalid_requests_report_structured_errors_before_rendering() {
     assert!(matches!(
         r.html(
             &snippet,
-            &Style::new("dusk".parse().unwrap()).appearance(Appearance::Light)
+            &Style::new("nord".parse().unwrap()).appearance(Appearance::Light)
         ),
         Err(Error::InvalidOption(InvalidOption::Appearance {
             appearance: Appearance::Light,

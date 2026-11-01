@@ -58,18 +58,18 @@ pub use write::*;
 
 use crate::resources::image_buffer::ImageBuffer;
 pub(crate) use crate::{
-  context::RenderContext,
-  font_style::*,
-  style::math::{fast_div_255, fast_div_255_u32},
+    context::RenderContext,
+    font_style::*,
+    style::math::{fast_div_255, fast_div_255_u32},
 };
 
 /// Borrows an [`ImageBuffer`] as a zero-copy `tiny_skia` pixmap view.
 pub(crate) fn pixmap_ref_from_buffer(buffer: &ImageBuffer) -> Option<PixmapRef<'_>> {
-  PixmapRef::from_bytes(buffer.data(), buffer.width(), buffer.height())
+    PixmapRef::from_bytes(buffer.data(), buffer.width(), buffer.height())
 }
 
 /// Copies an [`ImageBuffer`] into an owned `tiny_skia` pixmap.
 pub(crate) fn pixmap_from_buffer(buffer: &ImageBuffer) -> Option<Pixmap> {
-  let size = IntSize::from_wh(buffer.width(), buffer.height())?;
-  Pixmap::from_vec(buffer.data().to_vec(), size)
+    let size = IntSize::from_wh(buffer.width(), buffer.height())?;
+    Pixmap::from_vec(buffer.data().to_vec(), size)
 }

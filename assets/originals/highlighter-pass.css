@@ -3,3 +3,4 @@
 .highlighter-pass .Original__title{margin-top:24px;margin-left:var(--inset);color:#666}
 
 .Original.highlighter-pass .highlighted-text{background-color:#d6ff26}
+#capture[data-theme="dark"]{--surface:#141414;--outer:#141414}#capture[data-theme="dark"]{--marker:#d6ff264d;--marker-arrow:#d6ff26}#capture[data-theme="dark"] .Highlighter__body{border-left-color:#eeeeee}#capture[data-theme="dark"] .highlighter-pass .Original__title{color:#999999}#capture[data-theme="dark"] .Original.highlighter-pass .highlighted-text{background-color:#d6ff264d}

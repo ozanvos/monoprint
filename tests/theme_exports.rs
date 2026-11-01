@@ -6,7 +6,7 @@ fn every_catalog_theme_exports_all_supported_appearances() {
     let snippet = Snippet::new("// A real source line\nconst answer = 42;\n\nanswer;")
         .language("typescript".parse().unwrap())
         .title("answer.ts");
-    assert_eq!(Theme::all().len(), 69);
+    assert_eq!(Theme::all().len(), 59);
     for theme in Theme::all() {
         for appearance in [Appearance::Dark, Appearance::Light] {
             if !theme.supports(appearance) {

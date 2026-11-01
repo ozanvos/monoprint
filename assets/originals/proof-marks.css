@@ -8,3 +8,4 @@
 .Proof__crop.br{right:0;bottom:0;border-right:1px solid;border-bottom:1px solid}
 
 .Original.proof-marks .highlighted-text{background-color:transparent;text-decoration:underline;text-decoration-color:#1f4fd1;text-decoration-thickness:1.5px;text-underline-offset:4px}
+#capture[data-theme="dark"]{--surface:#1b1a18;--outer:#1b1a18}#capture[data-theme="dark"]{--proof-underline:#7aa2ff}#capture[data-theme="dark"] .Proof__body{border-left-color:#ffffff2e}#capture[data-theme="dark"] .proof-marks .Original__title{color:#85827b}#capture[data-theme="dark"] .Proof__crop{border-color:#dddddd}#capture[data-theme="dark"] .Original.proof-marks .highlighted-text{text-decoration-color:#7aa2ff}

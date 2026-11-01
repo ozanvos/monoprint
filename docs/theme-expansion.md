@@ -1,6 +1,6 @@
 # Editor themes and canvas backgrounds
 
-The catalog contains 48 Monoprint Originals and 21 editor presets covering 31 palettes across 12 families.
+The catalog contains 38 Monoprint Originals and 21 editor presets covering 31 palettes across 12 families.
 
 | Family | Included palettes |
 | --- | --- |

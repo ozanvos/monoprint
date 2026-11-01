@@ -139,7 +139,7 @@ fn errors_are_clear_and_leave_no_output() {
     let w = Workspace::new();
     for (flags, message) in [
         (vec!["--theme", "missing"], "unknown theme"),
-        (vec!["--theme", "dusk", "--light"], "no light variant"),
+        (vec!["--theme", "nord", "--light"], "no light variant"),
         (vec!["--language", "not-a-language"], "unknown language"),
         (vec!["--highlight", "0"], "outside"),
         (vec!["--highlight", "2-1"], "outside"),
@@ -743,5 +743,5 @@ fn all_variants_export_all_formats() {
             }
         }
     }
-    assert_eq!(variants, 80);
+    assert_eq!(variants, 107);
 }

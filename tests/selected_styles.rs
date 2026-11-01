@@ -1,4 +1,6 @@
-use monoprint::{Background, BundledFont, LineNumbers, Renderer, Scale, Snippet, Style, Theme};
+use monoprint::{
+    Appearance, Background, BundledFont, LineNumbers, Renderer, Scale, Snippet, Style, Theme,
+};
 
 macro_rules! selected_exports {
     ($($case:ident => $id:literal),* $(,)?) => {
@@ -8,33 +10,48 @@ macro_rules! selected_exports {
 }
 selected_exports! {
     the_impression => "the-impression",
-    carrier_sheet => "carrier-sheet",
-    ultraviolet_drum => "ultraviolet-drum",
-    die_cut => "die-cut",
     counterform => "counterform",
-    gallery_recess => "gallery-recess",
     light_table => "light-table",
     ragged_block => "ragged-block",
-    quiet_typesetter => "quiet-typesetter",
     spot_colour => "spot-colour",
-    press_proof => "press-proof",
     segment_glass => "segment-glass",
     label_tape => "label-tape",
-    two_colour_thermal => "two-colour-thermal",
     urushi => "urushi",
     one_bit => "one-bit",
     holofoil => "holofoil",
+    cyanotype => "cyanotype",
+    greenbar => "greenbar",
+    phosphor => "phosphor",
+    index_card => "index-card",
+    manila => "manila",
+    quadrangle => "quadrangle",
+    carbon_copy => "carbon-copy",
+    vellum => "vellum",
+    anodized => "anodized",
 }
 const SOURCE: &str = "// Make something worth sharing.\ntype Idea = { spark: string };\n\nexport async function create(idea: Idea) {\n  const colors = [\"ink\", \"light\", \"wonder\"];\n  const canvas = await render({\n    ...idea,\n    colors,\n    quality: 100,\n  });\n  return canvas.share();\n}";
 
 fn assert_native_exports(id: &str) {
+    let theme: Theme = id.parse().unwrap();
+    assert_eq!(theme.family(), "Monoprint Originals");
+    for appearance in [Appearance::Dark, Appearance::Light] {
+        if theme.supports(appearance) {
+            assert_appearance_exports(theme, appearance);
+        }
+    }
+}
+
+fn assert_appearance_exports(theme: Theme, appearance: Appearance) {
+    let id = &format!("{theme} {appearance}");
     let renderer = Renderer::new();
     let snippet = Snippet::new(SOURCE)
         .language("typescript".parse().unwrap())
         .title("create.ts");
-    let theme: Theme = id.parse().unwrap();
-    assert_eq!(theme.family(), "Monoprint Originals");
-    let style = Style::new(theme).width(1000).padding(64).font_size(25);
+    let style = Style::new(theme)
+        .appearance(appearance)
+        .width(1000)
+        .padding(64)
+        .font_size(25);
     // SVG uses a 2x viewBox internally. Compare at that same resolution so a
     // dense pixel pattern is not testing two different downsampling filters.
     let rgba = renderer
@@ -90,12 +107,12 @@ fn assert_native_exports(id: &str) {
         let dir = std::path::PathBuf::from(dir);
         std::fs::create_dir_all(&dir).unwrap();
         std::fs::write(
-            dir.join(format!("{id}.png")),
+            dir.join(format!("{theme}-{appearance}.png")),
             renderer.png(&snippet, &style, Scale::X1).unwrap(),
         )
         .unwrap();
-        std::fs::write(dir.join(format!("{id}.svg")), svg).unwrap();
-        std::fs::write(dir.join(format!("{id}.html")), html).unwrap();
+        std::fs::write(dir.join(format!("{theme}-{appearance}.svg")), svg).unwrap();
+        std::fs::write(dir.join(format!("{theme}-{appearance}.html")), html).unwrap();
     }
     println!("{id}: {} × {}", rgba.width(), rgba.height());
 }
@@ -200,7 +217,8 @@ fn material_strips_contain_wrapped_custom_font_text() {
         let mut bottom = 0;
         for (index, &[r, g, b, _]) in image.pixels().as_chunks::<4>().0.iter().enumerate() {
             let strip = if id == "label-tape" {
-                r > 130 && g < 80 && b < 80
+                // Neutral black tape, not the brown pegboard holes.
+                r < 60 && r.abs_diff(g) < 6 && g.abs_diff(b) < 6
             } else {
                 r < 50 && (50..80).contains(&g) && (60..90).contains(&b)
             };
@@ -263,11 +281,5 @@ fn selected_annotations_use_real_metadata_and_preserve_literal_text() {
             html.contains("class=\"line highlighted-line\" data-line=\"3\""),
             "{id}"
         );
-        if id == "segment-glass" {
-            assert!(html.contains("LN 3"));
-        }
-        if id == "two-colour-thermal" {
-            assert!(html.contains("3 LINES"));
-        }
     }
 }

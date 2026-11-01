@@ -1,12 +1,10 @@
 use monoprint::{Appearance, Background, LineNumbers, Renderer, Scale, Snippet, Style, Theme};
 
-const IDS: [&str; 10] = [
+const IDS: [&str; 8] = [
     "single-ink",
-    "swatch-card",
     "wayfinding",
     "highlighter-pass",
     "gallery-wall",
-    "departure-board",
     "dither-light",
     "cutting-mat",
     "thermal-receipt",
@@ -26,10 +24,9 @@ fn originals_export_native_pixels_and_portable_vectors() {
     assert!(original_count >= IDS.len());
     for id in IDS {
         let theme: Theme = id.parse().unwrap();
-        assert_eq!(
-            theme.default_appearance() == Appearance::Dark,
-            matches!(id, "swatch-card" | "wayfinding" | "departure-board")
-        );
+        // Every Original pairs light and dark; dark is the preset default.
+        assert_eq!(theme.default_appearance(), Appearance::Dark);
+        assert!(theme.supports(Appearance::Light));
         let style = Style::new(theme).width(680).padding(72).font_size(20);
         let rgba = renderer
             .rgba(&snippet, &style, Scale::X1)

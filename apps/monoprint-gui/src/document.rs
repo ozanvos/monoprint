@@ -668,7 +668,7 @@ mod tests {
             light: true,
             ..Default::default()
         };
-        d.select_theme("dusk".parse().unwrap());
+        d.select_theme("nord".parse().unwrap());
         assert!(!d.light);
         d.width = "100".into();
         assert!(d.prepare(None, None).is_err());

@@ -295,7 +295,7 @@ fn frameless_light_themes_keep_text_readable_on_custom_backgrounds() {
     // protect light-mode text from a dark companion background.
     for (id, canvas) in [
         ("ground", [243, 240, 232, 255]),
-        ("plumb", [220, 225, 230, 255]),
+        ("ordinal", [227, 230, 223, 255]),
     ] {
         let mut images = Vec::new();
         for background in [Background::Solid, Background::Lattice, Background::Halftone] {

@@ -9,24 +9,14 @@ macro_rules! selected_exports {
 selected_exports! {
     ground => "ground",
     galley => "galley",
-    traverse => "traverse",
-    plumb => "plumb",
-    contour => "contour",
     dusk => "dusk",
     cantilever => "cantilever",
     ordinal => "ordinal",
-    ballast => "ballast",
     aside => "aside",
     jetty => "jetty",
-    column => "column",
-    course => "course",
-    well => "well",
-    quay => "quay",
-    pendant => "pendant",
     capsule => "capsule",
     flange => "flange",
     inlay => "inlay",
-    trace => "trace",
 }
 const SOURCE: &str = "// Make something worth sharing.\ntype Idea = { spark: string };\n\nexport async function create(idea: Idea) {\n  const colors = [\"ink\", \"light\", \"wonder\"];\n  const canvas = await render({\n    ...idea,\n    colors,\n    quality: 100,\n  });\n  return canvas.share();\n}";
 
@@ -230,38 +220,4 @@ const value = \"a string, not a comment\";",
         .rgba(&snippet, &Style::new("aside".parse().unwrap()), Scale::X1)
         .unwrap();
     assert_ne!(a.pixels(), b.pixels());
-}
-
-#[test]
-fn contour_surface_follows_each_source_line() {
-    let renderer = Renderer::new();
-    let snippet =
-        Snippet::new("const longer = 12345;\n\nx").language("typescript".parse().unwrap());
-    let image = renderer
-        .rgba(
-            &snippet,
-            &Style::new("contour".parse().unwrap())
-                .width(600)
-                .padding(32)
-                .font_size(26),
-            Scale::X1,
-        )
-        .unwrap();
-    let pixel = |x, y| &image.pixels()[((y * image.width() + x) * 4) as usize..][..3];
-    let near = |actual: &[u8], expected: [u8; 3]| {
-        actual.iter().zip(expected).all(|(a, b)| a.abs_diff(b) <= 4)
-    };
-    assert!(near(pixel(200, 33), [250, 247, 239]), "long source strip");
-    assert!(
-        near(pixel(200, 73), [191, 143, 63]),
-        "blank line leaves a short stub"
-    );
-    assert!(
-        near(pixel(200, 113), [191, 143, 63]),
-        "short source strip ends before long strip"
-    );
-    assert!(
-        near(pixel(0, 113), [250, 247, 239]),
-        "strips reach the canvas edge"
-    );
 }

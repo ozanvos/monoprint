@@ -3,3 +3,4 @@
 .Ink__mark{position:absolute;left:var(--inset);top:4px;width:10px;height:10px;background:#e2401b}
 .Ink__foot{border-top:1px solid #121212;margin-top:42px;margin-left:var(--inset);padding-top:9px;min-height:10px;text-align:right}
 .single-ink .Original__title{font-weight:600;letter-spacing:1px}
+#capture[data-theme="dark"]{--surface:#1a1918;--outer:#1a1918}#capture[data-theme="dark"] .Ink__body{border-left-color:#ecebe6}#capture[data-theme="dark"] .Ink__foot{border-top-color:#ecebe6}#capture[data-theme="dark"] .Ink__mark{background:#ff5a36}

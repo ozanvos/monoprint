@@ -190,15 +190,11 @@ pub fn thumbnails() -> Vec<(monoprint::Theme, Arc<Image>)> {
             )
         })
         .collect::<Vec<_>>();
-    // Lead with the distinctive Monoprint collection, then the existing frames.
+    // Lead with the curated Originals in group order, then the editor palettes.
     thumbnails.sort_by_key(|(theme, _)| {
         (
             *theme != monoprint::Theme::default(),
-            match theme.family() {
-                "Monoprint Originals" => 0,
-                "Monoprint" => 1,
-                _ => 2,
-            },
+            theme.curated_rank().unwrap_or(usize::MAX),
             theme.family(),
             theme.name().to_lowercase(),
         )

@@ -1,6 +1,8 @@
 # Monoprint Originals
 
-The default Monoprint preset has light and dark appearances. Its frame lives in
+Every Original has light and dark appearances. Each CSS file styles its
+preset's original appearance and overrides colors for the other under
+`#capture[data-theme]`. The default Monoprint frame lives in
 `src/monoprint_theme.rs` and `monoprint.css`. The additional presets use
 `src/originals.rs` and the CSS files in this directory.
 

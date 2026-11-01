@@ -998,32 +998,29 @@ mod macos {
         inspector_click(cx, handle, studio, "themes-all");
         for id in [
             "single-ink",
-            "swatch-card",
             "highlighter-pass",
             "label-tape",
             "ragged-block",
             "holofoil",
-            "press-proof",
             "ground",
             "galley",
-            "traverse",
-            "plumb",
-            "contour",
             "dusk",
             "cantilever",
             "ordinal",
-            "ballast",
             "aside",
             "jetty",
-            "column",
-            "course",
-            "well",
-            "quay",
-            "pendant",
             "capsule",
             "flange",
             "inlay",
-            "trace",
+            "cyanotype",
+            "greenbar",
+            "phosphor",
+            "index-card",
+            "manila",
+            "quadrangle",
+            "carbon-copy",
+            "vellum",
+            "anodized",
         ] {
             reveal_theme_gallery(cx, handle, studio);
             cx.update_window(handle.into(), |_, window, cx| {
@@ -2606,14 +2603,14 @@ mod macos {
             }
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
-                    s.select_theme("dusk".parse().unwrap(), window, cx)
+                    s.select_theme("nord".parse().unwrap(), window, cx)
                 });
             })
             .unwrap();
             settle(&mut cx, handle, &studio);
             cx.read_entity(&studio, |s, _| {
                 assert!(!s.document.light);
-                assert_eq!(s.document.theme, "dusk");
+                assert_eq!(s.document.theme, "nord");
             });
             cx.update_window(handle.into(), |_, window, _| {
                 assert!(window.try_find("light-appearance").is_none());

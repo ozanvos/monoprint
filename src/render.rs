@@ -288,10 +288,20 @@ pub(crate) fn render(
         editor_theme::template(!snippet.title.is_empty(), style.background)
     };
     if template.contains("__TITLE__") {
-        let title_uses_code_font = matches!(theme.id.as_str(), "thermal-receipt" | "monoprint");
-        let title_font = match theme.id.as_str() {
-            "thermal-receipt" | "monoprint" => font,
-            _ => assets::font("inter"),
+        let title_uses_code_font = matches!(
+            theme.id.as_str(),
+            "thermal-receipt"
+                | "monoprint"
+                | "cyanotype"
+                | "greenbar"
+                | "phosphor"
+                | "manila"
+                | "carbon-copy"
+        );
+        let title_font = if title_uses_code_font {
+            font
+        } else {
+            assets::font("inter")
         };
         fallbacks.include(
             title_font,
@@ -371,7 +381,13 @@ pub(crate) fn render(
         )
     };
     let frame = fill_template(&template);
-    let html = format!("<div id=\"capture\" data-theme=\"{mode}\">{frame}</div>");
+    // Frames hide their file-name furniture when there is no title to show.
+    let untitled = if snippet.title.is_empty() && template.contains("__TITLE__") {
+        " data-untitled"
+    } else {
+        ""
+    };
+    let html = format!("<div id=\"capture\" data-theme=\"{mode}\"{untitled}>{frame}</div>");
     css += "#capture{--font-space-mono:CodeMono;--font-soehne-mono:CodeMono}.Editor__editor .line{min-height:22.5px}";
     css += &typography_css(font, style.font_size, code.line_count)?;
     if !fallbacks.is_empty() {

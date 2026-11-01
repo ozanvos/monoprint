@@ -390,7 +390,7 @@ mod tests {
     fn retired_themes_are_absent_from_catalog_and_embedded_palettes() {
         let retired: Vec<&str> =
             serde_json::from_str(include_str!("../assets/retired-themes.json")).unwrap();
-        assert_eq!(retired.len(), 33);
+        assert_eq!(retired.len(), 52);
         let renderer = Renderer::new();
         let registry = renderer.registry().unwrap();
         for id in retired {
@@ -404,7 +404,34 @@ mod tests {
             Theme::all()
                 .filter(|t| t.family() == "Monoprint Originals")
                 .count(),
-            48
+            38
+        );
+    }
+
+    #[test]
+    fn every_original_has_one_curated_group_and_both_appearances() {
+        let originals: Vec<Theme> = Theme::all()
+            .filter(|t| t.family() == "Monoprint Originals")
+            .collect();
+        let mut ranks: Vec<usize> = originals
+            .iter()
+            .map(|t| {
+                t.curated_rank()
+                    .unwrap_or_else(|| panic!("{t} is ungrouped"))
+            })
+            .collect();
+        ranks.sort();
+        assert_eq!(ranks, (0..originals.len()).collect::<Vec<_>>());
+        assert_eq!(Theme::default().curated_rank(), Some(0));
+        for theme in originals {
+            assert!(theme.group().is_some());
+            assert!(theme.supports(Appearance::Light), "{theme}");
+            assert!(theme.supports(Appearance::Dark), "{theme}");
+        }
+        assert!(
+            Theme::all()
+                .filter(|t| t.family() != "Monoprint Originals")
+                .all(|t| t.group().is_none())
         );
     }
 

@@ -10,6 +10,11 @@
       "light": {
         "--ink-foreground": "#22252B",
         "--ink-highlight": "#00000016"
+      },
+      "dark": {
+        "--ink-foreground": "#e7e3d9",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#1d1c19"
       }
     },
     "background": {
@@ -28,65 +33,16 @@
       "light": {
         "--ink-foreground": "#1E2329",
         "--ink-highlight": "#00000016"
+      },
+      "dark": {
+        "--ink-foreground": "#e0e4e9",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#3d4652"
       }
     },
     "background": {
       "from": "#56626E",
       "to": "#56626E"
-    }
-  },
-  "traverse": {
-    "id": "traverse",
-    "name": "Traverse",
-    "font": "geist-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntaxWeight": 600,
-    "syntax": {
-      "dark": {
-        "--ink-foreground": "#E6E3DA",
-        "--ink-highlight": "#FFFFFF24"
-      }
-    },
-    "background": {
-      "from": "#E4E1DA",
-      "to": "#E4E1DA"
-    }
-  },
-  "plumb": {
-    "id": "plumb",
-    "name": "Plumb",
-    "font": "ibm-plex-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntaxWeight": 600,
-    "syntax": {
-      "light": {
-        "--ink-foreground": "#1F2A36",
-        "--ink-highlight": "#00000016"
-      }
-    },
-    "background": {
-      "from": "#DCE1E6",
-      "to": "#DCE1E6"
-    }
-  },
-  "contour": {
-    "id": "contour",
-    "name": "Contour",
-    "font": "geist-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntaxWeight": 600,
-    "syntax": {
-      "light": {
-        "--ink-foreground": "#23201A",
-        "--ink-highlight": "#00000016"
-      }
-    },
-    "background": {
-      "from": "#BF8F3F",
-      "to": "#BF8F3F"
     }
   },
   "dusk": {
@@ -97,6 +53,11 @@
     "lineNumbers": false,
     "syntaxWeight": 500,
     "syntax": {
+      "light": {
+        "--ink-foreground": "#23262d",
+        "--ink-highlight": "#00000016",
+        "--stage": "#e6e9ef"
+      },
       "dark": {
         "--ink-foreground": "#E4E6EA",
         "--ink-highlight": "#FFFFFF24"
@@ -118,6 +79,11 @@
       "light": {
         "--ink-foreground": "#2A2420",
         "--ink-highlight": "#00000016"
+      },
+      "dark": {
+        "--ink-foreground": "#ece5dd",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#6e3626"
       }
     },
     "background": {
@@ -136,29 +102,16 @@
       "light": {
         "--ink-foreground": "#262B27",
         "--ink-highlight": "#00000016"
+      },
+      "dark": {
+        "--ink-foreground": "#e1e6df",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#1c201d"
       }
     },
     "background": {
       "from": "#E3E6DF",
       "to": "#E3E6DF"
-    }
-  },
-  "ballast": {
-    "id": "ballast",
-    "name": "Ballast",
-    "font": "ibm-plex-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntaxWeight": 600,
-    "syntax": {
-      "dark": {
-        "--ink-foreground": "#EDE6DC",
-        "--ink-highlight": "#FFFFFF24"
-      }
-    },
-    "background": {
-      "from": "#221D1A",
-      "to": "#221D1A"
     }
   },
   "aside": {
@@ -173,6 +126,11 @@
       "light": {
         "--ink-foreground": "#15201C",
         "--ink-highlight": "#00000016"
+      },
+      "dark": {
+        "--ink-foreground": "#e3ece7",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#1f2a25"
       }
     },
     "background": {
@@ -188,6 +146,11 @@
     "lineNumbers": false,
     "syntaxWeight": 600,
     "syntax": {
+      "light": {
+        "--ink-foreground": "#1d2a28",
+        "--ink-highlight": "#00000016",
+        "--stage": "#a9cbc6"
+      },
       "dark": {
         "--ink-foreground": "#dbe6e4",
         "--ink-highlight": "#FFFFFF24"
@@ -198,96 +161,6 @@
       "to": "#1f3a3f"
     }
   },
-  "column": {
-    "id": "column",
-    "name": "Column",
-    "font": "ibm-plex-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntaxWeight": 500,
-    "syntax": {
-      "dark": {
-        "--ink-foreground": "#ebe3d8",
-        "--ink-highlight": "#FFFFFF24"
-      }
-    },
-    "background": {
-      "from": "#3a352f",
-      "to": "#3a352f"
-    }
-  },
-  "course": {
-    "id": "course",
-    "name": "Course",
-    "font": "geist-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntaxWeight": 600,
-    "syntax": {
-      "light": {
-        "--ink-foreground": "#1f2523",
-        "--ink-highlight": "#00000016"
-      }
-    },
-    "background": {
-      "from": "#bcc6bf",
-      "to": "#bcc6bf"
-    }
-  },
-  "well": {
-    "id": "well",
-    "name": "Well",
-    "font": "geist-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntaxWeight": 500,
-    "syntax": {
-      "dark": {
-        "--ink-foreground": "#d5dbe8",
-        "--ink-highlight": "#FFFFFF24"
-      }
-    },
-    "background": {
-      "from": "#262d40",
-      "to": "#262d40"
-    }
-  },
-  "quay": {
-    "id": "quay",
-    "name": "Quay",
-    "font": "ibm-plex-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntaxWeight": 600,
-    "syntax": {
-      "light": {
-        "--ink-foreground": "#272320",
-        "--ink-highlight": "#00000016"
-      }
-    },
-    "background": {
-      "from": "#d6c4ae",
-      "to": "#d6c4ae"
-    }
-  },
-  "pendant": {
-    "id": "pendant",
-    "name": "Pendant",
-    "font": "jetbrains-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntaxWeight": 500,
-    "syntax": {
-      "dark": {
-        "--ink-foreground": "#e4e6d8",
-        "--ink-highlight": "#FFFFFF24"
-      }
-    },
-    "background": {
-      "from": "#3b4331",
-      "to": "#3b4331"
-    }
-  },
   "capsule": {
     "id": "capsule",
     "name": "Capsule",
@@ -296,6 +169,11 @@
     "lineNumbers": false,
     "syntaxWeight": 600,
     "syntax": {
+      "light": {
+        "--ink-foreground": "#2b1d1e",
+        "--ink-highlight": "#00000016",
+        "--stage": "#7a2a30"
+      },
       "dark": {
         "--ink-foreground": "#efe4e0",
         "--ink-highlight": "#FFFFFF24"
@@ -314,6 +192,11 @@
     "lineNumbers": false,
     "syntaxWeight": 600,
     "syntax": {
+      "light": {
+        "--ink-foreground": "#22252a",
+        "--ink-highlight": "#00000016",
+        "--stage": "#d8dade"
+      },
       "dark": {
         "--ink-foreground": "#dcdfe3",
         "--ink-highlight": "#FFFFFF24"
@@ -335,29 +218,16 @@
       "light": {
         "--ink-foreground": "#1c1f26",
         "--ink-highlight": "#00000016"
+      },
+      "dark": {
+        "--ink-foreground": "#e2e5ec",
+        "--ink-highlight": "#ffffff24",
+        "--stage": "#1a3170"
       }
     },
     "background": {
       "from": "#213f8c",
       "to": "#213f8c"
-    }
-  },
-  "trace": {
-    "id": "trace",
-    "name": "Trace",
-    "font": "ibm-plex-mono",
-    "original": true,
-    "lineNumbers": false,
-    "syntaxWeight": 500,
-    "syntax": {
-      "dark": {
-        "--ink-foreground": "#d9dee3",
-        "--ink-highlight": "#FFFFFF24"
-      }
-    },
-    "background": {
-      "from": "#121619",
-      "to": "#121619"
     }
   }
 }
