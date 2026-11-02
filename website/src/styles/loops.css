@@ -1,0 +1,407 @@
+/* Looping demos on the interface cards. Each is a 400 × 248 scene on the lattice, scaled to the
+   card's width by scripts/loops.ts; windows run off the right and bottom, what they make stays in. */
+.loop {
+  position: relative;
+  margin: 8px calc(-1 * var(--edge)) -36px;
+  aspect-ratio: 400 / 248;
+  overflow: hidden;
+  border-top: 1px solid var(--line);
+  background-color: var(--desktop);
+  background-image: var(--desktop-grid);
+  background-size: 14px 14px;
+
+  .loop-scene {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 400px;
+    height: 248px;
+    transform: scale(var(--k, 1));
+    transform-origin: 0 0;
+    font-family: var(--mono);
+    font-size: 10px;
+    line-height: 19px;
+  }
+
+  b {
+    font-weight: inherit;
+  }
+
+  em {
+    font-style: normal;
+    white-space: pre;
+  }
+
+  .loop-window {
+    position: absolute;
+    left: 16px;
+    top: 20px;
+    width: 440px;
+    height: 260px;
+    border-radius: 9px;
+    overflow: hidden;
+    background: var(--canvas-raised);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 9%), 0 18px 40px rgb(0 0 0 / 14%);
+  }
+
+  .loop-bar {
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 30px;
+    padding-inline: 12px;
+    border-bottom: 1px solid var(--line);
+    background: var(--surface);
+
+    i {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background: var(--surface-3);
+    }
+  }
+
+  .loop-title {
+    position: absolute;
+    left: 0;
+    right: 40px;
+    text-align: center;
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--muted);
+  }
+
+  .loop-select {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 20px;
+    margin-left: 10px;
+    padding-inline: 8px;
+    border: 1px solid var(--line);
+    border-radius: 5px;
+    background: var(--canvas-raised);
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink-2);
+  }
+
+  ol {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    counter-reset: line;
+    white-space: pre;
+  }
+
+  li {
+    counter-increment: line;
+  }
+
+  li::before {
+    content: counter(line);
+    display: inline-block;
+    width: 14px;
+    margin-right: 12px;
+    text-align: right;
+    color: var(--faint);
+  }
+
+  /* Keycaps for the keys a beat presses, in the window's empty lower left. */
+  .loop-keys {
+    position: absolute;
+    left: 14px;
+    top: 178px;
+    display: flex;
+    gap: 4px;
+  }
+
+  kbd {
+    display: grid;
+    place-items: center;
+    min-width: 22px;
+    height: 22px;
+    padding-inline: 6px;
+    border-radius: 5px;
+    background: var(--canvas-raised);
+    box-shadow: 0 0 0 1px var(--line-strong), 0 2px 0 var(--line-strong);
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink-2);
+    transition: transform 90ms, box-shadow 90ms;
+  }
+
+  kbd.down {
+    transform: translateY(1.5px);
+    box-shadow: 0 0 0 1px var(--line-strong), 0 .5px 0 var(--line-strong);
+  }
+
+  .caret {
+    display: inline-block;
+    width: 6px;
+    height: 13px;
+    margin-left: 1px;
+    vertical-align: -2px;
+    background: currentColor;
+  }
+
+  .text-caret {
+    display: inline-block;
+    width: 1px;
+    height: 13px;
+    margin-right: -1px;
+    vertical-align: -2px;
+    background: var(--ink);
+  }
+
+  .blink,.terminal .caret {
+    animation: loop-blink 1.06s steps(1) infinite;
+  }
+
+  .loop-ibeam {
+    position: absolute;
+    left: 0;
+    top: 0;
+    opacity: 0;
+    transform: translate(150px, 180px);
+  }
+
+  /* Studio: the editor and the code image beside it, in GitHub Default as in Fig. 1. */
+  .studio {
+    display: grid;
+    grid-template-columns: 196px 1fr;
+    grid-template-rows: 30px 1fr;
+
+    .loop-bar {
+      grid-column: 1 / -1;
+    }
+
+    .k { color: #cf222e; }
+    .t { color: #953800; }
+    .s { color: #0a3069; }
+    .p { color: var(--ink); }
+    .c { color: #0550ae; }
+  }
+
+  .studio-editor {
+    padding: 12px 0 0 8px;
+    font-size: 10.5px;
+    line-height: 20px;
+    border-right: 1px solid var(--line);
+    color: var(--ink);
+
+    em {
+      border-radius: 2px;
+      transition: background-color 120ms;
+    }
+
+    em.selected {
+      background: var(--accent-soft);
+    }
+  }
+
+  .studio-preview {
+    padding: 44px 0 0 10px;
+    background: var(--surface-2);
+  }
+
+  .studio-card {
+    width: 168px;
+    padding-bottom: 10px;
+    border-radius: 6px;
+    background: #fff;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 6%), 0 6px 16px rgb(0 0 0 / 10%);
+    font-size: 9px;
+    line-height: 16px;
+    color: #1f2328;
+
+    ol {
+      padding-left: 6px;
+    }
+
+    li::before {
+      width: 8px;
+      margin-right: 9px;
+      color: #8c959f;
+    }
+  }
+
+  .studio-card-bar {
+    position: relative;
+    display: flex;
+    gap: 3px;
+    padding: 8px 9px 6px;
+
+    i {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: #d0d7de;
+    }
+
+    span {
+      position: absolute;
+      inset: 4px 0 0;
+      text-align: center;
+      font-family: var(--sans);
+      font-size: 8.5px;
+      color: #8c959f;
+    }
+  }
+
+  /* CLI: a terminal recalls its last command with a new theme; each run's image lands over the last. */
+  .terminal {
+    background: #232321;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 30%), 0 18px 40px rgb(0 0 0 / 18%);
+    color: #e8e8e5;
+
+    .loop-bar {
+      border-color: #3a3a37;
+      background: #2c2c2a;
+    }
+
+    .loop-bar i {
+      background: #4a4a47;
+    }
+
+    .f { font-weight: 650; }
+    .k { color: #e59a7c; }
+    em { color: #d9c8a3; }
+
+    kbd {
+      background: #3a3a37;
+      box-shadow: 0 0 0 1px #4f4f4b, 0 2px 0 #4f4f4b;
+      color: #e8e8e5;
+    }
+
+    kbd.down {
+      box-shadow: 0 0 0 1px #4f4f4b, 0 .5px 0 #4f4f4b;
+    }
+  }
+
+  .terminal-lines {
+    height: 76px;
+    margin-top: 10px;
+    overflow: hidden;
+  }
+
+  .terminal-scroll > div {
+    height: 19px;
+    padding-left: 14px;
+    white-space: pre;
+  }
+
+  .prompt {
+    margin-right: 6px;
+    color: #8f8f89;
+  }
+
+  .terminal .caret {
+    background: #e8e8e5;
+  }
+
+  .output {
+    position: absolute;
+    left: 202px;
+    top: 144px;
+    display: grid;
+    width: 182px;
+
+    img {
+      grid-area: 1 / 1;
+      width: 100%;
+      height: auto;
+      border-radius: 4px;
+      box-shadow: 0 0 0 1px rgb(0 0 0 / 12%), 0 12px 28px rgb(0 0 0 / 22%);
+    }
+  }
+
+  /* Library: a render loop in an editor; its output folder sits over the window's corner. */
+  .library {
+    color: var(--ink);
+
+    .k { color: #a0452b; }
+    .f { font-weight: 650; }
+    .s { color: #6e5a35; }
+  }
+
+  .library-code {
+    padding: 12px 0 0 6px;
+
+    li::before {
+      width: 8px;
+    }
+  }
+
+  .scale {
+    display: inline-block;
+    min-width: 6px;
+  }
+
+  .files {
+    position: absolute;
+    left: 162px;
+    top: 144px;
+    width: 222px;
+    padding: 4px;
+    border-radius: 8px;
+    background: var(--canvas-raised);
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 9%), 0 12px 28px rgb(0 0 0 / 14%);
+    font-family: var(--sans);
+    font-size: 11px;
+    color: var(--ink);
+  }
+
+  .files-head {
+    padding: 3px 8px 4px;
+    line-height: 15px;
+    color: var(--muted);
+  }
+
+  .file {
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    white-space: nowrap;
+    align-items: center;
+    gap: 8px;
+    height: 22px;
+    padding-inline: 8px;
+
+    img {
+      width: 30px;
+      height: auto;
+      border-radius: 2px;
+      box-shadow: 0 0 0 1px rgb(0 0 0 / 10%);
+    }
+  }
+
+  .size {
+    display: flex;
+    gap: 3px;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+
+    em {
+      display: block;
+      height: 19px;
+      min-width: 3ch;
+      overflow: hidden;
+      text-align: right;
+    }
+
+    em span {
+      display: block;
+    }
+  }
+}
+
+@media(max-width:960px) {
+  .loop {
+    margin-top: 12px;
+  }
+}
+
+@keyframes loop-blink {
+  50% { opacity: 0; }
+}

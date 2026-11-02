@@ -1,0 +1,204 @@
+// The looping demos on the interface cards. Each scene is drawn at 400 px and scaled to its card.
+// With motion allowed, a loop plays while its card is on screen and pauses between beats when it
+// is not; reduced motion keeps the first frame, which is complete on its own.
+import { themes } from '../data/demo.mjs';
+import { loopThemes, renders, names } from '../data/loops.mjs';
+
+const DESIGN_WIDTH = 400;
+const TRAVEL = 'cubic-bezier(0.45, 0, 0.1, 1)';
+const ARRIVE = 'cubic-bezier(0.25, 0.8, 0.25, 1)';
+const motion = document.documentElement.classList.contains('motion');
+const wait = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const byCli = Object.fromEntries(themes.map(theme => [theme.cli, theme]));
+const themeArgs = (cli: string) => `${cli}${byCli[cli].appearance === 'light' ? ' --light' : ''}`;
+
+function scaled(loop: HTMLElement) {
+  new ResizeObserver(([entry]) => loop.style.setProperty('--k', String(entry.contentRect.width / DESIGN_WIDTH))).observe(loop);
+}
+
+// Resolves at once while the loop is on screen, otherwise when it next comes into view.
+function onScreen(loop: HTMLElement) {
+  let visible = false;
+  let wake: (() => void) | undefined;
+  new IntersectionObserver(([entry]) => {
+    visible = entry.isIntersecting;
+    if (visible) wake?.();
+  }, { threshold: 0.4 }).observe(loop);
+  return () => visible ? Promise.resolve() : new Promise<void>(resolve => { wake = resolve; });
+}
+
+// A key cap appears, goes down and comes up; `hold` keeps it down until the returned release.
+async function press(keys: HTMLElement, labels: string[], hold = false) {
+  const caps = labels.map(label => Object.assign(document.createElement('kbd'), { textContent: label }));
+  keys.replaceChildren(...caps);
+  keys.animate([{ opacity: 0, transform: 'translateY(4px)' }, { opacity: 1, transform: 'none' }], { duration: 180, easing: ARRIVE });
+  await wait(200);
+  for (const cap of caps) cap.classList.add('down');
+  const release = () => caps.forEach(cap => cap.classList.remove('down'));
+  if (!hold) { await wait(140); release(); }
+  return release;
+}
+
+function clearKeys(keys: HTMLElement) {
+  if (!keys.childElementCount) return;
+  keys.animate([{ opacity: 1 }, { opacity: 0 }], { duration: 240, fill: 'forwards' }).finished.then(animation => {
+    keys.replaceChildren();
+    animation.cancel();
+  });
+}
+
+// A value rolls to its new text, upwards when it grows; the slot keeps the line's height.
+async function roll(slot: HTMLElement, text: string, up: boolean) {
+  const from = slot.textContent!;
+  const track = document.createElement('span');
+  for (const line of up ? [from, text] : [text, from]) track.append(Object.assign(document.createElement('span'), { textContent: line }));
+  slot.replaceChildren(track);
+  const [start, end] = up ? ['none', 'translateY(-19px)'] : ['translateY(-19px)', 'none'];
+  await track.animate([{ transform: start }, { transform: end }], { duration: 460, easing: TRAVEL, fill: 'forwards' }).finished;
+  slot.textContent = text;
+}
+
+// A text caret after `anchor`, taking no width so the line does not shift.
+function caretAfter(anchor: Element) {
+  const caret = document.createElement('span');
+  caret.className = 'text-caret';
+  anchor.after(caret);
+  return caret;
+}
+
+// Studio: double-click a word, retype it, and the code image follows each keystroke.
+async function studio(loop: HTMLElement, seen: () => Promise<void>) {
+  const scene = loop.querySelector<HTMLElement>('.loop-scene')!;
+  const word = loop.querySelector<HTMLElement>('.studio-editor em')!;
+  const preview = loop.querySelector<HTMLElement>('.studio-card em')!;
+  const ibeam = loop.querySelector<SVGElement>('.loop-ibeam')!;
+  const caret = caretAfter(word);
+  const rest = { x: 112, y: 168 };
+  let at = rest;
+  const moveTo = (to: { x: number; y: number }, duration: number) => {
+    const animation = ibeam.animate([{ transform: `translate(${at.x}px, ${at.y}px)` }, { transform: `translate(${to.x}px, ${to.y}px)` }], { duration, easing: TRAVEL, fill: 'forwards' });
+    at = to;
+    return animation.finished;
+  };
+  const show = (on: boolean) => ibeam.animate([{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], { duration: on ? 260 : 140, fill: 'forwards' }).finished;
+  for (let turn = 1; ; turn++) {
+    await seen();
+    at = rest;
+    await moveTo(rest, 0);
+    await show(true);
+    await wait(250);
+    // Aim inside the word but off its letters' middle, so the I-beam doesn't cover what it selects.
+    const box = word.getBoundingClientRect();
+    const origin = scene.getBoundingClientRect();
+    const k = origin.width / DESIGN_WIDTH;
+    await moveTo({ x: (box.left - origin.left + box.width * 0.62) / k - 5, y: (box.top - origin.top + box.height * 0.5) / k - 8 }, 820);
+    await wait(260);
+    caret.hidden = true;
+    word.classList.add('selected');
+    await wait(520);
+    await show(false);
+    const name = names[turn % names.length];
+    for (let i = 1; i <= name.length; i++) {
+      word.classList.remove('selected');
+      caret.hidden = false;
+      caret.classList.remove('blink');
+      word.textContent = preview.textContent = name.slice(0, i);
+      await wait(70 + (i % 3) * 25);
+    }
+    caret.classList.add('blink');
+    await wait(2600);
+  }
+}
+
+// CLI: recall the last command, change its theme, run it, and the new image lands over the last.
+async function cli(loop: HTMLElement, seen: () => Promise<void>) {
+  const lines = loop.querySelector<HTMLElement>('.terminal-scroll')!;
+  const keys = loop.querySelector<HTMLElement>('.loop-keys')!;
+  const output = loop.querySelector<HTMLElement>('.output')!;
+  const template = lines.firstElementChild!.cloneNode(true) as HTMLElement;
+  const images = loopThemes.map(cli => Object.assign(new Image(535, 269), { src: `/assets/output-${byCli[cli].id}.png`, alt: '' }));
+  let current = lines.querySelector<HTMLElement>('.current')!;
+  for (let turn = 1; ; turn++) {
+    await seen();
+    const previous = loopThemes[(turn - 1) % loopThemes.length];
+    const next = loopThemes[turn % loopThemes.length];
+    await wait(500);
+    await press(keys, ['↑']);
+    const recalled = template.cloneNode(true) as HTMLElement;
+    current.querySelector('code')!.replaceWith(recalled.querySelector('code')!);
+    const value = current.querySelector('em')!;
+    value.textContent = themeArgs(previous);
+    await wait(420);
+    const release = await press(keys, ['⌫'], true);
+    for (let n = value.textContent.length - 1; n >= 0; n--) {
+      value.textContent = value.textContent.slice(0, n);
+      await wait(28);
+    }
+    release();
+    clearKeys(keys);
+    await wait(180);
+    const typed = themeArgs(next);
+    for (let i = 1; i <= typed.length; i++) {
+      value.textContent = typed.slice(0, i);
+      await wait(62 + (i % 4) * 14);
+    }
+    await wait(380);
+    await press(keys, ['↩']);
+    current.classList.remove('current');
+    current.querySelector('.caret')!.remove();
+    current = Object.assign(document.createElement('div'), { className: 'current', innerHTML: '<span class="prompt">$</span><code></code><span class="caret"></span>' });
+    lines.append(current);
+    // The terminal keeps its last four lines: the oldest scrolls out, then leaves the DOM unseen.
+    if (lines.childElementCount > 4) {
+      await lines.animate([{ transform: 'none' }, { transform: 'translateY(-19px)' }], { duration: 160, easing: 'ease-out' }).finished;
+      lines.firstElementChild!.remove();
+    }
+    await wait(220);
+    const image = images[turn % images.length].cloneNode() as HTMLImageElement;
+    output.append(image);
+    // It arrives as a solid print: opaque within the first stretch of its rise, never a ghost over the last.
+    await image.animate([{ opacity: 0, transform: 'translateY(26px)' }, { opacity: 1, offset: 0.25 }, { opacity: 1, transform: 'none' }], { duration: 900, easing: ARRIVE }).finished;
+    while (output.childElementCount > 1) output.firstElementChild!.remove();
+    clearKeys(keys);
+    await wait(2200);
+  }
+}
+
+// Library: change the scale, save, and every file the loop writes is rewritten at the new size.
+async function library(loop: HTMLElement, seen: () => Promise<void>) {
+  const scale = loop.querySelector<HTMLElement>('.scale')!;
+  const keys = loop.querySelector<HTMLElement>('.loop-keys')!;
+  const sizes = [...loop.querySelectorAll<HTMLElement>('.size em')];
+  const caret = caretAfter(scale);
+  caret.hidden = true;
+  for (let turn = 1; ; turn++) {
+    await seen();
+    const value = turn % 2 ? 4 : 2;
+    await wait(500);
+    caret.hidden = false;
+    caret.classList.add('blink');
+    await wait(900);
+    caret.classList.remove('blink');
+    scale.textContent = '';
+    await wait(240);
+    scale.textContent = String(value);
+    await wait(500);
+    await press(keys, ['⌘', 'S']);
+    caret.classList.add('blink');
+    await wait(280);
+    for (const [i, size] of sizes.entries()) {
+      roll(size, String(Math.round(renders[i].bytes[value] / 1000)), value === 4);
+      await wait(240);
+    }
+    clearKeys(keys);
+    await wait(900);
+    caret.hidden = true;
+    await wait(1700);
+  }
+}
+
+const scripts = { Studio: studio, CLI: cli, Library: library };
+for (const loop of document.querySelectorAll<HTMLElement>('.loop')) {
+  scaled(loop);
+  if (motion) scripts[loop.dataset.loop as keyof typeof scripts](loop, onScreen(loop));
+}

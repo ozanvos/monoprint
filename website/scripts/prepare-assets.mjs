@@ -33,6 +33,10 @@ export async function prepareAssets(directory = path.join(website, '.generated/p
       const file = path.join(assets, `${theme.id}.png`);
       run(path.resolve(cli), [pickerInput, '--theme', theme.cli, `--${theme.appearance}`, '--width', '640', '--padding', '64', '--scale', '2', '--font', 'jetbrains-mono', '--font-size', '15', '--ligatures', '--line-numbers', '--title', 'share.rs', '--png-compression', 'balanced', '--highlight', '4', '-o', file, '--force']);
       images.push({ name: theme.id, source: 'share.rs', theme: theme.cli, appearance: theme.appearance, format: 'png', highlight: '4', transparent: false, sha256: sha256(await fs.readFile(file)) });
+      // The looping demos show what their commands write, at 1x since they are drawn small.
+      const output = path.join(assets, `output-${theme.id}.png`);
+      run(path.resolve(cli), [pickerInput, '--theme', theme.cli, `--${theme.appearance}`, '--scale', '1', '--png-compression', 'balanced', '-o', output, '--force']);
+      images.push({ name: `output-${theme.id}`, source: 'share.rs', theme: theme.cli, appearance: theme.appearance, format: 'png', highlight: null, transparent: false, sha256: sha256(await fs.readFile(output)) });
     }
   } finally { await fs.unlink(pickerInput); }
   const publicSite = config.websitePublishing === true;

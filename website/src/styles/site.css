@@ -475,16 +475,6 @@ img {
   flex: 1;
 }
 
-.parts pre {
-  padding: 12px 14px;
-  border: 1px solid var(--line);
-  border-radius: 4px;
-  background: var(--surface);
-  font-size: 11px;
-  line-height: 1.8;
-  overflow-x: auto;
-}
-
 .showcase {
   display: grid;
   grid-template-columns: repeat(3,minmax(0,1fr));
