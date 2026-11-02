@@ -1,20 +1,22 @@
 ---
 import AppScreenshot from '../components/AppScreenshot.astro';
 import Icon from '../components/Icon.astro';
+import PartDemo from '../components/PartDemo.astro';
 import Proof from '../components/Proof.astro';
 import { themes, initialTheme, command } from '../data/demo.mjs';
 import { showcases, exportWidth } from '../data/showcase.mjs';
-import { highlighters, shell } from '../scripts/highlight.mjs';
+import { shell } from '../scripts/highlight.mjs';
 import release from '../../../release/config.json';
 import { downloads, installs, manifest } from '../data/downloads.mjs';
 import '../styles/site.css';
+import '../styles/loops.css';
 const repository = `https://github.com/${release.repository}`;
 const docs = `${repository}/blob/main/README.md`;
 const cliDocs = `${repository}/blob/main/docs/cli.md`;
 const parts = [
-  { title: 'Studio', lang: 'keys', body: 'Live preview, line and text highlights, custom fonts, clipboard export and a saved local draft.', code: ['⌘O  Open source file', '⌘S  Export image', '⌘⇧C Copy image'] },
-  { title: 'CLI', lang: 'shell', body: 'Reads a file or stdin. The output extension picks the format; --list-themes shows every variant.', code: ['monoprint main.rs -o main.png', '  --theme nord --scale 4', 'pbpaste | monoprint -l ts -o a.svg'] },
-  { title: 'Library', lang: 'rust', body: 'Render in memory from Rust, or from Node.js 22+ with native packages for macOS, Linux and Windows.', code: ['Renderer::new().png(', '  &snippet, &Style::default(),', '  Scale::X2)?'] },
+  { title: 'Studio', body: 'Live preview, line and text highlights, custom fonts, clipboard export and a saved local draft.' },
+  { title: 'CLI', body: 'Reads a file or stdin. The output extension picks the format; --list-themes shows every variant.' },
+  { title: 'Library', body: 'Render in memory from Rust, or from Node.js 22+ with native packages for macOS, Linux and Windows.' },
 ] as const;
 const thumb = (palette: Record<string, string>) => Object.entries(palette).map(([key, value]) => `--${key}:${value}`).join(';');
 ---
@@ -89,7 +91,7 @@ const thumb = (palette: Record<string, string>) => Object.entries(palette).map((
         </section>
 
         <section class="parts" aria-label="Interfaces">
-          {parts.map(part => <article><h2>{part.title}</h2><p>{part.body}</p><pre set:html={part.code.map(highlighters[part.lang]).join('\n')} /></article>)}
+          {parts.map(part => <article><h2>{part.title}</h2><p>{part.body}</p><PartDemo kind={part.title} /></article>)}
         </section>
 
         <section class="showcase" aria-label="Export examples">
@@ -107,5 +109,6 @@ const thumb = (palette: Record<string, string>) => Object.entries(palette).map((
     <p class="sr-only" role="status" id="feedback" aria-live="polite"></p>
     <script src="../scripts/demo.ts"></script>
     <script src="../scripts/proof.ts"></script>
+    <script src="../scripts/loops.ts"></script>
   </body>
 </html>
