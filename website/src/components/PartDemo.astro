@@ -1,0 +1,64 @@
+---
+// A small looping demo for each interface card. The markup is the finished first frame, which is
+// also what reduced motion shows; scripts/loops.ts plays it.
+import { themes } from '../data/demo.mjs';
+import { loopThemes, renders } from '../data/loops.mjs';
+interface Props { kind: 'Studio' | 'CLI' | 'Library'; }
+const { kind } = Astro.props;
+const byId = Object.fromEntries(themes.map(theme => [theme.cli, theme]));
+const labels = {
+  Studio: 'The Studio editor: a name in the source is retyped and the code image preview updates as it is typed.',
+  CLI: 'A terminal: the last monoprint command is recalled with a new theme, and each run writes share.png in that theme.',
+  Library: 'A TypeScript loop renders one PNG per theme; changing scale from 2 to 4 rewrites every file at a larger size.',
+};
+const studio = ['let palette = Palette {', '    name: "<em>Monoprint</em>",', '    dark: false,', '};'];
+const rust = (line: string) => line
+  .replace(/^(let)\b/, '<b class="k">$1</b>')
+  .replace(/(Palette)/, '<b class="t">$1</b>')
+  .replace(/(name|dark)(?=:)/, '<b class="p">$1</b>')
+  .replace(/"<em>(.*)<\/em>"/, '<b class="s">"<em>$1</em>"</b>')
+  .replace(/(false)/, '<b class="c">$1</b>');
+const shell = (cli: string) => `<b class="f">monoprint</b> share.rs <b class="k">-o</b> share.png <b class="k">--theme</b> <em>${themeArgs(cli)}</em>`;
+const themeArgs = (cli: string) => `${cli}${byId[cli].appearance === 'light' ? ' --light' : ''}`;
+---
+<div class="loop" data-loop={kind} role="img" aria-label={labels[kind]}>
+  <div class="loop-scene" aria-hidden="true">
+    {kind === 'Studio' && <>
+      <div class="loop-window studio">
+        <div class="loop-bar"><i></i><i></i><i></i><span class="loop-select">Rust<svg width="8" height="8" viewBox="0 0 8 8"><path d="m1.5 3 2.5 2.5L6.5 3" fill="none" stroke="currentColor" stroke-width="1.1"/></svg></span></div>
+        <div class="studio-editor"><ol>{studio.map(line => <li set:html={rust(line)} />)}</ol></div>
+        <div class="studio-preview">
+          <div class="studio-card"><div class="studio-card-bar"><i></i><i></i><i></i><span>palette.rs</span></div><ol>{studio.map(line => <li set:html={rust(line)} />)}</ol></div>
+        </div>
+      </div>
+      <svg class="loop-ibeam" width="10" height="16" viewBox="0 0 10 16" fill="none" overflow="visible"><path d="M3 1H7M3 15H7M5 1V15" stroke="#fff" stroke-width="2.6" stroke-linecap="round"/><path d="M3 1H7M3 15H7M5 1V15" stroke="#000" stroke-width="1" stroke-linecap="round"/></svg>
+    </>}
+    {kind === 'CLI' && <>
+      <div class="loop-window terminal">
+        <div class="loop-bar"><i></i><i></i><i></i></div>
+        <div class="terminal-lines"><div class="terminal-scroll">
+          <div><span class="prompt">$</span><code set:html={shell(loopThemes[0])} /></div>
+          <div class="current"><span class="prompt">$</span><code></code><span class="caret"></span></div>
+        </div></div>
+        <div class="loop-keys"></div>
+      </div>
+      <div class="output"><img src={`/assets/output-${byId[loopThemes[0]].id}.png`} width="535" height="269" alt="" loading="lazy" /></div>
+    </>}
+    {kind === 'Library' && <>
+      <div class="loop-window library">
+        <div class="loop-bar"><i></i><i></i><i></i><span class="loop-title">render.ts</span></div>
+        <ol class="library-code">
+          <li><b class="k">for</b> (<b class="k">const</b> theme <b class="k">of</b> themes) {'{'}</li>
+          <li>  <b class="k">const</b> image = <b class="k">await</b> <b class="f">png</b>(source, {'{'} theme, scale: <em class="scale">2</em> {'}'});</li>
+          <li>  <b class="k">await</b> <b class="f">writeFile</b>(<b class="s">`out/{'${'}theme{'}'}.png`</b>, image);</li>
+          <li>{'}'}</li>
+        </ol>
+        <div class="loop-keys"></div>
+      </div>
+      <div class="files">
+        <div class="files-head">out</div>
+        {renders.map(file => <div class="file"><img src={`/assets/output-${byId[file.theme].id}.png`} width="535" height="269" alt="" loading="lazy" /><span>{file.theme}.png</span><span class="size"><em>{Math.round(file.bytes[2] / 1000)}</em> KB</span></div>)}
+      </div>
+    </>}
+  </div>
+</div>
