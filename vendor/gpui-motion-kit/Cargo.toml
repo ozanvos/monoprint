@@ -1,0 +1,15 @@
+[package]
+name = "gpui-motion-kit"
+version = "0.5.0"
+edition = "2024"
+rust-version = "1.95"
+publish = false
+description = "Declarative, interruptible animations and text motion for GPUI Kit"
+readme = "README.md"
+license = "MIT OR Apache-2.0"
+repository = "https://github.com/1bye/gpui-motion"
+
+[dependencies]
+gpui-ce-motion = { version = "=0.4.0", default-features = false, features = ["text", "svg-path"] }
+# Monoprint: upstream pins Kit 0.7.3 on gpui-pre; match the app's Kit and backend.
+gpui-kit = { version = "=0.8.0", default-features = false, features = ["gpui-fast"] }
