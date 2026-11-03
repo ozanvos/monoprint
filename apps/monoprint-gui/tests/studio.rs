@@ -93,6 +93,16 @@ mod macos {
         }
     }
 
+    // Zoom presets spring the preview; the headless clock only moves when told.
+    fn settle_motion(cx: &mut HeadlessAppContext, handle: WindowHandle<Root>) {
+        for _ in 0..10 {
+            cx.advance_clock(Duration::from_millis(100));
+            cx.run_until_parked();
+            cx.update_window(handle.into(), |_, window, cx| window.render_frame(cx))
+                .unwrap();
+        }
+    }
+
     fn capture(cx: &mut HeadlessAppContext, handle: WindowHandle<Root>, name: &str) {
         let pixels = cx
             .capture_screenshot(handle.into())
@@ -623,6 +633,7 @@ mod macos {
     ) {
         // Actual pointer hit targets, not calls to the resize methods.
         click(cx, handle, studio, "half-preview");
+        settle_motion(cx, handle);
         let (source, initial_width, initial_height, initial_revision) =
             cx.read_entity(studio, |s, _| {
                 (
@@ -2282,7 +2293,31 @@ mod macos {
                 });
                 capture(&mut cx, handle, &format!("ayu-{control}-{}", width as u32));
             }
+            // A dark filter keeps the displayed variant on a repeat click.
+            reveal_theme_swatch(&mut cx, handle, &studio, ayu);
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.click(("theme-swatch", ayu), cx)
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| assert!(!s.document.light));
+            // Under all themes, clicking the selected tile again switches variants.
             inspector_click(&mut cx, handle, &studio, "themes-all");
+            reveal_theme_swatch(&mut cx, handle, &studio, ayu);
+            for light in [true, false] {
+                cx.update_window(handle.into(), |_, window, cx| {
+                    window.click(("theme-swatch", ayu), cx)
+                })
+                .unwrap();
+                settle(&mut cx, handle, &studio);
+                cx.read_entity(&studio, |s, _| {
+                    assert_eq!(s.document.theme, "ayu");
+                    assert_eq!(s.document.light, light, "repeat click toggles");
+                    assert_eq!(s.selected_theme(), Some("ayu"));
+                    assert!(s.error.is_none());
+                    assert_eq!(s.preview_revision, s.revision);
+                });
+            }
             cx.update_window(handle.into(), |_, window, cx| {
                 studio.update(cx, |s, cx| {
                     s.theme_search
