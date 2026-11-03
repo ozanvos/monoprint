@@ -92,6 +92,16 @@ try {
   await page.waitForFunction(() => document.querySelector('#copy-command').title === 'Copied');
   assert.equal(await page.evaluate(() => navigator.clipboard.readText()), 'monoprint share.rs -o share.png --theme night-owl --highlight 4');
   await page.waitForFunction(() => !document.querySelector('#copy-command').disabled);
+  // Each theme sample is the size its data says: an Original's frame makes it taller than 666.
+  for (const sample of await page.locator('.sheet img').all()) {
+    const [natural, declared] = await sample.evaluate(async image => { await image.decode(); return [`${image.naturalWidth}×${image.naturalHeight}`, `${image.getAttribute('width')}×${image.getAttribute('height')}`]; });
+    assert.equal(natural, declared, `${await sample.getAttribute('data-theme')} sample size`);
+  }
+  const stage = await page.locator('.stage').boundingBox();
+  await page.getByText('Cyanotype', { exact: true }).click();
+  assert.equal((await page.locator('.stage').boundingBox()).height, stage.height, 'Choosing a taller theme moves the page');
+  assert.match(await page.locator('#command-text').textContent(), /--theme cyanotype --highlight 4$/);
+  assert.equal(await page.locator('#render-size').textContent(), '1280 × 1036 px');
   for (const name of ['Support', 'Privacy']) {
     await page.goto(`${url}/${name.toLowerCase()}/`);
     assert.equal(await page.getByRole('heading', { level: 1 }).textContent(), `Monoprint ${name === 'Support' ? 'support' : 'privacy policy'}`);

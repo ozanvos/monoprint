@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { root, run, revision, isDirty, sha256 } from '../../bindings/node/scripts/shared.mjs';
 import { checkRelease } from '../../scripts/release-config.mjs';
 import { themes, source } from '../src/data/demo.mjs';
-import { palette, previews } from '../src/data/loops.mjs';
+import { loopThemes, palette, previews } from '../src/data/loops.mjs';
 
 export const website = path.join(root, 'website');
 export async function prepareAssets(directory = path.join(website, '.generated/public'), cli = process.env.MONOPRINT_CLI ?? path.join(root, 'target/release/monoprint')) {
@@ -23,7 +23,8 @@ export async function prepareAssets(directory = path.join(website, '.generated/p
       const file = path.join(assets, `${theme.id}.png`);
       run(path.resolve(cli), [pickerInput, '--theme', theme.cli, `--${theme.appearance}`, '--width', '640', '--padding', '64', '--scale', '2', '--font', 'jetbrains-mono', '--font-size', '15', '--ligatures', '--line-numbers', '--title', 'share.rs', '--png-compression', 'balanced', '--highlight', '4', '-o', file, '--force']);
       images.push({ name: theme.id, source: 'share.rs', theme: theme.cli, appearance: theme.appearance, format: 'png', highlight: '4', transparent: false, sha256: sha256(await fs.readFile(file)) });
-      // The looping demos show what their commands write, at 1x since they are drawn small.
+      // The CLI card's loop shows what its commands write, at 1x since it is drawn small.
+      if (!loopThemes.includes(theme.cli)) continue;
       const output = path.join(assets, `output-${theme.id}.png`);
       run(path.resolve(cli), [pickerInput, '--theme', theme.cli, `--${theme.appearance}`, '--scale', '1', '--png-compression', 'balanced', '-o', output, '--force']);
       images.push({ name: `output-${theme.id}`, source: 'share.rs', theme: theme.cli, appearance: theme.appearance, format: 'png', highlight: null, transparent: false, sha256: sha256(await fs.readFile(output)) });

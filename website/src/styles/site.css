@@ -420,24 +420,35 @@ img {
 
 .stage {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  display: grid;
+  place-items: center;
   padding: 44px 40px 64px;
   min-width: 0;
 }
 
+/* The stage keeps room for its tallest sample, so choosing a theme never moves the page; each
+   proof centres in that room. */
+.stage::after {
+  content: '';
+  grid-area: 1 / 1;
+  width: min(100%,720px);
+  aspect-ratio: 1280 / var(--tallest);
+}
+
 .stage .proof {
+  grid-area: 1 / 1;
   width: min(100%,720px);
 }
 
-/* Theme samples stack in one cell so the new one can fade in over the old. */
+/* Theme samples stack in one cell so the new one can fade in over the old; an Original's frame
+   makes its sample taller, so each centres on the other while they cross. */
 .sheet {
   display: grid;
 }
 
 .sheet img {
   grid-area: 1 / 1;
+  align-self: center;
   width: 100%;
   filter: drop-shadow(0 18px 40px rgb(0 0 0 / 16%));
 }
