@@ -253,7 +253,9 @@ async function hero(figure: HTMLElement, seen: () => Promise<void>) {
     return glide(pointer, from, to, { x: 11, y: 8 });
   };
   const press = async () => {
-    await pointer.animate([{ scale: 1 }, { scale: 0.86 }, { scale: 1 }], { duration: 180, easing: 'ease-out', composite: 'add' }).finished;
+    // Added after the glide's translate, so it squeezes around the tip; the `scale` property
+    // would apply before it and pull the pointer towards the scene's corner.
+    await pointer.animate([{ transform: 'scale(1)' }, { transform: 'scale(0.86)' }, { transform: 'scale(1)' }], { duration: 180, easing: 'ease-out', composite: 'add' }).finished;
   };
   const choose = async (name: string, option: string) => {
     const segmented = control(name);
