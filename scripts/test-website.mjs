@@ -72,7 +72,6 @@ try {
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Overflow at ${width}px`);
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(out, `website-${width}.png`), fullPage: true });
-    await page.locator('.showcase').screenshot({ path: path.join(out, `showcase-${width}.png`) });
     if (process.env.MONOPRINT_DOWNLOAD_MANIFEST) {
       await page.locator('.downloads').screenshot({ path: path.join(out, `downloads-${width}.png`) });
     }

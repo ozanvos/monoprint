@@ -4,7 +4,6 @@ import Icon from '../components/Icon.astro';
 import PartDemo from '../components/PartDemo.astro';
 import Proof from '../components/Proof.astro';
 import { themes, initialTheme, command } from '../data/demo.mjs';
-import { showcases, exportWidth } from '../data/showcase.mjs';
 import { shell } from '../scripts/highlight.mjs';
 import release from '../../../release/config.json';
 import { downloads, installs, manifest } from '../data/downloads.mjs';
@@ -15,7 +14,7 @@ const docs = `${repository}/blob/main/README.md`;
 const cliDocs = `${repository}/blob/main/docs/cli.md`;
 const parts = [
   { title: 'Studio', body: 'Live preview, line and text highlights, custom fonts, clipboard export and a saved local draft.' },
-  { title: 'CLI', body: 'Reads a file or stdin. The output extension picks the format; --list-themes shows every variant.' },
+  { title: 'CLI', body: 'Reads a file or stdin. The output extension picks PNG, SVG or HTML; --transparent drops the backdrop for docs.' },
   { title: 'Library', body: 'Render in memory from Rust, or from Node.js 22+ with native packages for macOS, Linux and Windows.' },
 ] as const;
 const thumb = (palette: Record<string, string>) => Object.entries(palette).map(([key, value]) => `--${key}:${value}`).join(';');
@@ -92,16 +91,6 @@ const thumb = (palette: Record<string, string>) => Object.entries(palette).map((
 
         <section class="parts" aria-label="Interfaces">
           {parts.map(part => <article><h2>{part.title}</h2><p>{part.body}</p><PartDemo kind={part.title} /></article>)}
-        </section>
-
-        <section class="showcase" aria-label="Export examples">
-          {showcases.map((item, i) => <figure>
-            <div class:list={['showcase-tile', 'lattice', { transparent: item.transparent }]}>
-              <p class="fig" aria-hidden="true">Fig. {i + 3} <b>{item.source}</b></p>
-              <Proof measure={item.format === 'svg' ? 'vector' : `${exportWidth * 2} px @2x`}><img src={`/assets/${item.id}.${item.format}`} alt={item.alt} loading="lazy" /></Proof>
-            </div>
-            <figcaption><span>{item.name}</span><span>{item.detail}</span><span class="spec">--theme {item.theme} --{item.appearance} · {item.format.toUpperCase()}</span></figcaption>
-          </figure>)}
         </section>
       </main>
       <footer class="strip foot"><span>Monoprint</span><nav aria-label="Resources"><a href="/support/">Support</a><a href="/privacy/">Privacy</a><a href="mailto:contact@7ea.st">Contact</a>{release.publicPublishing && <><a href={docs}>Docs</a><a href={cliDocs}>CLI</a><a href={`${repository}/blob/main/docs/library.md`}>Rust</a><a href={`${repository}/tree/main/bindings/node`}>TypeScript</a><a href={repository}>Source on GitHub ↗</a></>}</nav></footer>

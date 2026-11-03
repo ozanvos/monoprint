@@ -24,9 +24,7 @@ const sample = proofOf(sheet);
 
 // A plain fade: the marks and measurements carry the character, the image just arrives.
 function reveal(target: HTMLElement, duration: number, delay = 0) {
-  const fade = target.animate([{ opacity: 0 }, { opacity: 1 }], { duration, delay, easing: 'ease-out', fill: 'both' });
-  target.classList.remove('pending');
-  return fade;
+  return target.animate([{ opacity: 0 }, { opacity: 1 }], { duration, delay, easing: 'ease-out', fill: 'both' });
 }
 
 // Register, reveal, measure: each figure runs this once, the first time it is on screen.
@@ -72,11 +70,6 @@ function finishTyping() {
   whenSeen(studio.wrap, .08, () => develop(studio, screenshot, 280));
 }
 
-const tiles = [...document.querySelectorAll<HTMLElement>('.showcase-tile')].map(tile => {
-  const image = tile.querySelector<HTMLImageElement>('img')!;
-  return { tile, image, proof: proofOf(image) };
-});
-
 if (motion) {
   // Hold the box at its finished size so typing never reflows the hero.
   const box = commandText.closest<HTMLElement>('.cli-command')!;
@@ -94,12 +87,8 @@ if (motion) {
   }, 120);
   document.querySelector('#copy-command')!.addEventListener('pointerdown', finishTyping);
   whenSeen(sample.wrap, .35, () => develop(sample, sheet, 240));
-  for (const { image } of tiles) image.classList.add('pending');
-  whenSeen(document.querySelector('.showcase')!, .25, () => tiles.forEach(({ image, proof }, i) => {
-    setTimeout(() => develop(proof, image, 260), i * 90);
-  }));
 } else {
-  for (const figure of [studio, sample, ...tiles.map(t => t.proof)]) figure.wrap.classList.add('marked', 'measured');
+  for (const figure of [studio, sample]) figure.wrap.classList.add('marked', 'measured');
 }
 
 // Theme picker: one marker slides to the chosen row, and the stage label names the theme.
@@ -146,7 +135,7 @@ for (const input of options.querySelectorAll<HTMLInputElement>('input')) {
 
 // A crosshair that snaps to the lattice, shown only where the pointer is over open grid.
 if (matchMedia('(hover: hover) and (pointer: fine)').matches) {
-  for (const section of [appSection, stage, ...tiles.map(t => t.tile)]) {
+  for (const section of [appSection, stage]) {
     const cross = document.createElement('div');
     cross.className = 'crosshair';
     cross.setAttribute('aria-hidden', 'true');
