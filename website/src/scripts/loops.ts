@@ -24,6 +24,27 @@ function pointIn(scene: HTMLElement, target: Element, fx: number, fy: number) {
   return { x: (box.left - origin.left + box.width * fx) / k, y: (box.top - origin.top + box.height * fy) / k };
 }
 
+// A hand on a mouse: a slight arc rather than a ruler line, smooth speed up and slow down
+// (minimum jerk) and longer for longer distances. `offset` is the glyph's hotspot.
+function glide(element: Element, from: { x: number; y: number }, to: { x: number; y: number }, offset = { x: 0, y: 0 }) {
+  const dx = to.x - from.x;
+  const dy = to.y - from.y;
+  const distance = Math.hypot(dx, dy);
+  // Bow to one side by a small share of the distance, perpendicular to the line.
+  const bow = Math.min(distance * 0.08, 28);
+  const cx = (from.x + to.x) / 2 - (dy / (distance || 1)) * bow;
+  const cy = (from.y + to.y) / 2 + (dx / (distance || 1)) * bow;
+  const keyframes = Array.from({ length: 25 }, (_, i) => {
+    const t = i / 24;
+    const s = t * t * t * (10 - 15 * t + 6 * t * t);
+    const x = (1 - s) * (1 - s) * from.x + 2 * (1 - s) * s * cx + s * s * to.x;
+    const y = (1 - s) * (1 - s) * from.y + 2 * (1 - s) * s * cy + s * s * to.y;
+    return { transform: `translate(${x - offset.x}px, ${y - offset.y}px)` };
+  });
+  const duration = distance ? Math.min(380 + distance * 0.75, 900) : 0;
+  return element.animate(keyframes, { duration, easing: 'linear', fill: 'forwards' }).finished;
+}
+
 // Resolves at once while the loop is on screen, otherwise when it next comes into view.
 function onScreen(loop: HTMLElement) {
   let visible = false;
@@ -83,21 +104,21 @@ async function studio(loop: HTMLElement, seen: () => Promise<void>) {
   const caret = caretAfter(word);
   const rest = { x: 112, y: 168 };
   let at = rest;
-  const moveTo = (to: { x: number; y: number }, duration: number) => {
-    const animation = ibeam.animate([{ transform: `translate(${at.x}px, ${at.y}px)` }, { transform: `translate(${to.x}px, ${to.y}px)` }], { duration, easing: TRAVEL, fill: 'forwards' });
+  const moveTo = (to: { x: number; y: number }) => {
+    const from = at;
     at = to;
-    return animation.finished;
+    return glide(ibeam, from, to);
   };
   const show = (on: boolean) => ibeam.animate([{ opacity: on ? 0 : 1 }, { opacity: on ? 1 : 0 }], { duration: on ? 260 : 140, fill: 'forwards' }).finished;
   for (let turn = 1; ; turn++) {
     await seen();
     at = rest;
-    await moveTo(rest, 0);
+    await moveTo(rest);
     await show(true);
     await wait(250);
     // Aim inside the word but off its letters' middle, so the I-beam doesn't cover what it selects.
     const aim = pointIn(scene, word, 0.62, 0.5);
-    await moveTo({ x: aim.x - 5, y: aim.y - 8 }, 820);
+    await moveTo({ x: aim.x - 5, y: aim.y - 8 });
     await wait(260);
     caret.hidden = true;
     word.classList.add('selected');
@@ -222,13 +243,14 @@ async function hero(figure: HTMLElement, seen: () => Promise<void>) {
     for (const image of figure.querySelectorAll<HTMLElement>(selector)) image.toggleAttribute('data-on', image.getAttribute(attribute) === value);
   };
   for (const image of figure.querySelectorAll<HTMLImageElement>('img[loading="lazy"]')) image.loading = 'eager';
-  // The macOS arrow's hotspot is 11, 8 into its 36 px glyph.
-  const rest = { x: 1084, y: 560 };
+  // The macOS arrow's hotspot is 11, 8 into its 36 px glyph. It waits in the inspector's empty
+  // stretch, between the controls it uses, so it never sweeps across the panel.
+  const rest = { x: 1262, y: 590 };
   let at = rest;
-  const moveTo = (to: { x: number; y: number }, duration: number) => {
-    const animation = pointer.animate([{ transform: `translate(${at.x - 11}px, ${at.y - 8}px)` }, { transform: `translate(${to.x - 11}px, ${to.y - 8}px)` }], { duration, easing: TRAVEL, fill: 'forwards' });
+  const moveTo = (to: { x: number; y: number }) => {
+    const from = at;
     at = to;
-    return animation.finished;
+    return glide(pointer, from, to, { x: 11, y: 8 });
   };
   const press = async () => {
     await pointer.animate([{ scale: 1 }, { scale: 0.86 }, { scale: 1 }], { duration: 180, easing: 'ease-out', composite: 'add' }).finished;
@@ -236,14 +258,14 @@ async function hero(figure: HTMLElement, seen: () => Promise<void>) {
   const choose = async (name: string, option: string) => {
     const segmented = control(name);
     const target = segmented.querySelector<HTMLElement>(`[data-option="${option}"]`)!;
-    await moveTo(pointIn(scene, target, 0.55, 0.78), 860);
+    await moveTo(pointIn(scene, target, 0.55, 0.78));
     await wait(120);
     await press();
     segmented.querySelector('[data-selected]')!.removeAttribute('data-selected');
     target.setAttribute('data-selected', '');
     place(segmented);
   };
-  await moveTo(rest, 0);
+  await moveTo(rest);
   let shown = false;
   for (let turn = 0; ; turn++) {
     await seen();
@@ -260,7 +282,7 @@ async function hero(figure: HTMLElement, seen: () => Promise<void>) {
     await choose('backdrop', backdrop);
     showOnly('[data-preview]', `${appearance}-${backdrop}`, 'data-preview');
     await wait(1000);
-    await moveTo(pointIn(scene, copy, 0.72, 0.7), 900);
+    await moveTo(pointIn(scene, copy, 0.72, 0.7));
     await wait(120);
     copy.classList.add('down');
     await press();
@@ -270,7 +292,7 @@ async function hero(figure: HTMLElement, seen: () => Promise<void>) {
     await wait(1700);
     faces[1].removeAttribute('data-on');
     faces[0].setAttribute('data-on', '');
-    await moveTo(rest, 900);
+    await moveTo(rest);
     await wait(1300);
   }
 }
