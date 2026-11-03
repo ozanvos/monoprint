@@ -245,7 +245,7 @@ async function hero(figure: HTMLElement, seen: () => Promise<void>) {
   for (const image of figure.querySelectorAll<HTMLImageElement>('img[loading="lazy"]')) image.loading = 'eager';
   // The macOS arrow's hotspot is 11, 8 into its 36 px glyph. It waits in the inspector's empty
   // stretch, between the controls it uses, so it never sweeps across the panel.
-  const rest = { x: 1262, y: 590 };
+  const rest = { x: 1010, y: 478 };
   let at = rest;
   const moveTo = (to: { x: number; y: number }) => {
     const from = at;

@@ -1,16 +1,16 @@
-/* Fig. 1: the Studio window at 1440 × 900, scaled to the figure by scripts/loops.ts. Positions are
-   measured from the macOS screenshot it replaces. */
+/* Fig. 1: the Studio window drawn compact at 1180 × 680 so the preview and the controls the loop
+   uses fill the figure; scaled to it by scripts/loops.ts. The parts match the macOS app's. */
 .studio-demo {
   position: relative;
-  aspect-ratio: 1440 / 900;
+  aspect-ratio: 1180 / 680;
   background: #fafaf9;
 
   .loop-scene {
     position: absolute;
     top: 0;
     left: 0;
-    width: 1440px;
-    height: 900px;
+    width: 1180px;
+    height: 680px;
     transform: scale(var(--k, 1));
     transform-origin: 0 0;
     font-family: var(--mono);
@@ -99,9 +99,10 @@
     top: 40px;
     left: 0;
     bottom: 0;
-    width: 317px;
+    width: 272px;
     margin: 0;
     padding: 21px 0 0;
+    overflow: hidden;
     list-style: none;
     counter-reset: line;
     border-right: 1px solid #dcdcd9;
@@ -117,8 +118,8 @@
     li::before {
       content: counter(line);
       display: inline-block;
-      width: 30px;
-      margin-right: 28px;
+      width: 22px;
+      margin-right: 18px;
       text-align: right;
       color: #262626;
     }
@@ -134,17 +135,18 @@
   .studio-canvas {
     position: absolute;
     top: 40px;
-    left: 318px;
+    left: 273px;
     right: 299px;
     bottom: 0;
     background: #e3e3e1;
   }
 
-  /* One render per appearance and backdrop, stacked; the one in use fades over the last. */
+  /* One render per appearance and backdrop, stacked; the one in use fades over the last. Shown at
+     Fit, smaller than its 640 px width, as the app does in a narrow canvas. */
   .preview {
     position: absolute;
-    top: 182px;
-    left: 91px;
+    top: 112px;
+    left: 44px;
     display: grid;
     box-shadow: 0 0 0 1px rgb(0 0 0 / 6%);
 
@@ -163,8 +165,8 @@
 
   .preview-size {
     position: absolute;
-    top: 659px;
-    left: 91px;
+    top: 498px;
+    left: 44px;
     font-size: 10px;
     color: #6b6b69;
   }

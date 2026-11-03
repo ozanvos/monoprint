@@ -1,10 +1,12 @@
 ---
-// Fig. 1: the Studio, drawn from its macOS window at 1440 × 900. The markup is the finished first
+// Fig. 1: the Studio, drawn compact from its macOS window. The markup is the finished first
 // frame, which is also what reduced motion shows; scripts/loops.ts plays it. The preview is the
 // CLI's own render of palette.rs for each appearance and backdrop the loop picks.
 import { palette, previews } from '../data/loops.mjs';
 import { icon, rust, segmented } from './studio-markup';
 const PREVIEW = { width: 640, height: 459 };
+// The preview is shown at Fit in the narrow canvas; the caption keeps the image's own size.
+const FIT = { width: 520, height: 373 };
 ---
 <figure class="app-screenshot studio-demo" data-loop="Hero" role="img" aria-label="Monoprint for macOS: Rust source in the editor, its code image preview, and theme, frame and export settings. The appearance switches between light and dark, the backdrop between solid and lattice, and the image is copied.">
   <div class="loop-scene" aria-hidden="true">
@@ -19,7 +21,7 @@ const PREVIEW = { width: 640, height: 459 };
     </div>
     <ol class="studio-source">{palette.map(line => <li set:html={rust(line) || ' '} />)}</ol>
     <div class="studio-canvas">
-      <div class="preview" style={`width:${PREVIEW.width}px;height:${PREVIEW.height}px`}>
+      <div class="preview" style={`width:${FIT.width}px;height:${FIT.height}px`}>
         {previews.map(([appearance, backdrop]) => <img src={`/assets/studio-${appearance}-${backdrop}.png`} width={PREVIEW.width} height={PREVIEW.height} alt="" data-preview={`${appearance}-${backdrop}`} data-on={appearance === 'light' && backdrop === 'solid' ? '' : undefined} loading={appearance === 'light' && backdrop === 'solid' ? 'eager' : 'lazy'} />)}
       </div>
       <span class="preview-size">{PREVIEW.width} × {PREVIEW.height}</span>
