@@ -72,7 +72,7 @@ try {
   for (const [width, height] of [[1440, 1100], [1024, 900], [768, 1000], [700, 1000], [390, 844], [320, 740]]) {
     await page.setViewportSize({ width, height });
     const bounds = await screenshot.boundingBox();
-    assert.ok(Math.abs(bounds.width / bounds.height - 1.6) < 0.01, `Studio figure distorted at ${width}px`);
+    assert.ok(Math.abs(bounds.width / bounds.height - 1180 / 680) < 0.01, `Studio figure distorted at ${width}px`);
     const fit = await screenshot.evaluate(async figure => {
       // The figure rescales from a ResizeObserver, which runs before the next frame is painted.
       await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
