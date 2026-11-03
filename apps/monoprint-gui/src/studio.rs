@@ -175,6 +175,8 @@ pub struct Studio {
     pub copy_state: CopyState,
     pub command_copied: bool,
     pub viewport: PreviewViewport,
+    pub zoom_motion: crate::interaction_motion::ZoomMotion,
+    pub theme_motion: crate::interaction_motion::ThemeMotion,
     pub canvas_resize: Option<CanvasResize>,
     live_preview_since: Option<u64>,
     pub theme_filter: ThemeFilter,
@@ -200,6 +202,11 @@ pub struct Studio {
     last_selection_anchor: Option<Bounds<Pixels>>,
     last_source_bounds: Bounds<Pixels>,
     last_visible_rows: Option<std::ops::Range<usize>>,
+}
+
+/// Whether a theme offers both variants, so its appearance can be switched.
+pub fn has_light_and_dark(theme: Theme) -> bool {
+    theme.supports(monoprint::Appearance::Light) && theme.supports(monoprint::Appearance::Dark)
 }
 
 impl Studio {
@@ -472,6 +479,8 @@ impl Studio {
             copy_state: CopyState::Idle,
             command_copied: false,
             viewport: PreviewViewport::default(),
+            zoom_motion: Default::default(),
+            theme_motion: Default::default(),
             canvas_resize: None,
             live_preview_since: None,
             theme_filter: ThemeFilter::All,
@@ -775,6 +784,7 @@ impl Studio {
 
     pub fn filter_themes(&mut self, cx: &mut Context<Self>) {
         let query = self.theme_search.read(cx).value().trim().to_lowercase();
+        let previous = std::mem::take(&mut self.filtered_themes);
         self.filtered_themes = self
             .thumbnails
             .iter()
@@ -801,6 +811,7 @@ impl Studio {
             })
             .map(|(index, _)| index)
             .collect();
+        self.theme_motion.reflow(&previous, &self.filtered_themes);
         self.theme_scroll
             .scroll_to_item_strict(0, ScrollStrategy::Top);
         cx.notify();
@@ -822,6 +833,16 @@ impl Studio {
     }
 
     pub fn select_theme(&mut self, theme: Theme, _window: &mut Window, cx: &mut Context<Self>) {
+        // Clicking the selected theme again switches between its variants.
+        // A light or dark filter instead always picks the variant it displays.
+        if self.theme_filter == ThemeFilter::All
+            && self.selected_theme() == Some(theme.id())
+            && has_light_and_dark(theme)
+        {
+            self.document.light = !self.document.light;
+            self.changed(cx);
+            return;
+        }
         self.document.select_theme(theme);
         if let Some(appearance) = self.theme_filter.appearance()
             && theme.supports(appearance)
