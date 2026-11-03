@@ -3,7 +3,6 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { root, run, revision, isDirty, sha256 } from '../../bindings/node/scripts/shared.mjs';
 import { checkRelease } from '../../scripts/release-config.mjs';
-import { showcases, exportWidth } from '../src/data/showcase.mjs';
 import { themes, source } from '../src/data/demo.mjs';
 
 export const website = path.join(root, 'website');
@@ -15,16 +14,6 @@ export async function prepareAssets(directory = path.join(website, '.generated/p
   await fs.copyFile(path.join(website, 'assets/icon.png'), path.join(assets, 'icon.png'));
   await fs.copyFile(path.join(root, 'LICENSE'), path.join(directory, 'LICENSE'));
   const images = [];
-  for (const sample of showcases) {
-    const input = path.join(website, 'assets/examples', sample.source);
-    const file = path.join(assets, `${sample.id}.${sample.format}`);
-    const flags = [input, '--theme', sample.theme, `--${sample.appearance}`, '--width', String(exportWidth), '--padding', '16', '--scale', '2', '--font', 'jetbrains-mono', '--font-size', '16', '--ligatures', '--line-numbers', '--title', sample.source];
-    if (sample.format === 'png') flags.push('--png-compression', 'balanced');
-    if (sample.highlight) flags.push('--highlight', sample.highlight);
-    if (sample.transparent) flags.push('--transparent');
-    run(path.resolve(cli), [...flags, '-o', file, '--force']);
-    images.push({ name: sample.id, source: sample.source, theme: sample.theme, appearance: sample.appearance, format: sample.format, highlight: sample.highlight ?? null, transparent: sample.transparent ?? false, sha256: sha256(await fs.readFile(file)) });
-  }
   // Theme picker samples share one snippet and match the command shown beside them.
   const pickerInput = path.join(directory, 'share.rs');
   await fs.writeFile(pickerInput, source.join('\n'));
