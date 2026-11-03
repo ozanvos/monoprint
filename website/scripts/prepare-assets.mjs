@@ -4,6 +4,7 @@ import { fileURLToPath } from 'node:url';
 import { root, run, revision, isDirty, sha256 } from '../../bindings/node/scripts/shared.mjs';
 import { checkRelease } from '../../scripts/release-config.mjs';
 import { themes, source } from '../src/data/demo.mjs';
+import { palette, previews } from '../src/data/loops.mjs';
 
 export const website = path.join(root, 'website');
 export async function prepareAssets(directory = path.join(website, '.generated/public'), cli = process.env.MONOPRINT_CLI ?? path.join(root, 'target/release/monoprint')) {
@@ -28,6 +29,15 @@ export async function prepareAssets(directory = path.join(website, '.generated/p
       images.push({ name: `output-${theme.id}`, source: 'share.rs', theme: theme.cli, appearance: theme.appearance, format: 'png', highlight: null, transparent: false, sha256: sha256(await fs.readFile(output)) });
     }
   } finally { await fs.unlink(pickerInput); }
+  const paletteInput = path.join(directory, 'palette.rs');
+  await fs.writeFile(paletteInput, palette.join('\n'));
+  try {
+    for (const [appearance, backdrop] of previews) {
+      const file = path.join(assets, `studio-${appearance}-${backdrop}.png`);
+      run(path.resolve(cli), [paletteInput, '--theme', 'github-default', `--${appearance}`, '--width', '640', '--padding', '48', '--background', backdrop, '--line-numbers', '--title', 'palette.rs', '--scale', '2', '--png-compression', 'balanced', '-o', file, '--force']);
+      images.push({ name: `studio-${appearance}-${backdrop}`, source: 'palette.rs', theme: 'github-default', appearance, format: 'png', highlight: null, transparent: false, sha256: sha256(await fs.readFile(file)) });
+    }
+  } finally { await fs.unlink(paletteInput); }
   const publicSite = config.websitePublishing === true;
   await fs.writeFile(path.join(directory, '_headers'), '/*\n  X-Content-Type-Options: nosniff\n  Referrer-Policy: strict-origin-when-cross-origin\n' + (publicSite ? '' : '  X-Robots-Tag: noindex, nofollow\n'));
   await fs.writeFile(path.join(directory, 'robots.txt'), `User-agent: *\n${publicSite ? 'Allow' : 'Disallow'}: /\n`);

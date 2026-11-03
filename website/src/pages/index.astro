@@ -1,14 +1,15 @@
 ---
-import AppScreenshot from '../components/AppScreenshot.astro';
 import Icon from '../components/Icon.astro';
 import PartDemo from '../components/PartDemo.astro';
 import Proof from '../components/Proof.astro';
+import StudioDemo from '../components/StudioDemo.astro';
 import { themes, initialTheme, command } from '../data/demo.mjs';
 import { shell } from '../scripts/highlight.mjs';
 import release from '../../../release/config.json';
 import { downloads, installs, manifest } from '../data/downloads.mjs';
 import '../styles/site.css';
 import '../styles/loops.css';
+import '../styles/studio-demo.css';
 const repository = `https://github.com/${release.repository}`;
 const docs = `${repository}/blob/main/README.md`;
 const cliDocs = `${repository}/blob/main/docs/cli.md`;
@@ -53,7 +54,7 @@ const thumb = (palette: Record<string, string>) => Object.entries(palette).map((
 
         <section class="app-section lattice" aria-label="App screenshot">
           <p class="fig" aria-hidden="true">Fig. 1 <b>Studio</b> · macOS</p>
-          <Proof><AppScreenshot /></Proof>
+          <Proof><StudioDemo /></Proof>
         </section>
 
         {manifest && <section class="downloads" id="downloads" aria-labelledby="downloads-title">

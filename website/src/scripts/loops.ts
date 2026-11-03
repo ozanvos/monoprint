@@ -1,10 +1,9 @@
-// The looping demos on the interface cards. Each scene is drawn at 400 px and scaled to its card.
-// With motion allowed, a loop plays while its card is on screen and pauses between beats when it
-// is not; reduced motion keeps the first frame, which is complete on its own.
+// The looping demos: Fig. 1's Studio and one on each interface card. Each scene is drawn at a fixed
+// size and scaled to its figure. With motion allowed, a loop plays while it is on screen and pauses
+// between beats when it is not; reduced motion keeps the first frame, which is complete on its own.
 import { themes } from '../data/demo.mjs';
 import { loopThemes, renders, names } from '../data/loops.mjs';
 
-const DESIGN_WIDTH = 400;
 const TRAVEL = 'cubic-bezier(0.45, 0, 0.1, 1)';
 const ARRIVE = 'cubic-bezier(0.25, 0.8, 0.25, 1)';
 const motion = document.documentElement.classList.contains('motion');
@@ -13,7 +12,16 @@ const byCli = Object.fromEntries(themes.map(theme => [theme.cli, theme]));
 const themeArgs = (cli: string) => `${cli}${byCli[cli].appearance === 'light' ? ' --light' : ''}`;
 
 function scaled(loop: HTMLElement) {
-  new ResizeObserver(([entry]) => loop.style.setProperty('--k', String(entry.contentRect.width / DESIGN_WIDTH))).observe(loop);
+  const scene = loop.querySelector<HTMLElement>('.loop-scene')!;
+  new ResizeObserver(([entry]) => loop.style.setProperty('--k', String(entry.contentRect.width / scene.offsetWidth))).observe(loop);
+}
+
+// Where a point inside `target` sits in its scene's own units, as fractions of its box.
+function pointIn(scene: HTMLElement, target: Element, fx: number, fy: number) {
+  const box = target.getBoundingClientRect();
+  const origin = scene.getBoundingClientRect();
+  const k = origin.width / scene.offsetWidth;
+  return { x: (box.left - origin.left + box.width * fx) / k, y: (box.top - origin.top + box.height * fy) / k };
 }
 
 // Resolves at once while the loop is on screen, otherwise when it next comes into view.
@@ -88,10 +96,8 @@ async function studio(loop: HTMLElement, seen: () => Promise<void>) {
     await show(true);
     await wait(250);
     // Aim inside the word but off its letters' middle, so the I-beam doesn't cover what it selects.
-    const box = word.getBoundingClientRect();
-    const origin = scene.getBoundingClientRect();
-    const k = origin.width / DESIGN_WIDTH;
-    await moveTo({ x: (box.left - origin.left + box.width * 0.62) / k - 5, y: (box.top - origin.top + box.height * 0.5) / k - 8 }, 820);
+    const aim = pointIn(scene, word, 0.62, 0.5);
+    await moveTo({ x: aim.x - 5, y: aim.y - 8 }, 820);
     await wait(260);
     caret.hidden = true;
     word.classList.add('selected');
@@ -197,8 +203,81 @@ async function library(loop: HTMLElement, seen: () => Promise<void>) {
   }
 }
 
-const scripts = { Studio: studio, CLI: cli, Library: library };
-for (const loop of document.querySelectorAll<HTMLElement>('.loop')) {
+// A segmented control's marker sits under its selected option, measured in its own unscaled layout.
+function place(segmented: HTMLElement) {
+  const selected = segmented.querySelector<HTMLElement>('[data-selected]')!;
+  segmented.style.setProperty('--x', `${selected.offsetLeft}px`);
+  segmented.style.setProperty('--w', `${selected.offsetWidth}px`);
+}
+
+// Fig. 1: switch the appearance, then the backdrop, then copy the image; the next pass switches
+// back. The preview is the CLI's render for each pair, so every frame is real output.
+async function hero(figure: HTMLElement, seen: () => Promise<void>) {
+  const scene = figure.querySelector<HTMLElement>('.loop-scene')!;
+  const pointer = figure.querySelector<SVGElement>('.pointer')!;
+  const copy = figure.querySelector<HTMLElement>('.copy-button')!;
+  const faces = [...copy.querySelectorAll<HTMLElement>('.copy-face')];
+  const control = (name: string) => figure.querySelector<HTMLElement>(`[data-segmented="${name}"]`)!;
+  const showOnly = (selector: string, value: string, attribute: string) => {
+    for (const image of figure.querySelectorAll<HTMLElement>(selector)) image.toggleAttribute('data-on', image.getAttribute(attribute) === value);
+  };
+  for (const image of figure.querySelectorAll<HTMLImageElement>('img[loading="lazy"]')) image.loading = 'eager';
+  // The macOS arrow's hotspot is 11, 8 into its 36 px glyph.
+  const rest = { x: 1084, y: 560 };
+  let at = rest;
+  const moveTo = (to: { x: number; y: number }, duration: number) => {
+    const animation = pointer.animate([{ transform: `translate(${at.x - 11}px, ${at.y - 8}px)` }, { transform: `translate(${to.x - 11}px, ${to.y - 8}px)` }], { duration, easing: TRAVEL, fill: 'forwards' });
+    at = to;
+    return animation.finished;
+  };
+  const press = async () => {
+    await pointer.animate([{ scale: 1 }, { scale: 0.86 }, { scale: 1 }], { duration: 180, easing: 'ease-out', composite: 'add' }).finished;
+  };
+  const choose = async (name: string, option: string) => {
+    const segmented = control(name);
+    const target = segmented.querySelector<HTMLElement>(`[data-option="${option}"]`)!;
+    await moveTo(pointIn(scene, target, 0.55, 0.78), 860);
+    await wait(120);
+    await press();
+    segmented.querySelector('[data-selected]')!.removeAttribute('data-selected');
+    target.setAttribute('data-selected', '');
+    place(segmented);
+  };
+  await moveTo(rest, 0);
+  let shown = false;
+  for (let turn = 0; ; turn++) {
+    await seen();
+    if (!shown) {
+      shown = true;
+      await pointer.animate([{ opacity: 0 }, { opacity: 1 }], { duration: 300, fill: 'forwards' }).finished;
+    }
+    const [appearance, backdrop] = turn % 2 ? ['light', 'solid'] : ['dark', 'lattice'];
+    await wait(500);
+    await choose('appearance', appearance);
+    showOnly('[data-thumb]', appearance, 'data-thumb');
+    showOnly('[data-preview]', `${appearance}-${control('backdrop').querySelector('[data-selected]')!.getAttribute('data-option')}`, 'data-preview');
+    await wait(950);
+    await choose('backdrop', backdrop);
+    showOnly('[data-preview]', `${appearance}-${backdrop}`, 'data-preview');
+    await wait(1000);
+    await moveTo(pointIn(scene, copy, 0.72, 0.7), 900);
+    await wait(120);
+    copy.classList.add('down');
+    await press();
+    copy.classList.remove('down');
+    faces[0].removeAttribute('data-on');
+    faces[1].setAttribute('data-on', '');
+    await wait(1700);
+    faces[1].removeAttribute('data-on');
+    faces[0].setAttribute('data-on', '');
+    await moveTo(rest, 900);
+    await wait(1300);
+  }
+}
+
+for (const segmented of document.querySelectorAll<HTMLElement>('[data-segmented]')) place(segmented);
+const scripts = { Hero: hero, Studio: studio, CLI: cli, Library: library };
+for (const loop of document.querySelectorAll<HTMLElement>('[data-loop]')) {
   scaled(loop);
   if (motion) scripts[loop.dataset.loop as keyof typeof scripts](loop, onScreen(loop));
 }

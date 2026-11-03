@@ -59,16 +59,26 @@ try {
     assert.equal(await page.getByRole('button', { name: 'Download', exact: true }).count(), 2);
     assert.equal(await page.locator('button:disabled').count(), 2);
   }
-  const screenshot = page.locator('.app-screenshot img');
+  const screenshot = page.locator('.app-screenshot');
   assert.equal(await screenshot.count(), 1);
-  assert.match(await screenshot.getAttribute('alt'), /Monoprint for macOS/);
-  assert.equal(await screenshot.getAttribute('width'), '2880');
-  assert.equal(await screenshot.getAttribute('height'), '1800');
-  assert.ok(await screenshot.getAttribute('srcset'), 'Hero needs responsive image sizes');
+  assert.equal(await screenshot.getAttribute('role'), 'img');
+  assert.match(await screenshot.getAttribute('aria-label'), /Monoprint for macOS/);
+  const previews = screenshot.locator('[data-preview]');
+  assert.equal(await previews.count(), 4);
+  for (const preview of await previews.all()) {
+    await preview.evaluate(image => image.decode());
+    assert.equal(await preview.evaluate(image => image.naturalWidth), 1280, 'Studio previews are rendered at 2x');
+  }
   for (const [width, height] of [[1440, 1100], [1024, 900], [768, 1000], [700, 1000], [390, 844], [320, 740]]) {
     await page.setViewportSize({ width, height });
     const bounds = await screenshot.boundingBox();
-    assert.ok(Math.abs(bounds.width / bounds.height - 1.6) < 0.01, `Screenshot distorted at ${width}px`);
+    assert.ok(Math.abs(bounds.width / bounds.height - 1.6) < 0.01, `Studio figure distorted at ${width}px`);
+    const fit = await screenshot.evaluate(async figure => {
+      // The figure rescales from a ResizeObserver, which runs before the next frame is painted.
+      await new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)));
+      return figure.querySelector('.loop-scene').getBoundingClientRect().width - figure.clientWidth;
+    });
+    assert.ok(Math.abs(fit) < 1, `Studio scene off its figure by ${fit}px at ${width}px`);
     assert.ok(await page.evaluate(() => document.documentElement.scrollWidth <= innerWidth + 1), `Overflow at ${width}px`);
     await page.evaluate(() => scrollTo(0, 0));
     await page.screenshot({ path: path.join(out, `website-${width}.png`), fullPage: true });
@@ -94,7 +104,7 @@ try {
   await context.close();
   assert.deepEqual(errors, []);
   assert.deepEqual(network, []);
-  console.log('Native hero screenshot, CLI clipboard, six viewport sizes, local assets, publication state and support/privacy pages passed.');
+  console.log('Studio figure, CLI clipboard, six viewport sizes, local assets, publication state and support/privacy pages passed.');
 } finally {
   if (browser) await browser.close();
   server.close();

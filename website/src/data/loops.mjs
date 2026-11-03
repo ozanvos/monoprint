@@ -9,3 +9,21 @@ export const renders = [
 ];
 // What the Studio demo retypes, alternating, as the `name` in its snippet.
 export const names = ['Monoprint', 'Proof sheet'];
+// Fig. 1 plays the Studio with this file open, in GitHub Default. The CLI renders its preview in
+// each appearance and backdrop the demo switches between, at the Studio's frame settings.
+export const palette = [
+  '// Small details, clear results.',
+  'struct Palette {',
+  '    name: String,',
+  '    dark: bool,',
+  '}',
+  '',
+  'fn main() {',
+  '    let palette = Palette {',
+  '        name: "Monoprint".into(),',
+  '        dark: false,',
+  '    };',
+  '    println!("{}", palette.name);',
+  '}',
+];
+export const previews = [['light', 'solid'], ['dark', 'solid'], ['light', 'lattice'], ['dark', 'lattice']];
