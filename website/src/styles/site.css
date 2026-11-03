@@ -890,3 +890,9 @@ img {
     font-size: 10px;
   }
 }
+
+/* Demos, figures and proof marks are pictures: a drag across the page selects its text, not them. */
+.loop,.studio-demo,.sheet,.crop,.dimension,.crosshair,.fig,.render-status,.prompt,.thumb,.option-marker {
+  user-select: none;
+  -webkit-user-select: none;
+}
