@@ -44,7 +44,7 @@ python3 scripts/test-app-package.py --from output/app-signed --require-notarized
 
 The script signs inner executables before the app, enables the hardened runtime,
 submits to Apple, requires an Accepted result, staples the ticket and writes the
-final ZIP for Sparkle and Homebrew. Direct-download builds also create a compressed
+final ZIP for Sparkle updates. Direct-download builds also create a compressed
 DMG containing the same app and an Applications shortcut. The DMG is separately
 signed, notarized and stapled before its checksum is recorded. CI mounts it read-only,
 copies the app out, compares it with the ZIP app and checks its signature and CLI.
@@ -64,16 +64,16 @@ Linux AppImages and update feeds.
 ## Homebrew cask
 
 The official [ozanvos/tap](https://github.com/ozanvos/homebrew-tap) distributes
-the macOS app and bundled CLI with `brew install --cask ozanvos/tap/monoprint`.
+the macOS app and bundled CLI from the DMG with `brew install --cask ozanvos/tap/monoprint`.
 Its daily/manual update workflow resolves the latest complete stable desktop
-release, verifies the archive and manifest against their GitHub attestations,
+release, verifies the installer and manifest against their GitHub attestations,
 and rejects version downgrades or changed bytes for an existing version.
 Before updating the tap it audits, installs, verifies notarization, renders a
 PNG with the CLI, and uninstalls on a macOS runner.
 
 After publishing a release, dispatch the tap's `Verify and update cask`
 workflow for immediate availability, or allow its next daily run to pick it up.
-No tap credential is needed in this repository. Keep the release ZIP immutable;
+No tap credential is needed in this repository. Keep the release assets immutable;
 the cask pins its versioned URL and SHA-256.
 
 ## Mac App Store

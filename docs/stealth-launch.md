@@ -129,7 +129,7 @@ See [GitHub artifact attestations](https://docs.github.com/en/actions/how-tos/se
 
 The macOS archive is Developer ID signed, notarized and stapled before Sparkle
 signs the ZIP. The website downloads a separately signed, notarized and stapled
-DMG; the ZIP remains published for Sparkle and Homebrew. Windows signing runs inside Velopack so the application, updater
+DMG, which Homebrew also installs; the ZIP remains published for Sparkle updates. Windows signing runs inside Velopack so the application, updater
 and installer are signed at the right packaging stages. Native package checks
 run before receipts can claim release eligibility. Assembly rechecks all receipt
 commits, source hashes, versions and artifact hashes, and validates both updater
