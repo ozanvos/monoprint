@@ -49,7 +49,7 @@ const thumb = (palette: Record<string, string>) => Object.entries(palette).map((
             {manifest ? <a class="button ink" href="#downloads">Download</a> : <button class="button ink" type="button" disabled title="Downloads are being prepared">Download</button>}
             <div class="cli-command"><span class="prompt" aria-hidden="true">$</span><code id="command-text" set:html={shell(command(initialTheme))} /><button class="icon-button" id="copy-command" data-copy="command-text" aria-label="Copy CLI command" title="Copy command" type="button"><Icon name="copy"/></button></div>
           </div>
-          <p class="render-status" aria-hidden="true"><span>→ <b>share.png</b></span><span>1280 × 666 px</span><span>rendered on this machine</span></p>
+          <p class="render-status" aria-hidden="true"><span>→ <b>share.png</b></span><span id="render-size">1280 × {initialTheme.height} px</span><span>rendered on this machine</span></p>
         </section>
 
         <section class="app-section lattice" aria-label="App screenshot">
@@ -79,13 +79,13 @@ const thumb = (palette: Record<string, string>) => Object.entries(palette).map((
             <p><code>--list-themes</code> lists every theme and appearance.</p>
             <div class="options" role="radiogroup" aria-label="Theme">
               <div class="option-marker" aria-hidden="true"></div>
-              {themes.map(theme => <label class="option"><input type="radio" name="theme" value={theme.id} checked={theme.id === initialTheme.id} data-command={command(theme)} /><span class="thumb" aria-hidden="true" style={thumb(theme.palette)}><i class="kw"></i><i class="fn"></i><br /><i class="ty"></i><i class="num"></i><br /><i class="cm"></i></span><span class="option-name"><span>{theme.name}</span><small><code>{theme.cli}</code> · {theme.appearance}</small></span></label>)}
+              {themes.map(theme => <label class="option"><input type="radio" name="theme" value={theme.id} checked={theme.id === initialTheme.id} data-command={command(theme)} data-size={`1280 × ${theme.height} px`} /><span class="thumb" aria-hidden="true" style={thumb(theme.palette)}><i class="kw"></i><i class="fn"></i><br /><i class="ty"></i><i class="num"></i><br /><i class="cm"></i></span><span class="option-name"><span>{theme.name}</span><small><code>{theme.cli}</code> · {theme.appearance}{theme.original && ' · Original'}</small></span></label>)}
             </div>
           </div>
-          <div class="stage lattice">
+          <div class="stage lattice" style={`--tallest:${Math.max(...themes.map(theme => theme.height))}`}>
             <p class="fig" aria-hidden="true">Fig. 2 <b>share.rs</b> · <span id="stage-theme">{initialTheme.name}</span></p>
             <Proof measure="640 pt × 2 = 1280 px">
-              <div class="sheet">{themes.map(theme => <img src={`/assets/${theme.id}.png`} width="1280" height="666" alt={`Rust code in ${theme.name}, with line four highlighted`} data-theme={theme.id} hidden={theme.id !== initialTheme.id} />)}</div>
+              <div class="sheet">{themes.map(theme => <img src={`/assets/${theme.id}.png`} width="1280" height={theme.height} alt={`Rust code in ${theme.name}${theme.original ? ', a Monoprint Original,' : ''} with line four highlighted`} data-theme={theme.id} hidden={theme.id !== initialTheme.id} />)}</div>
             </Proof>
           </div>
         </section>
