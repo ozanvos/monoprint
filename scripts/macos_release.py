@@ -5,6 +5,7 @@ import json
 import plistlib
 from pathlib import Path
 import subprocess
+import sys
 import tempfile
 
 
@@ -22,7 +23,7 @@ def source_digest(root):
                    'vendor/gpui-component', 'vendor/gpui-fast-macos', 'vendor/gpui-motion-kit',
                    'apps/monoprint-gui/src', 'apps/monoprint-gui/scripts',
                    'apps/monoprint-gui/assets/Monoprint.icon', 'apps/monoprint-gui/assets/shortcuts',
-                   'apps/monoprint-gui/assets/themes', 'scripts']
+                   'apps/monoprint-gui/assets/themes', 'apps/monoprint-gui/assets/dmg', 'scripts']
     for directory in directories:
         inputs += [p.relative_to(root).as_posix() for p in (root / directory).rglob('*')
                    if p.is_file() and '__pycache__' not in p.parts and 'target' not in p.parts]
@@ -84,6 +85,33 @@ def zip_app(bundle, archive):
         raise FileExistsError(f'Refusing to overwrite archive: {archive}')
     subprocess.run(['ditto', '-c', '-k', '--sequesterRsrc', '--keepParent',
                     str(bundle), str(archive)], check=True)
+
+
+def dmg_app(bundle, image, identity='-', keychain=None, profile=None, notary_keychain=None):
+    """Package the already signed/stapled app with a drag-to-Applications shortcut."""
+    image = Path(image).resolve()
+    if image.exists():
+        raise FileExistsError(f'Refusing to overwrite disk image: {image}')
+    root = Path(__file__).resolve().parents[1]
+    settings = root / 'apps/monoprint-gui/scripts/dmg-settings.py'
+    background = root / 'apps/monoprint-gui/assets/dmg/proof-sheet.tiff'
+    subprocess.run([sys.executable, '-m', 'dmgbuild', '-s', str(settings),
+                    '-D', f'app={Path(bundle).resolve()}', '-D', f'background={background}',
+                    'Monoprint', str(image)], check=True)
+    command = ['codesign', '--force', '--sign', identity]
+    if keychain:
+        command += ['--keychain', str(keychain)]
+    if identity != '-':
+        command += ['--timestamp']
+    subprocess.run([*command, str(image)], check=True)
+    verify_code(image)
+    result = notarize(image, profile, notary_keychain) if profile else None
+    if result:
+        subprocess.run(['xcrun', 'stapler', 'staple', str(image)], check=True)
+        subprocess.run(['xcrun', 'stapler', 'validate', str(image)], check=True)
+        subprocess.run(['spctl', '--assess', '--type', 'open', '--context',
+                        'context:primary-signature', str(image)], check=True)
+    return result
 
 
 def sign_app(bundle, identity='-', keychain=None, entitlements=None, helper_entitlements=None):

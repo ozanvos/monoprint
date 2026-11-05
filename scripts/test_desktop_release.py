@@ -39,6 +39,12 @@ class DesktopReleaseTests(unittest.TestCase):
             'archive': name, 'archiveSha256': digest, 'archiveBytes': archive.stat().st_size,
             'updateFeed': self.latest + 'appcast-macos-arm64.xml',
         }
+        image = archive.with_suffix('.dmg')
+        image.write_bytes(b'disk image')
+        self.receipts['macos-app'].update(diskImage=image.name,
+            diskImageSha256=hashlib.sha256(image.read_bytes()).hexdigest(),
+            diskImageBytes=image.stat().st_size, diskImageStapled=True,
+            diskImageNotarization={'status': 'Accepted'})
         appcast = (f'<rss xmlns:sparkle="{SPARKLE[1:-1]}"><channel><item><enclosure '
                    f'url="{self.base}/download/v{self.version}/{name}" length="{archive.stat().st_size}" '
                    'sparkle:edSignature="test-signature"/></item></channel></rss>').encode()
@@ -71,6 +77,8 @@ class DesktopReleaseTests(unittest.TestCase):
         manifest = self.build()
         self.assertEqual(set(manifest['downloads']), {'macos-arm64', 'win-x64', 'linux-x64'})
         self.assertTrue((self.output / 'appcast-macos-arm64.xml').is_file())
+        self.assertTrue(manifest['downloads']['macos-arm64']['file'].endswith('.dmg'))
+        self.assertTrue((self.output / self.receipts['macos-app']['archive']).is_file())
         for line in (self.output / 'SHA256SUMS').read_text().splitlines():
             digest, name = line.split('  ')
             self.assertEqual(hashlib.sha256((self.output / name).read_bytes()).hexdigest(), digest)
@@ -110,6 +118,7 @@ class DesktopReleaseTests(unittest.TestCase):
 
     def test_rejects_mixed_sources_local_builds_and_unsigned_packages(self):
         cases = [('desktop-win-x64', 'signed', False), ('desktop-linux-x64', 'release', False),
+                 ('macos-app', 'diskImageStapled', False), ('macos-app', 'diskImageNotarization', None),
                  ('macos-app', 'stapled', False), ('macos-app', 'updates', False),
                  ('desktop-win-x64', 'commit', 'b' * 40), ('desktop-linux-x64', 'inputHash', 'other'),
                  ('desktop-linux-x64', 'dirty', True), ('desktop-win-x64', 'verified', False),
@@ -122,6 +131,15 @@ class DesktopReleaseTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     self.build()
                 self.assertFalse(self.output.exists())
+
+    def test_rejects_missing_or_tampered_dmg(self):
+        image = self.source / 'macos-app' / self.receipts['macos-app']['diskImage']
+        image.write_bytes(b'changed')
+        with self.assertRaisesRegex(ValueError, 'checksum'):
+            self.build()
+        image.unlink()
+        with self.assertRaisesRegex(ValueError, 'Missing regular artifact'):
+            self.build()
 
     def test_rejects_tampered_archive(self):
         name = self.receipts['macos-app']['archive']

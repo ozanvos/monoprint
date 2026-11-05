@@ -29,7 +29,7 @@ export function verifyRelease(release, manifest, repository, expectedTag) {
     files.set(file.file, file);
   }
   const formats = {
-    'macos-arm64': ['-aarch64-apple-darwin.zip', 'appcast-macos-arm64.xml'],
+    'macos-arm64': ['-aarch64-apple-darwin.dmg', 'appcast-macos-arm64.xml'],
     'win-x64': ['Setup.exe', 'releases.win-x64.json'],
     'linux-x64': ['-linux-x64.AppImage', 'releases.linux-x64.json'],
     'linux-arm64': ['-linux-arm64.AppImage', 'releases.linux-arm64.json'],
@@ -48,6 +48,9 @@ export function verifyRelease(release, manifest, repository, expectedTag) {
   for (const runtime of platforms) {
     const [suffix, feed] = formats[runtime];
     if (!files.has(feed)) throw new Error(`Missing update feed: ${feed}`);
+    if (runtime === 'macos-arm64' && !files.has(`Monoprint-${manifest.version}-aarch64-apple-darwin.zip`)) {
+      throw new Error('Missing macOS update ZIP');
+    }
     const download = manifest.downloads?.[runtime];
     const file = files.get(download?.file);
     if (!file || !download.file.endsWith(suffix) || file.sha256 !== download.sha256
