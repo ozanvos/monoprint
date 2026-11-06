@@ -21,7 +21,7 @@ parser.add_argument('--sign-identity', default='-', help='Code signing identity;
 parser.add_argument('--notary-profile', help='Existing notarytool keychain profile; requires Developer ID signing')
 parser.add_argument('--sign-keychain', type=Path)
 parser.add_argument('--notary-keychain', type=Path)
-parser.add_argument('--archive-dir', type=Path, help='Fresh directory for final ZIP, checksums and receipt')
+parser.add_argument('--archive-dir', type=Path, help='Fresh directory for ZIP, direct-download DMG, checksums and receipt')
 parser.add_argument('--local', action='store_true', help='Allow dirty source; mark artifacts verification-only')
 parser.add_argument('--updates', action='store_true', help='Embed Sparkle and enable signed updates for direct downloads')
 parser.add_argument('--sparkle-sdk', type=Path, help='Checksum-verified SDK from prepare-sparkle.py')
@@ -51,7 +51,7 @@ if args.build_number and not re.fullmatch(r'[0-9]+(?:\.[0-9]+){0,2}', args.build
 gui = Path(__file__).resolve().parents[1]
 root = gui.parents[1]
 sys.path.insert(0, str(root / 'scripts'))
-from macos_release import sign_app, notarize_app, zip_app, source_digest, verify_app_store_apis
+from macos_release import sign_app, notarize_app, zip_app, dmg_app, source_digest, verify_app_store_apis
 from app_store_release import prepare_credentials, signed_entitlements, package_app, clear_bundle_quarantine
 from desktop_updates import sparkle_settings, configuration
 update_settings = sparkle_settings(args.update_feed, args.update_public_key) if args.updates else {}
@@ -184,12 +184,25 @@ if args.archive_dir:
     zip_app(bundle, archive)
     checksum = hashlib.sha256(archive.read_bytes()).hexdigest()
     (args.archive_dir / (name + '.sha256')).write_text(f'{checksum}  {name}\n')
+    disk_image = None
+    dmg_notary = None
+    if not args.app_store:
+        disk_image = args.archive_dir / f'Monoprint-{version}-{host}.dmg'
+        dmg_notary = dmg_app(bundle, disk_image, args.sign_identity, args.sign_keychain,
+                             args.notary_profile, args.notary_keychain)
+        dmg_checksum = hashlib.sha256(disk_image.read_bytes()).hexdigest()
+        (args.archive_dir / (disk_image.name + '.sha256')).write_text(f'{dmg_checksum}  {disk_image.name}\n')
     package = None
     if args.app_store:
         package = args.archive_dir / f'Monoprint-{version}-{host}-app-store.pkg'
         package_app(bundle, package, credentials['installer'] if credentials else None, args.sign_keychain)
         (args.archive_dir / (package.name + '.sha256')).write_text(f'{hashlib.sha256(package.read_bytes()).hexdigest()}  {package.name}\n')
     receipt = {'version': version, 'commit': commit, 'target': host,
+        'diskImage': disk_image.name if disk_image else None,
+        'diskImageSha256': dmg_checksum if disk_image else None,
+        'diskImageBytes': disk_image.stat().st_size if disk_image else None,
+        'diskImageNotarization': dmg_notary,
+        'diskImageStapled': bool(dmg_notary),
         'appStore': args.app_store,
         'updates': bool(args.updates),
         'updateFeed': update_settings.get('SUFeedURL'),

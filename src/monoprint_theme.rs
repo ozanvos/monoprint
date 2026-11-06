@@ -40,7 +40,7 @@ pub(crate) fn frame(theme: &assets::Theme, style: &Style, lines: usize) -> Frame
         scaled(16.0).max(12.0),
         include_str!("../assets/originals/monoprint.css"),
         mast_height = scaled(56.0),
-        // Keep the strip's original height after removing its text labels.
+        // The foot carries the language label; the mast only the file name.
         foot_height = scaled(40.0).max(scaled(12.0).max(10.0) * 1.5 + scaled(10.0) * 2.0 + 1.0),
         label_padding = scaled(12.0),
         foot_padding = scaled(10.0),
@@ -49,9 +49,9 @@ pub(crate) fn frame(theme: &assets::Theme, style: &Style, lines: usize) -> Frame
     Frame {
         template: "<div class=\"Monoprint\" style=\"padding:__PADDING__px\">\
           <div class=\"Monoprint__page\">\
-            <div class=\"Monoprint__mast\"><div class=\"Monoprint__file\">__TITLE__</div><div class=\"Monoprint__language\">__LANGUAGE__</div></div>\
+            <div class=\"Monoprint__mast\"><div class=\"Monoprint__file\">__TITLE__</div></div>\
             <div class=\"Monoprint__body\">__CODE_IMAGES_EDITOR__</div>\
-            <div class=\"Monoprint__foot\" aria-hidden=\"true\"></div>\
+            <div class=\"Monoprint__foot\"><div class=\"Monoprint__language\">__LANGUAGE__</div></div>\
           </div></div>".into(),
         css,
     }

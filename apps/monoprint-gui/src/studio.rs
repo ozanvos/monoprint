@@ -222,7 +222,7 @@ impl Studio {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let theme = document.theme.parse::<Theme>().unwrap_or_default();
+        let theme = document.theme();
         document.select_theme(theme);
         let editor = cx.new(|cx| {
             let mut editor = EditorState::new(window, cx)
@@ -539,6 +539,12 @@ impl Studio {
         this
     }
 
+    /// Show a message below the preview.
+    pub fn show_notice(&mut self, notice: impl Into<String>, cx: &mut Context<Self>) {
+        self.notice = Some(notice.into());
+        cx.notify();
+    }
+
     pub fn changed(&mut self, cx: &mut Context<Self>) {
         self.command_copied = false;
         self._command_feedback_task = None;
@@ -609,10 +615,7 @@ impl Studio {
                 if this
                     .update_in(cx, |this, window, cx| match paths {
                         Ok(paths) => this.open_paths(&paths, window, cx),
-                        Err(error) => {
-                            this.notice = Some(format!("{error:#}"));
-                            cx.notify();
-                        }
+                        Err(error) => this.show_notice(format!("{error:#}"), cx),
                     })
                     .is_err()
                 {
@@ -630,8 +633,7 @@ impl Studio {
             return;
         }
         if paths.len() != 1 {
-            self.notice = Some("Open one source file at a time.".into());
-            cx.notify();
+            self.show_notice("Open one source file at a time.", cx);
             return;
         }
         self.load_source(paths[0].clone(), window, cx);
@@ -648,8 +650,7 @@ impl Studio {
                 cx.open_url(url.as_str());
             }
         } else {
-            self.notice = Some("Shortcuts are included in the packaged macOS app. See the Studio documentation for setup.".into());
-            cx.notify();
+            self.show_notice("Shortcuts are included in the packaged macOS app. See the Studio documentation for setup.", cx);
         }
     }
 
@@ -692,10 +693,7 @@ impl Studio {
                         this.install_source(path, source, window, cx);
                         window.activate_window();
                     }
-                    Err(error) => {
-                        this.notice = Some(format!("{error:#}"));
-                        cx.notify();
-                    }
+                    Err(error) => this.show_notice(format!("{error:#}"), cx),
                 }
             });
         })
@@ -708,7 +706,7 @@ impl Studio {
         position: Point<Pixels>,
         cx: &mut Context<Self>,
     ) {
-        let Some(preview) = &self.preview else {
+        let Some(image) = self.preview.as_ref().map(Preview::logical_size) else {
             return;
         };
         if self.canvas_resize.is_some() {
@@ -724,10 +722,6 @@ impl Studio {
         else {
             return;
         };
-        let image = size(
-            px(preview.width as f32 / 2.),
-            px(preview.height as f32 / 2.),
-        );
         self.viewport.end_drag();
         self.canvas_resize = Some(CanvasResize::new(
             edge,
@@ -780,15 +774,13 @@ impl Studio {
             return;
         };
         if resize.changed
-            && let Some(preview) = &self.preview
+            && let Some(image) = self.preview.as_ref().map(Preview::logical_size)
         {
-            let width = px(preview.width as f32 / 2.);
-            let height = px(preview.height as f32 / 2.);
             self.viewport.zoom = crate::viewport::PreviewZoom::Custom(resize.scale);
-            self.viewport.pan = resize.origin(width)
+            self.viewport.pan = resize.origin(image.width)
                 - point(
-                    (self.viewport.bounds.size.width - width * resize.scale) / 2.,
-                    (self.viewport.bounds.size.height - height * resize.scale) / 2.,
+                    (self.viewport.bounds.size.width - image.width * resize.scale) / 2.,
+                    (self.viewport.bounds.size.height - image.height * resize.scale) / 2.,
                 );
         }
         if !resize.dragging && (!resize.changed || self.preview_revision == self.revision) {
@@ -882,13 +874,11 @@ impl Studio {
     }
     pub fn paste(&mut self, _: &PasteSource, window: &mut Window, cx: &mut Context<Self>) {
         let Some(text) = cx.read_from_clipboard().and_then(|c| c.text()) else {
-            self.notice = Some("Copy some code, then paste it here.".into());
-            cx.notify();
+            self.show_notice("Copy some code, then paste it here.", cx);
             return;
         };
         if text.len() > monoprint::MAX_SOURCE_BYTES {
-            self.notice = Some("Paste a snippet smaller than 1 MiB.".into());
-            cx.notify();
+            self.show_notice("Paste a snippet smaller than 1 MiB.", cx);
             return;
         }
         self.keep_terminal_text = false;
@@ -906,30 +896,13 @@ impl Studio {
         self.clear_highlights(cx);
     }
     pub fn open(&mut self, _: &OpenSource, window: &mut Window, cx: &mut Context<Self>) {
-        let dialog = cx.prompt_for_paths(PathPromptOptions {
-            files: true,
-            directories: false,
-            multiple: false,
-            prompt: Some("Open source file".into()),
-        });
+        let path = choose_file("Open source file", cx);
         cx.spawn_in(window, async move |this, cx| {
-            let result = async {
-                let Some(paths) = dialog.await?? else {
-                    return Ok(None);
-                };
-                let Some(path) = paths.into_iter().next() else {
-                    return Ok(None);
-                };
-                Ok::<_, anyhow::Error>(Some(path))
-            }
-            .await;
+            let result = path.await;
             let _ = this.update_in(cx, |this, window, cx| match result {
                 Ok(Some(path)) => this.load_source(path, window, cx),
                 Ok(None) => {}
-                Err(e) => {
-                    this.notice = Some(format!("{e:#}"));
-                    cx.notify();
-                }
+                Err(e) => this.show_notice(format!("{e:#}"), cx),
             });
         })
         .detach();
@@ -996,25 +969,17 @@ impl Studio {
     }
 
     pub fn choose_font(&mut self, comments: bool, window: &mut Window, cx: &mut Context<Self>) {
-        let dialog = cx.prompt_for_paths(PathPromptOptions {
-            files: true,
-            directories: false,
-            multiple: false,
-            prompt: Some(
-                if comments {
-                    "Choose a comment typeface (TTF or OTF)"
-                } else {
-                    "Choose a code typeface (TTF or OTF)"
-                }
-                .into(),
-            ),
-        });
+        let path = choose_file(
+            if comments {
+                "Choose a comment typeface (TTF or OTF)"
+            } else {
+                "Choose a code typeface (TTF or OTF)"
+            },
+            cx,
+        );
         cx.spawn_in(window, async move |this, cx| {
             let result = async {
-                let Some(paths) = dialog.await?? else {
-                    return Ok(None);
-                };
-                let Some(path) = paths.into_iter().next() else {
+                let Some(path) = path.await? else {
                     return Ok(None);
                 };
                 cx.background_executor()
@@ -1029,23 +994,12 @@ impl Studio {
             .await;
             let _ = this.update_in(cx, |this, window, cx| match result {
                 Ok(Some((path, bookmark))) => {
-                    if comments {
-                        this.document.comment_font_id = None;
-                        this.document.comment_font_path = Some(path);
-                        this.document.comment_font_bookmark = bookmark;
-                    } else {
-                        this.document.font_id = None;
-                        this.document.font_path = Some(path);
-                        this.document.font_bookmark = bookmark;
-                    }
+                    this.document.set_font(comments, None, Some(path), bookmark);
                     this.sync_typeface(comments, window, cx);
                     this.changed(cx);
                 }
                 Ok(None) => {}
-                Err(e) => {
-                    this.notice = Some(format!("{e:#}"));
-                    cx.notify();
-                }
+                Err(e) => this.show_notice(format!("{e:#}"), cx),
             });
         })
         .detach();
@@ -1053,8 +1007,7 @@ impl Studio {
     pub fn highlight_selection(&mut self, whole_lines: bool, cx: &mut Context<Self>) {
         let range = self.editor.read(cx).selected_range();
         if range.is_empty() {
-            self.notice = Some("Select text in the source editor first.".into());
-            cx.notify();
+            self.show_notice("Select text in the source editor first.", cx);
             return;
         }
         let source = self.editor.read(cx).value().to_string();
@@ -1215,13 +1168,8 @@ impl Studio {
             Ok(command) => {
                 cx.write_to_clipboard(ClipboardItem::new_string(command));
                 self.command_copied = true;
-                self._command_feedback_task = Some(cx.spawn(async move |this, cx| {
-                    cx.background_executor().timer(Duration::from_secs(2)).await;
-                    let _ = this.update(cx, |this, cx| {
-                        this.command_copied = false;
-                        cx.notify();
-                    });
-                }));
+                self._command_feedback_task =
+                    Some(after_feedback(cx, |this| this.command_copied = false));
             }
             Err(error) => self.notice = Some(format!("Could not copy command: {error:#}")),
         }
@@ -1251,13 +1199,8 @@ impl Studio {
                             bytes,
                         )));
                         this.copy_state = CopyState::Copied;
-                        this._copy_feedback_task = Some(cx.spawn(async move |this, cx| {
-                            cx.background_executor().timer(Duration::from_secs(2)).await;
-                            let _ = this.update(cx, |this, cx| {
-                                this.copy_state = CopyState::Idle;
-                                cx.notify();
-                            });
-                        }));
+                        this._copy_feedback_task =
+                            Some(after_feedback(cx, |this| this.copy_state = CopyState::Idle));
                     }
                     Err(e) => this.notice = Some(format!("Could not copy image: {e:#}")),
                 }
@@ -1266,6 +1209,31 @@ impl Studio {
         })
         .detach();
     }
+}
+
+/// Ask for one existing file; `None` when the dialog is cancelled.
+fn choose_file(
+    prompt: &str,
+    cx: &mut Context<Studio>,
+) -> impl std::future::Future<Output = anyhow::Result<Option<PathBuf>>> + use<> {
+    let dialog = cx.prompt_for_paths(PathPromptOptions {
+        files: true,
+        directories: false,
+        multiple: false,
+        prompt: Some(prompt.to_owned().into()),
+    });
+    async move { Ok(dialog.await??.and_then(|paths| paths.into_iter().next())) }
+}
+
+/// Revert transient button feedback after two seconds.
+fn after_feedback(cx: &mut Context<Studio>, reset: impl FnOnce(&mut Studio) + 'static) -> Task<()> {
+    cx.spawn(async move |this, cx| {
+        cx.background_executor().timer(Duration::from_secs(2)).await;
+        let _ = this.update(cx, |this, cx| {
+            reset(this);
+            cx.notify();
+        });
+    })
 }
 
 fn input(
@@ -1309,12 +1277,9 @@ fn typeface_items(document: &Document, comments: bool) -> Vec<Choice> {
         name: font.name().into(),
         preview: Some(ChoicePreview::Typeface(font)),
     }));
-    let path = if comments {
-        &document.comment_font_path
-    } else {
-        &document.font_path
-    };
-    let label = path
+    let label = document
+        .font_slot(comments)
+        .path
         .as_ref()
         .and_then(|path| path.file_name())
         .map(|name| format!("Custom · {}", name.to_string_lossy()))

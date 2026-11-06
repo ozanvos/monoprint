@@ -58,19 +58,13 @@ pub fn invocation(document: &Document) -> Result<String> {
         option("scale", &document.scale.to_string())?;
         option("png-compression", &compression.to_string())?;
     }
-    for (name, id, path) in [
-        ("font", &document.font_id, &document.font_path),
-        (
-            "comment-font",
-            &document.comment_font_id,
-            &document.comment_font_path,
-        ),
-    ] {
+    for (name, comments) in [("font", false), ("comment-font", true)] {
+        let slot = document.font_slot(comments);
         // Match FontCache's precedence for migrated documents containing both.
-        if let Some(id) = id {
+        if let Some(id) = slot.id {
             let font: monoprint::BundledFont = id.parse()?;
             option(name, font.id())?;
-        } else if let Some(path) = path {
+        } else if let Some(path) = slot.path {
             option(
                 &format!("{name}-file"),
                 path.to_str()

@@ -19,7 +19,7 @@ export const installs = manifest ? [
   }),
 ] : [];
 export const downloads = manifest ? [
-  { ...manifest.downloads['macos-arm64'], label: 'Download for macOS', detail: 'Apple Silicon · ZIP' },
+  { ...manifest.downloads['macos-arm64'], label: 'Download for macOS', detail: 'Apple Silicon · DMG' },
   ...(manifest.downloads['win-x64'] ? [{ ...manifest.downloads['win-x64'], label: 'Download for Windows', detail: '64-bit · Installer' }] : []),
   { ...manifest.downloads['linux-x64'], label: 'Download for Linux x64', detail: 'Intel / AMD · AppImage · Ubuntu 24.04+' },
   ...(manifest.downloads['linux-arm64'] ? [{ ...manifest.downloads['linux-arm64'], label: 'Download for Linux ARM64', detail: 'ARM64 · AppImage · Ubuntu 24.04+' }] : []),

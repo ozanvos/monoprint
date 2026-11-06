@@ -5,8 +5,8 @@ import { verifyRelease } from './verify-desktop-release.mjs';
 function fixture() {
   const repository = 'ozanvos/monoprint';
   const base = `https://github.com/${repository}/releases`;
-  const names = { 'macos-arm64': 'Monoprint-0.1.0-aarch64-apple-darwin.zip', 'win-x64': 'Monoprint-win-Setup.exe', 'linux-x64': 'Monoprint-linux-x64.AppImage', 'linux-arm64': 'Monoprint-linux-arm64.AppImage' };
-  const files = [...Object.values(names), 'appcast-macos-arm64.xml', 'releases.win-x64.json', 'releases.linux-x64.json', 'releases.linux-arm64.json'].map(file => ({ file, bytes: 100, sha256: 'a'.repeat(64) }));
+  const names = { 'macos-arm64': 'Monoprint-0.1.0-aarch64-apple-darwin.dmg', 'win-x64': 'Monoprint-win-Setup.exe', 'linux-x64': 'Monoprint-linux-x64.AppImage', 'linux-arm64': 'Monoprint-linux-arm64.AppImage' };
+  const files = [...Object.values(names), 'Monoprint-0.1.0-aarch64-apple-darwin.zip', 'appcast-macos-arm64.xml', 'releases.win-x64.json', 'releases.linux-x64.json', 'releases.linux-arm64.json'].map(file => ({ file, bytes: 100, sha256: 'a'.repeat(64) }));
   const manifest = { version: '0.1.0', tag: 'v0.1.0', commit: 'b'.repeat(40), repository, distribution: true, files,
     downloads: Object.fromEntries(Object.entries(names).map(([runtime, file]) => [runtime, { ...files.find(entry => entry.file === file), url: `${base}/download/v0.1.0/${file}` }])) };
   const release = { tag_name: manifest.tag, draft: false, prerelease: false, html_url: `${base}/tag/v0.1.0`,
@@ -24,6 +24,7 @@ for (const [name, mutate] of [
   ['prerelease', f => f.release.prerelease = true],
   ['unsigned candidate', f => f.manifest.distribution = false],
   ['different repository', f => f.manifest.repository = 'other/repo'],
+  ['missing update ZIP', f => f.manifest.files = f.manifest.files.filter(file => !file.file.endsWith('.zip'))],
   ['missing installer', f => f.release.assets.shift()],
   ['changed bytes', f => f.release.assets[0].digest = 'sha256:' + '0'.repeat(64)],
   ['partial upload', f => f.release.assets[0].state = 'new'],

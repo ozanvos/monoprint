@@ -942,7 +942,7 @@ dependencies = [
 
 [[package]]
 name = "monoprint"
-version = "0.2.0"
+version = "0.2.2"
 dependencies = [
  "anyhow",
  "base64",
@@ -966,7 +966,7 @@ dependencies = [
 
 [[package]]
 name = "monoprint-node"
-version = "0.2.0"
+version = "0.2.2"
 dependencies = [
  "monoprint",
  "napi",

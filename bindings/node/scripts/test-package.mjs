@@ -66,7 +66,7 @@ import { createRequire } from 'node:module';
 import { Renderer, png, getThemes } from ${JSON.stringify(pkg.name)};
 const cjs = createRequire(import.meta.url)(${JSON.stringify(pkg.name)});
 assert.equal(cjs.Renderer, Renderer);
-assert.equal(getThemes().length, 69);
+assert.equal(getThemes().length, 59);
 const image = await png('const x = 1;', {language:'ts', theme:'catppuccin-latte', background:'halftone', fontSize:24, scale:1, compression:'balanced'});
 assert.equal(image[0], 137);
 assert.equal((cjs.svgSync('你好 👩🏽‍💻 🇳🇱').match(/<image/g) ?? []).length, 2);

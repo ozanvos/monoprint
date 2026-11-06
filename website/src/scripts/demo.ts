@@ -1,12 +1,14 @@
 const feedback = document.querySelector<HTMLElement>('#feedback')!;
 const commandText = document.querySelector<HTMLElement>('#command-text')!;
+const renderSize = document.querySelector<HTMLElement>('#render-size')!;
 const check = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg>';
 
-// The theme picker swaps the rendered sample and the CLI command together.
+// The theme picker swaps the rendered sample, the CLI command and its output size together.
 for (const input of document.querySelectorAll<HTMLInputElement>('input[name="theme"]')) {
   input.addEventListener('change', () => {
     for (const image of document.querySelectorAll<HTMLImageElement>('.stage img')) image.hidden = image.dataset.theme !== input.value;
     commandText.textContent = input.dataset.command!;
+    renderSize.textContent = input.dataset.size!;
   });
 }
 

@@ -86,6 +86,13 @@ def assemble(source, output, *, version, commit, input_hash, repository, public_
                         or int(enclosure.get('length', '0')) != files[name]['bytes']
                         or not enclosure.get(SPARKLE + 'edSignature')):
                     raise ValueError('Sparkle enclosure does not match the shipping archive')
+            disk_image = receipt.get('diskImage', '')
+            if disk_image != f'Monoprint-{version}-aarch64-apple-darwin.dmg':
+                raise ValueError('Expected versioned macOS DMG')
+            if distribution and not (receipt.get('diskImageStapled')
+                    and (receipt.get('diskImageNotarization') or {}).get('status') == 'Accepted'):
+                raise ValueError('macOS DMG requires notarization and stapling')
+            name = add(folder, disk_image, receipt['diskImageSha256'], receipt['diskImageBytes'])
         else:
             if (receipt.get('runtime') != runtime or receipt.get('channel') != runtime
                     or not receipt.get('verified') or not receipt.get('updates')

@@ -118,15 +118,15 @@ pub fn code(
             "<span class=\"{class}{empty_class}{diff_class}\" data-line=\"{}\" data-number=\"{number}\" data-sign=\"{sign}\">",
             index + 1
         )?;
-        if options.diff_numbers == crate::DiffNumbers::Both {
-            if let Some(row) = rows.get(index) {
-                write!(
-                    html,
-                    "<span class=\"diff-numbers\" aria-hidden=\"true\" data-old=\"{}\" data-new=\"{}\"></span>",
-                    row.old.map(|n| n.to_string()).unwrap_or_default(),
-                    row.new.map(|n| n.to_string()).unwrap_or_default()
-                )?;
-            }
+        if options.diff_numbers == crate::DiffNumbers::Both
+            && let Some(row) = rows.get(index)
+        {
+            write!(
+                html,
+                "<span class=\"diff-numbers\" aria-hidden=\"true\" data-old=\"{}\" data-new=\"{}\"></span>",
+                row.old.map(|n| n.to_string()).unwrap_or_default(),
+                row.new.map(|n| n.to_string()).unwrap_or_default()
+            )?;
         }
         if selected {
             html.push_str("<span class=\"lc\">");

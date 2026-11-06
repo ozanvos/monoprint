@@ -64,12 +64,12 @@ impl Studio {
         self.changed(cx);
     }
     pub fn compare_clipboard(&mut self, cx: &mut Context<Self>) {
-        if let Some(text) = cx.read_from_clipboard().and_then(|v| v.text()) {
-            if text.len() <= monoprint::MAX_SOURCE_BYTES {
-                self.clear_diff(cx);
-                self.document.diff_base = Some(text);
-                self.changed(cx);
-            }
+        if let Some(text) = cx.read_from_clipboard().and_then(|v| v.text())
+            && text.len() <= monoprint::MAX_SOURCE_BYTES
+        {
+            self.clear_diff(cx);
+            self.document.diff_base = Some(text);
+            self.changed(cx);
         }
     }
     pub fn choose_base(&mut self, window: &mut Window, cx: &mut Context<Self>) {
@@ -170,10 +170,10 @@ pub fn remap_marks(old: &str, new: &str, marks: &str) -> String {
     let mut i = 0;
     while i < rows.len() {
         if rows[i].kind == monoprint::RowKind::Context {
-            if let (Some(old), Some(new)) = (rows[i].old, rows[i].new) {
-                if is_marked(old) {
-                    out.push(new - 1..new);
-                }
+            if let (Some(old), Some(new)) = (rows[i].old, rows[i].new)
+                && is_marked(old)
+            {
+                out.push(new - 1..new);
             }
             i += 1;
             continue;
@@ -185,17 +185,17 @@ pub fn remap_marks(old: &str, new: &str, marks: &str) -> String {
         let removed: Vec<_> = rows[start..i].iter().filter_map(|r| r.old).collect();
         let added: Vec<_> = rows[start..i].iter().filter_map(|r| r.new).collect();
         for (index, old) in removed.iter().enumerate() {
-            if is_marked(*old) {
-                if let Some(new) = added.get(index) {
-                    // Split lines inherit their original mark. Distinct old
-                    // marks never expand across the same replacement lines.
-                    let end = if index + 1 == removed.len() {
-                        *added.last().unwrap()
-                    } else {
-                        *new
-                    };
-                    out.push(new - 1..end);
-                }
+            if is_marked(*old)
+                && let Some(new) = added.get(index)
+            {
+                // Split lines inherit their original mark. Distinct old
+                // marks never expand across the same replacement lines.
+                let end = if index + 1 == removed.len() {
+                    *added.last().unwrap()
+                } else {
+                    *new
+                };
+                out.push(new - 1..end);
             }
         }
     }

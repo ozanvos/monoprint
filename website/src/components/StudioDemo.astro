@@ -1,0 +1,54 @@
+---
+// Fig. 1: the Studio, drawn compact from its macOS window. The markup is the finished first
+// frame, which is also what reduced motion shows; scripts/loops.ts plays it. The preview is the
+// CLI's own render of palette.rs for each appearance and backdrop the loop picks.
+import { palette, previews } from '../data/loops.mjs';
+import { icon, rust, segmented } from './studio-markup';
+const PREVIEW = { width: 640, height: 459 };
+// The preview is shown at Fit in the narrow canvas; the caption keeps the image's own size.
+const FIT = { width: 520, height: 373 };
+---
+<figure class="app-screenshot studio-demo" data-loop="Hero" role="img" aria-label="Monoprint for macOS: Rust source in the editor, its code image preview, and theme, frame and export settings. The appearance switches between light and dark, the backdrop between solid and lattice, and the image is copied.">
+  <div class="loop-scene" aria-hidden="true">
+    <div class="studio-toolbar">
+      <span class="lights"><i></i><i></i><i></i></span>
+      <span class="tool" set:html={icon('folder-open')} />
+      <span class="tool" set:html={icon('clipboard-paste')} />
+      <span class="language">Rust<Fragment set:html={icon('chevron-down', 12)} /></span>
+      <span class="tool" set:html={icon('text-wrap')} />
+      <span class="zoom"><span class="on">Fit</span><span>50%</span><span>100%</span></span>
+      <span class="tool" set:html={icon('moon')} />
+    </div>
+    <ol class="studio-source">{palette.map(line => <li set:html={rust(line) || ' '} />)}</ol>
+    <div class="studio-canvas">
+      <div class="preview" style={`width:${FIT.width}px;height:${FIT.height}px`}>
+        {previews.map(([appearance, backdrop]) => <img src={`/assets/studio-${appearance}-${backdrop}.png`} width={PREVIEW.width} height={PREVIEW.height} alt="" data-preview={`${appearance}-${backdrop}`} data-on={appearance === 'light' && backdrop === 'solid' ? '' : undefined} loading={appearance === 'light' && backdrop === 'solid' ? 'eager' : 'lazy'} />)}
+      </div>
+      <span class="preview-size">{PREVIEW.width} × {PREVIEW.height}</span>
+    </div>
+    <div class="inspector">
+      <div class="section">
+        <span class="heading"><Fragment set:html={icon('chevron-down', 14)} />Theme</span>
+        <span class="theme-card"><span class="thumb">{previews.filter(([, backdrop]) => backdrop === 'solid').map(([appearance]) => <img src={`/assets/studio-${appearance}-solid.png`} alt="" data-thumb={appearance} data-on={appearance === 'light' ? '' : undefined} />)}</span>GitHub Default<Fragment set:html={icon('chevron-right', 14)} /></span>
+        <span class="row">Appearance<Fragment set:html={segmented('appearance', ['light', 'dark'], 'light')} /></span>
+      </div>
+      <div class="section"><span class="heading"><Fragment set:html={icon('chevron-right', 14)} />Typeface</span></div>
+      <div class="section frame">
+        <span class="heading"><Fragment set:html={icon('chevron-down', 14)} />Frame</span>
+        <span class="pair"><span class="label">Width</span><span class="label">Padding</span><span class="field">640<small>px</small></span><span class="field">48<small>px</small><Fragment set:html={icon('chevron-down', 14)} /></span></span>
+        <span class="label">Backdrop</span>
+        <Fragment set:html={segmented('backdrop', ['Theme', 'Solid', 'Lattice', 'Halftone', 'None'], 'Solid')} />
+        <span class="row">Line numbers<span class="reset" set:html={icon('rotate-ccw')} /><span class="toggle"></span></span>
+        <span class="label">Window title</span>
+        <span class="field">palette.rs</span>
+      </div>
+      <div class="section export">
+        <span class="heading"><Fragment set:html={icon('chevron-down', 14)} />Export<span class="export-size">1280 × 918</span><Fragment set:html={icon('sliders-horizontal')} /></span>
+        <Fragment set:html={segmented('format', ['PNG', 'SVG', 'HTML'], 'PNG')} />
+        <span class="row">Scale<Fragment set:html={segmented('scale', ['1×', '2×', '3×', '4×', '5×', '6×'], '2×')} /></span>
+        <span class="actions"><span class="export-button">Export PNG</span><span class="copy-button" data-target="copy"><span class="copy-face" data-on><Fragment set:html={icon('copy')} />Copy</span><span class="copy-face"><Fragment set:html={icon('check')} />Copied</span></span></span>
+      </div>
+    </div>
+    <svg class="pointer" width="24" height="24" viewBox="0 0 32 32" fill="none"><g transform="translate(10 7)"><path d="m6.148 18.473 1.863-1.003 1.615-.839-2.568-4.816h4.332l-11.379-11.408v16.015l3.316-3.221z" fill="#fff"/><path d="m6.431 17 1.765-.941-2.775-5.202h3.604l-8.025-8.043v11.188l2.53-2.442z" fill="#000"/></g></svg>
+  </div>
+</figure>

@@ -69,8 +69,7 @@ impl Studio {
         match result {
             Ok(()) => cx.quit(),
             Err(error) => {
-                self.notice = Some(format!("Could not restart to update: {error:#}"));
-                cx.notify();
+                self.show_notice(format!("Could not restart to update: {error:#}"), cx);
             }
         }
     }
@@ -304,24 +303,24 @@ impl Studio {
                 return;
             }
             let Some(source) = std::env::var_os("APPIMAGE").map(std::path::PathBuf::from) else {
-                self.notice =
-                    Some("Download the AppImage to install Monoprint for this user.".into());
-                cx.notify();
+                self.show_notice(
+                    "Download the AppImage to install Monoprint for this user.",
+                    cx,
+                );
                 return;
             };
             let install = match super::linux_install::Installation::for_user() {
                 Ok(install) => install,
                 Err(error) => {
-                    self.notice = Some(error.to_string());
-                    cx.notify();
+                    self.show_notice(error.to_string(), cx);
                     return;
                 }
             };
             if let Err(error) = self.session.save(self.revision, &self.document) {
-                self.notice = Some(format!(
-                    "Save the current draft before installing: {error:#}"
-                ));
-                cx.notify();
+                self.show_notice(
+                    format!("Save the current draft before installing: {error:#}"),
+                    cx,
+                );
                 return;
             }
             self.installing = true;
@@ -369,8 +368,7 @@ impl Studio {
             let install = match super::linux_install::Installation::for_user() {
                 Ok(install) if install.installed() => install,
                 _ => {
-                    self.notice = Some("This copy was not installed by Monoprint. Remove it using its package manager or delete the downloaded AppImage.".into());
-                    cx.notify();
+                    self.show_notice("This copy was not installed by Monoprint. Remove it using its package manager or delete the downloaded AppImage.", cx);
                     return;
                 }
             };
@@ -400,8 +398,7 @@ impl Studio {
                         Err(error) => {
                             this.installed_for_user = install.installed();
                             this.session.set_saving_enabled(true);
-                            this.notice = Some(format!("Could not uninstall: {error:#}"));
-                            cx.notify();
+                            this.show_notice(format!("Could not uninstall: {error:#}"), cx);
                         }
                     }
                 });
