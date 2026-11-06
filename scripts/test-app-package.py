@@ -81,7 +81,8 @@ with tempfile.TemporaryDirectory(prefix='monoprint-app-consumer-') as temporary:
                 assert view['backgroundType'] == 2 and view['backgroundImageAlias']
                 window = settings['.']['bwsp']
                 assert not window['ShowToolbar'] and not window['ShowSidebar']
-                assert window['WindowBounds'] == '{{200, 200}, {600, 380}}'
+                assert window['ShowStatusBar'] and window['ShowPathbar']
+                assert window['WindowBounds'] == '{{200, 200}, {600, 460}}'
             artwork = Path(__file__).resolve().parents[1] / 'apps/monoprint-gui/assets/dmg/proof-sheet.tiff'
             assert (mount / '.background.tiff').read_bytes() == artwork.read_bytes()
             assert (mount / 'Applications').is_symlink()
