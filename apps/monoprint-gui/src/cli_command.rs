@@ -263,11 +263,17 @@ mod tests {
 mod change_tests {
     use super::*;
     #[test]
-    fn terminal_commands_escape_controls_and_roundtrip_in_bash() {
+    fn terminal_commands_escape_controls() {
         let source = "\x1b[31mFAIL\x1b[0m\rnext '\\$(`x`)";
         let quoted = quote(source).unwrap();
         assert!(!quoted.contains('\x1b'));
         assert!(quoted.starts_with("$'"));
+    }
+    #[cfg(unix)]
+    #[test]
+    fn terminal_commands_roundtrip_in_bash() {
+        let source = "\x1b[31mFAIL\x1b[0m\rnext '\\$(`x`)";
+        let quoted = quote(source).unwrap();
         let output = std::process::Command::new("/bin/bash")
             .args(["-c", &format!("printf '%s' {quoted}")])
             .output()
