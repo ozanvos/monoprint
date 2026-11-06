@@ -97,3 +97,54 @@ Toolkit patches are documented in
 [the popup patch notes](../vendor/gpui-component/MONOPRINT-PATCH.md)
 [the macOS patch notes](../vendor/gpui-fast-macos/MONOPRINT-PATCH.md)
 and [the motion adapter notes](../vendor/gpui-motion-kit/MONOPRINT-PATCH.md).
+
+## Terminal output and diffs
+
+To render terminal colors, choose **Terminal output** in the language picker or
+open an `.ans` file. When the code contains color sequences, a notice asks
+**This looks like terminal output. Render its colors?**; choose **Use terminal
+colors** or **Keep as text**. Studio never switches by itself.
+
+In terminal mode the editor shows the visible text read-only, while the
+document keeps the raw capture with its escapes. Paste replaces the capture.
+**Terminal output · Edit as plain text**, or choosing another language, asks
+before removing the colors and making the text editable. Line numbers are off
+unless enabled in **Line numbers**. Comparison and mark controls are
+unavailable for terminal output.
+
+The **Diff** inspector turns the current code into a change:
+
+- **Choose previous version…** compares the code with an earlier file. The
+  editor holds the new version.
+- **Compare with clipboard** uses clipboard text (up to 1 MiB) as the previous
+  version.
+- **Mark added** and **Mark removed** label the lines touched by the editor
+  selection. Marking the same lines again clears them; marking them with the
+  other kind switches them. Marks follow edits.
+- **Context** cycles through 0, 3, 10 and all unchanged lines.
+- **Numbers** cycles through new, old and both gutter columns.
+- **Off** removes the change and keeps the code.
+
+Starting a comparison replaces any marks, and marking replaces a comparison.
+Opening a file clears the change. In a comparison, line and text highlights are
+made on the new version; highlights on lines hidden by the context are omitted
+from the image.
+
+When the language is **Diff**, for example after opening a `.patch` or `.diff`
+file, **Show as change** renders the patch as a change and selects the
+language from its file path. The editor keeps the patch text. **Off** returns
+to the patch with Diff highlighting. Patches must contain a single file with
+text hunks; otherwise Studio shows the reason and keeps the patch text.
+
+Changed-word emphasis is on for new documents. Studio has no control for it,
+but a saved document can keep it off, and Copy command then includes
+`--no-diff-words`. To turn it off for an export, add `--no-diff-words` to the
+copied command. Split views are not available.
+
+**Copy command** reproduces terminal captures with `--language=ansi` and
+bash/zsh ANSI-C quoting (`$'…'`), never raw ESC bytes. Comparisons copy a
+`monoprint --patch -` command with a self-contained patch of both versions, so
+the CLI keeps full syntax context. The patch goes in a quoted heredoc, or uses
+ANSI-C quoting if it contains control characters. Patches and marks
+copy their source with `--patch -` or `--added`/`--removed`. See
+[terminal output and code changes](terminal-and-changes.md).

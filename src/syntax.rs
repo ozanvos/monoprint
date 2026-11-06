@@ -27,6 +27,8 @@ pub struct SyntaxSpan {
     pub range: Range<usize>,
     /// CSS RGBA hex color from the default Monoprint palette.
     pub foreground: String,
+    /// Explicit token background, or None for the code surface.
+    pub background: Option<String>,
     /// Use a bold font weight.
     pub bold: bool,
     /// Use an italic font face.
@@ -46,7 +48,8 @@ impl Renderer {
 
     /// Color an editor buffer without rendering an image. Offsets address the
     /// original UTF-8 input, including CRLF and lone CR line endings. Uses
-    /// Monoprint's default syntax palette for the requested appearance.
+    /// Monoprint's default syntax palette for the requested appearance. For
+    /// terminal input, offsets address [`crate::ansi::strip`] output instead.
     pub fn highlight_source(
         &self,
         source: &str,
@@ -69,6 +72,8 @@ impl Renderer {
                 SyntaxSpan {
                     range: run.range,
                     foreground: run.style.foreground.as_hex(),
+                    background: (run.style.background != result.background)
+                        .then(|| run.style.background.as_hex()),
                     bold: font.contains(FontStyle::BOLD),
                     italic: font.contains(FontStyle::ITALIC),
                     underline: font.contains(FontStyle::UNDERLINE),
@@ -161,6 +166,37 @@ pub(crate) fn highlight(
     theme: &str,
     comments: bool,
 ) -> Result<StyledSource> {
+    if language.is_terminal() {
+        let palette = palettes().get(theme).context("missing terminal theme")?;
+        let id = theme
+            .strip_prefix("original-")
+            .or_else(|| theme.strip_prefix("editor-"))
+            .unwrap_or(theme);
+        let (id, mode) = id
+            .strip_suffix("-light")
+            .map(|id| (id, "light"))
+            .or_else(|| id.strip_suffix("-dark").map(|id| (id, "dark")))
+            .filter(|(id, _)| crate::assets::themes().contains_key(*id))
+            .unwrap_or((id, "dark"));
+        let colors = crate::assets::themes()
+            .get(id)
+            .and_then(|t| t.syntax.get(mode).or_else(|| t.syntax.values().next()));
+        let terminal = std::array::from_fn(|i| {
+            colors
+                .and_then(|p| p.get(&format!("--ink-ansi-{i}")))
+                .and_then(|s| Color::from_hex(s).ok())
+                .unwrap_or(palette.styles[0].foreground)
+        });
+        return Ok(crate::ansi::highlight(
+            source,
+            palette.styles[0].foreground,
+            colors
+                .and_then(|p| p.get("--ink-ansi-surface"))
+                .and_then(|s| Color::from_hex(s).ok())
+                .unwrap_or(palette.background),
+            &terminal,
+        ));
+    }
     // Pierre treats Python docstrings as ordinary strings. Keep TextMate's
     // docstring classification when a separate comment typeface needs it.
     let needs_docstrings = comments && language.id() == "python";
@@ -239,7 +275,7 @@ pub(crate) fn highlight(
     Ok(StyledSource { runs, background })
 }
 
-fn push_run(runs: &mut Vec<Run>, range: Range<usize>, style: Style, comment: bool) {
+pub(crate) fn push_run(runs: &mut Vec<Run>, range: Range<usize>, style: Style, comment: bool) {
     if range.is_empty() {
         return;
     }

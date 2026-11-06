@@ -13,7 +13,7 @@ div{display:block}
 .Editor__formatted>pre{margin:0;font-family:inherit;white-space:pre-wrap}
 .Editor__formatted>pre>code{font-family:inherit}
 .Editor__editor .line{display:inline-block;width:calc(100% + 32px);padding:0 16px;margin:0 -16px}
-.Editor__editor .line:before{position:relative;left:6px;display:inline-block;width:1rem;margin-right:1.5rem;margin-left:-2.5rem;color:var(--editor-gutter);content:attr(data-line);opacity:0;text-align:right}
+.Editor__editor .line:before{position:relative;left:6px;display:inline-block;width:1rem;margin-right:1.5rem;margin-left:-2.5rem;color:var(--editor-gutter);content:attr(data-number);opacity:0;text-align:right}
 .Editor__showLineNumbers{--line-number-padding:3rem}
 .Editor__showLineNumbers.Editor__showLineNumbersLarge{--line-number-padding:3.5rem}
 .Editor__showLineNumbers .Editor__formatted{padding-left:var(--line-number-padding)}

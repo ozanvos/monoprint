@@ -16,7 +16,14 @@ pub(crate) fn frame(
     source: &str,
 ) -> Frame {
     if theme.id == "monoprint" {
-        return crate::monoprint_theme::frame(theme, style, source.split('\n').count());
+        return crate::monoprint_theme::frame(
+            theme,
+            style,
+            source
+                .split('\n')
+                .count()
+                .saturating_add(snippet.first_line - 1),
+        );
     }
     let palette = &theme.syntax[style.appearance.as_str()];
     let surface = theme.surface.as_deref().expect("original reading surface");
@@ -95,21 +102,22 @@ pub(crate) fn frame(
         let marked = crate::highlighted_lines(snippet);
         // Explicit selections win. Otherwise emphasize the final substantive
         // source line, ignoring closing delimiters and trailing blank lines.
-        let marked = if marked.is_empty() && snippet.text_highlights.is_empty() {
-            source
-                .split('\n')
-                .enumerate()
-                .filter(|(_, line)| {
-                    let line = line.trim();
-                    !line.is_empty() && !line.chars().all(|c| "{}[]();,".contains(c))
-                })
-                .last()
-                .map(|(i, _)| i + 1)
-                .into_iter()
-                .collect()
-        } else {
-            marked
-        };
+        let marked =
+            if marked.is_empty() && snippet.text_highlights.is_empty() && snippet.diff.is_none() {
+                source
+                    .split('\n')
+                    .enumerate()
+                    .filter(|(_, line)| {
+                        let line = line.trim();
+                        !line.is_empty() && !line.chars().all(|c| "{}[]();,".contains(c))
+                    })
+                    .last()
+                    .map(|(i, _)| i + 1)
+                    .into_iter()
+                    .collect()
+            } else {
+                marked
+            };
         for line in marked {
             let selector = format!(".Original .line[data-line=\"{line}\"]");
             if theme.id == "highlighter-pass" {

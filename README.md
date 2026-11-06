@@ -54,6 +54,7 @@ and transparent surroundings.
 
 - [Desktop editor](apps/monoprint-gui/README.md)
 - [CLI options](docs/cli.md)
+- [Terminal output and code changes](docs/terminal-and-changes.md)
 - [Rust API](docs/library.md)
 - [Node.js and TypeScript](bindings/node/README.md)
 - [Themes](docs/theme-expansion.md)

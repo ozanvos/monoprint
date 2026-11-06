@@ -116,6 +116,7 @@ pub enum InspectorSection {
     Typeface,
     Frame,
     Export,
+    Diff,
 }
 
 impl InspectorSection {
@@ -125,6 +126,7 @@ impl InspectorSection {
             Self::Typeface => "Typeface",
             Self::Frame => "Frame",
             Self::Export => "Export",
+            Self::Diff => "Diff",
         }
     }
 
@@ -134,6 +136,7 @@ impl InspectorSection {
             Self::Typeface => "section-typeface",
             Self::Frame => "section-frame",
             Self::Export => "section-export",
+            Self::Diff => "section-diff",
         }
     }
 }
@@ -154,7 +157,7 @@ pub struct Studio {
     pub highlight_menu: Option<HighlightMenu>,
     pub settings_scroll: ScrollHandle,
     pub browsing_themes: bool,
-    pub open_sections: [bool; 4],
+    pub open_sections: [bool; 5],
     pub source_split: Entity<ResizableState>,
     pub width: Entity<InputState>,
     pub padding: Entity<InputState>,
@@ -174,6 +177,7 @@ pub struct Studio {
     pub exporting: bool,
     pub copy_state: CopyState,
     pub command_copied: bool,
+    pub keep_terminal_text: bool,
     pub viewport: PreviewViewport,
     pub zoom_motion: crate::interaction_motion::ZoomMotion,
     pub theme_motion: crate::interaction_motion::ThemeMotion,
@@ -223,10 +227,13 @@ impl Studio {
         let editor = cx.new(|cx| {
             let mut editor = EditorState::new(window, cx)
                 .language(&document.language)
-                .default_value(document.source.clone())
+                .default_value(document.editor_source())
                 .soft_wrap(true);
             editor.set_highlighter_factory(
-                crate::source_highlight::factory(crate::appearance::palette(cx).light),
+                crate::source_highlight::document_factory(
+                    crate::appearance::palette(cx).light,
+                    &document,
+                ),
                 cx,
             );
             editor
@@ -312,13 +319,27 @@ impl Studio {
         subscriptions.push(
             cx.subscribe_in(&editor, window, |this, entity, event, _, cx| {
                 if matches!(event, InputEvent::Change) {
+                    if this.document.terminal() {
+                        return;
+                    }
                     this.highlight_menu = None;
                     let track = crate::selection::resolve(
                         &this.document.source,
                         &this.document.text_highlights,
                     )
                     .is_some();
-                    this.document.source = entity.read(cx).value().to_string();
+                    let updated = entity.read(cx).value().to_string();
+                    this.document.added = crate::change_input::remap_marks(
+                        &this.document.source,
+                        &updated,
+                        &this.document.added,
+                    );
+                    this.document.removed = crate::change_input::remap_marks(
+                        &this.document.source,
+                        &updated,
+                        &this.document.removed,
+                    );
+                    this.document.source = updated;
                     this.document.highlights =
                         crate::selection::format_lines(this.line_highlights(cx));
                     if track {
@@ -390,15 +411,19 @@ impl Studio {
                 },
             ));
         }
-        subscriptions.push(cx.subscribe_in(&language, window, |this, _, event, _, cx| {
-            let SelectEvent::Confirm(Some(id)) = event else {
-                return;
-            };
-            this.document.language = id.clone();
-            this.editor
-                .update(cx, |state, cx| state.set_highlighter(id, cx));
-            this.changed(cx);
-        }));
+        subscriptions.push(
+            cx.subscribe_in(&language, window, |this, _, event, window, cx| {
+                let SelectEvent::Confirm(Some(id)) = event else {
+                    return;
+                };
+                if this.document.terminal() && id != "ansi" {
+                    this.edit_terminal(window, cx);
+                    return;
+                }
+                this.document.language = id.clone();
+                this.sync_input_mode(window, cx);
+            }),
+        );
         for (field, comments) in [(&code_typeface, false), (&comment_typeface, true)] {
             subscriptions.push(cx.subscribe_in(
                 field,
@@ -458,7 +483,7 @@ impl Studio {
             highlight_menu: None,
             settings_scroll: ScrollHandle::new(),
             browsing_themes: false,
-            open_sections: [true, false, true, true],
+            open_sections: [true, false, true, true, false],
             source_split: cx.new(|_| ResizableState::default()),
             width,
             padding,
@@ -478,6 +503,7 @@ impl Studio {
             exporting: false,
             copy_state: CopyState::Idle,
             command_copied: false,
+            keep_terminal_text: false,
             viewport: PreviewViewport::default(),
             zoom_motion: Default::default(),
             theme_motion: Default::default(),
@@ -826,7 +852,10 @@ impl Studio {
         let light = !crate::appearance::palette(cx).light;
         crate::appearance::apply(light, Some(window), cx);
         self.editor.update(cx, |editor, cx| {
-            editor.set_highlighter_factory(crate::source_highlight::factory(light), cx);
+            editor.set_highlighter_factory(
+                crate::source_highlight::document_factory(light, &self.document),
+                cx,
+            );
         });
         self.sync_source_marks(cx);
         cx.notify();
@@ -860,6 +889,13 @@ impl Studio {
         if text.len() > monoprint::MAX_SOURCE_BYTES {
             self.notice = Some("Paste a snippet smaller than 1 MiB.".into());
             cx.notify();
+            return;
+        }
+        self.keep_terminal_text = false;
+        if self.document.terminal() {
+            self.document.source = text;
+            self.sync_input_mode(window, cx);
+            self.clear_highlights(cx);
             return;
         }
         // Replace is deliberate for the toolbar action; Cmd-V in the editor inserts.
@@ -905,6 +941,8 @@ impl Studio {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
+        self.clear_diff(cx);
+        self.keep_terminal_text = false;
         self.document.source = source.clone();
         self.source_name = path
             .file_name()
@@ -926,7 +964,14 @@ impl Studio {
         });
         self.editor.update(cx, |state, cx| {
             state.set_highlighter(language.id(), cx);
-            state.set_value(source, window, cx);
+            state.set_highlighter_factory(
+                crate::source_highlight::document_factory(
+                    crate::appearance::palette(cx).light,
+                    &self.document,
+                ),
+                cx,
+            );
+            state.set_value(self.document.editor_source(), window, cx);
         });
         self.changed(cx);
     }
@@ -1069,7 +1114,7 @@ impl Studio {
         let ranges = self.source_marks.get_ranges(cx);
         if crate::selection::covers(&ranges, &menu.range) {
             self.document.text_highlights = crate::selection::format(
-                &self.document.source,
+                &self.document.editor_source(),
                 crate::selection::toggle(ranges, menu.range),
             );
             self.sync_source_marks(cx);
@@ -1079,9 +1124,11 @@ impl Studio {
         }
     }
     pub fn sync_source_marks(&self, cx: &mut Context<Self>) {
-        let ranges =
-            crate::selection::resolve(&self.document.source, &self.document.text_highlights)
-                .unwrap_or_default();
+        let ranges = crate::selection::resolve(
+            &self.document.editor_source(),
+            &self.document.text_highlights,
+        )
+        .unwrap_or_default();
         let style = HighlightStyle {
             background_color: Some(
                 rgb(crate::appearance::palette(cx).accent)

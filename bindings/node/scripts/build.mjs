@@ -11,7 +11,7 @@ const themes = [...new Set([...Object.keys({ ...await readJson(path.join(root, '
   ...await readJson(path.join(root, 'assets/selected/themes.json')),
   ...await readJson(path.join(root, 'assets/code-styles/themes.json')) }), ...pairs.map(pair => pair.id)])].sort();
 const languages = (await readJson(path.join(root, 'assets/grammar-metadata.json')))
-  .map(g => g.name).filter(n => n !== 'tex').concat('plain').sort();
+  .map(g => g.name).filter(n => n !== 'tex').concat('plain', 'ansi').sort();
 const union = values => values.map(v => `  | ${JSON.stringify(v)}`).join('\n');
 await fs.writeFile(path.join(directory, 'js/catalog-types.ts'),
   `// Generated from the reviewed Rust assets by scripts/build.mjs.\nexport type ThemeId =\n${union(themes)};\n\nexport type LanguageId =\n${union(languages)};\n`);
@@ -25,7 +25,7 @@ await fs.copyFile(path.join(directory, 'js/runtime.cjs'), path.join(directory, '
 await fs.copyFile(path.join(directory, 'js/cli.cjs'), path.join(directory, 'dist/cli.cjs'));
 await fs.chmod(path.join(directory, 'dist/cli.cjs'), 0o755);
 await fs.writeFile(path.join(directory, 'dist/index.mjs'),
-  "export { Renderer, Font, MonoprintError, limits, png, svg, html, pngSync, svgSync, htmlSync, getThemes, getLanguages, languageForFileName } from './index.js';\n");
+  "export { Renderer, Font, MonoprintError, limits, png, svg, html, pngSync, svgSync, htmlSync, getThemes, getLanguages, languageForFileName, stripAnsi } from './index.js';\n");
 await fs.writeFile(path.join(directory, 'dist/index.d.mts'), "export * from './index.js';\n");
 if (!args.includes('--js-only')) {
   const commit = revision();

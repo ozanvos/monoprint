@@ -49,6 +49,13 @@ impl Format {
 #[serde(default)]
 pub struct Document {
     pub source: String,
+    pub diff_base: Option<String>,
+    pub diff_patch: bool,
+    pub added: String,
+    pub removed: String,
+    pub diff_context: Option<usize>,
+    pub diff_numbers: String,
+    pub diff_words: bool,
     pub language: String,
     pub theme: String,
     pub light: bool,
@@ -78,6 +85,13 @@ impl Default for Document {
     fn default() -> Self {
         Self {
             source: EXAMPLE.into(),
+            diff_base: None,
+            diff_patch: false,
+            added: String::new(),
+            removed: String::new(),
+            diff_context: Some(3),
+            diff_numbers: "new".into(),
+            diff_words: true,
             language: "tsx".into(),
             theme: Theme::default().to_string(),
             light: false,
@@ -104,10 +118,18 @@ impl Default for Document {
     }
 }
 
+pub struct RenderHighlights {
+    pub lines: Vec<(usize, usize)>,
+    pub text: Vec<monoprint::TextRange>,
+}
+
 impl Document {
     pub fn numbers_visible(&self) -> bool {
         self.language != Language::PLAIN.id()
             && self.line_numbers.unwrap_or_else(|| {
+                if self.terminal() {
+                    return false;
+                }
                 match self
                     .theme
                     .parse::<Theme>()
@@ -223,27 +245,152 @@ impl Document {
         if let Some(font) = comment_font {
             style = style.comment_font(font);
         }
-        let mut snippet = Snippet::new(&self.source).language(self.language.parse::<Language>()?);
+        style = style
+            .diff_numbers(self.diff_numbers.parse()?)
+            .diff_words(self.diff_words);
+        let mut snippet = if let Some(diff) = self.diff()? {
+            Snippet::diff(diff)
+        } else {
+            Snippet::new(&self.source)
+        }
+        .language(self.language.parse::<Language>()?);
         if !self.title.is_empty() {
             snippet = snippet.title(&self.title);
         }
-        let lines = self
-            .source
-            .replace("\r\n", "\n")
-            .replace('\r', "\n")
-            .split('\n')
-            .count();
-        for (start, end) in highlight_ranges(&self.highlights, lines)? {
+        let highlights = self.render_highlights()?;
+        for (start, end) in highlights.lines {
             snippet = snippet.highlight(start..=end);
         }
-        for range in self
-            .text_highlights
-            .split(',')
-            .filter(|value| !value.trim().is_empty())
-        {
-            snippet = snippet.highlight_text(range.parse()?);
+        for range in highlights.text {
+            snippet = snippet.highlight_text(range);
         }
         Ok((snippet, style))
+    }
+    /// Project editor selections onto the new side of a folded comparison.
+    pub fn render_highlights(&self) -> Result<RenderHighlights> {
+        if self.highlights.trim().is_empty() && self.text_highlights.trim().is_empty() {
+            return Ok(RenderHighlights {
+                lines: Vec::new(),
+                text: Vec::new(),
+            });
+        }
+        let source = if self.diff_base.is_some() {
+            self.source.replace("\r\n", "\n").replace('\r', "\n")
+        } else {
+            self.visible_source()?
+        };
+        let lines: Vec<_> = source.split('\n').collect();
+        let mut map = std::collections::BTreeMap::new();
+        if self.diff_base.is_some() {
+            if let Some(diff) = self.diff()? {
+                for (index, row) in diff
+                    .rows()?
+                    .iter()
+                    .filter(|r| !matches!(r.kind, monoprint::RowKind::Fold { .. }))
+                    .enumerate()
+                {
+                    if let Some(new) = row.new {
+                        map.insert(new, index + 1);
+                    }
+                }
+            }
+        }
+        let mut result = RenderHighlights {
+            lines: Vec::new(),
+            text: Vec::new(),
+        };
+        for (a, b) in highlight_ranges(&self.highlights, lines.len())? {
+            if self.diff_base.is_none() {
+                result.lines.push((a, b));
+                continue;
+            }
+            for n in a..=b {
+                if let Some(&display) = map.get(&n) {
+                    result.lines.push((display, display));
+                }
+            }
+        }
+        for text in self
+            .text_highlights
+            .split(',')
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+        {
+            let range: monoprint::TextRange = text.parse()?;
+            ensure!(
+                crate::selection::resolve(&source, text).is_some(),
+                "Text highlight is outside the source."
+            );
+            if self.diff_base.is_none() {
+                result.text.push(range);
+                continue;
+            }
+            for line in range.start.0..=range.end.0 {
+                let Some(&display) = map.get(&line) else {
+                    continue;
+                };
+                let start = if line == range.start.0 {
+                    range.start.1
+                } else {
+                    1
+                };
+                let end = if line == range.end.0 {
+                    range.end.1
+                } else {
+                    lines[line - 1].chars().count() + 1
+                };
+                if start < end {
+                    result
+                        .text
+                        .push(monoprint::TextRange::new((display, start), (display, end)));
+                }
+            }
+        }
+        Ok(result)
+    }
+    pub fn terminal(&self) -> bool {
+        self.language
+            .parse::<Language>()
+            .is_ok_and(Language::is_terminal)
+    }
+    pub fn editor_source(&self) -> String {
+        if self.terminal() {
+            monoprint::ansi::strip(&self.source)
+        } else {
+            self.source.clone()
+        }
+    }
+    pub fn diff(&self) -> Result<Option<monoprint::Diff>> {
+        let diff = if self.diff_patch {
+            Some(monoprint::Diff::from_patch(&self.source)?)
+        } else if let Some(base) = &self.diff_base {
+            Some(monoprint::Diff::compare(base, &self.source)?)
+        } else if !self.added.is_empty() || !self.removed.is_empty() {
+            let mut diff = monoprint::Diff::marked(&self.source);
+            let lines = self.source.split('\n').count();
+            for (a, b) in highlight_ranges(&self.added, lines)? {
+                diff = diff.added(a..=b);
+            }
+            for (a, b) in highlight_ranges(&self.removed, lines)? {
+                diff = diff.removed(a..=b);
+            }
+            Some(diff)
+        } else {
+            None
+        };
+        Ok(diff.map(|d| {
+            d.context(
+                self.diff_context
+                    .map(monoprint::Context::Lines)
+                    .unwrap_or(monoprint::Context::All),
+            )
+        }))
+    }
+    pub fn visible_source(&self) -> Result<String> {
+        Ok(self
+            .diff()?
+            .map(|d| d.displayed_source())
+            .unwrap_or_else(|| self.editor_source()))
     }
     pub fn select_theme(&mut self, theme: Theme) {
         self.theme = theme.canonical().id().into();
@@ -511,6 +658,12 @@ pub fn load_session(path: &Path) -> Result<Document> {
         doc.source.len() <= monoprint::MAX_SOURCE_BYTES,
         "Saved code is too large."
     );
+    ensure!(
+        doc.diff_base
+            .as_ref()
+            .is_none_or(|s| s.len() <= monoprint::MAX_SOURCE_BYTES),
+        "Saved previous version is too large."
+    );
     Ok(doc)
 }
 
@@ -518,6 +671,13 @@ pub fn save_session(path: &Path, document: &Document) -> Result<()> {
     ensure!(
         document.source.len() <= monoprint::MAX_SOURCE_BYTES,
         "Code exceeds the 1 MiB session limit; the previous session was retained."
+    );
+    ensure!(
+        document
+            .diff_base
+            .as_ref()
+            .is_none_or(|s| s.len() <= monoprint::MAX_SOURCE_BYTES),
+        "Previous version exceeds the 1 MiB session limit."
     );
     let bytes = serde_json::to_vec(document)?;
     ensure!(

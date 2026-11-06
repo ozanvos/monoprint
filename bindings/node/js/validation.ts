@@ -2,8 +2,8 @@ import { MonoprintError, limits } from './index.js';
 import type { Font, PngOptions, RenderOptions, Style } from './index.js';
 import type { NativeFont } from './native.js';
 
-const styleKeys = ['theme', 'appearance', 'padding', 'fontSize', 'width', 'transparent', 'background', 'lineNumbers', 'font'];
-const contentKeys = ['language', 'title', 'subtitle', 'highlight'];
+const styleKeys = ['theme', 'appearance', 'padding', 'fontSize', 'width', 'transparent', 'background', 'lineNumbers', 'font', 'diffNumbers', 'diffWords'];
+const contentKeys = ['language', 'title', 'subtitle', 'highlight', 'diff', 'added', 'removed', 'firstLine'];
 function invalid(option: string, message: string): never {
   throw new MonoprintError('INVALID_ARGUMENT', `${option}: ${message}`, { option });
 }
@@ -23,18 +23,30 @@ function validate(value: Record<string, unknown>, fonts: WeakMap<Font, NativeFon
   for (const key of ['language', 'title', 'subtitle', 'theme']) {
     if (key in value && typeof value[key] !== 'string') invalid(key, 'must be a string');
   }
+  if ('diffNumbers' in value && !['new','old','both'].includes(value.diffNumbers as string)) invalid('diffNumbers', 'must be new, old, or both');
+  if ('diffWords' in value && typeof value.diffWords !== 'boolean') invalid('diffWords', 'must be boolean');
+  if ('diff' in value) {
+    if ('added' in value || 'removed' in value) throw new MonoprintError('INVALID_OPTION', 'diff conflicts with added/removed');
+    if (value.diff !== 'patch') {
+      const diff = object(value.diff, ['base','context']);
+      if (typeof diff.base !== 'string') invalid('diff.base', 'must be a string');
+      if (Buffer.byteLength(diff.base, 'utf8') > limits.sourceBytes) throw new MonoprintError('INVALID_OPTION', 'base exceeds 1 MiB');
+      if ('context' in diff && diff.context !== 'all') integer(diff.context, 'diff.context');
+      value.diff = diff;
+    }
+  }
   if ('compression' in value && !['fast', 'balanced'].includes(value.compression as string)) invalid('compression', "must be 'fast' or 'balanced'");
   if ('appearance' in value && !['light', 'dark'].includes(value.appearance as string)) invalid('appearance', "must be 'light' or 'dark'");
-  for (const key of ['padding', 'fontSize', 'scale']) if (key in value) integer(value[key], key);
+  for (const key of ['padding', 'fontSize', 'scale', 'firstLine']) if (key in value) integer(value[key], key);
   if ('width' in value && value.width !== 'auto') integer(value.width, 'width');
   if ('transparent' in value && typeof value.transparent !== 'boolean') invalid('transparent', 'must be boolean');
   if ('background' in value && !['theme', 'solid', 'lattice', 'halftone', 'none'].includes(value.background as string)) invalid('background', 'must be theme, solid, lattice, halftone, or none');
   if ('background' in value && 'transparent' in value) invalid('background', 'cannot be combined with transparent');
   if ('lineNumbers' in value && value.lineNumbers !== 'auto' && typeof value.lineNumbers !== 'boolean') invalid('lineNumbers', "must be true, false, or 'auto'");
   if ('font' in value && value.font !== null && (typeof value.font !== 'object' || !fonts.has(value.font as Font))) invalid('font', 'must be created with Font.fromBytes(), or null');
-  if ('highlight' in value) {
-    if (!Array.isArray(value.highlight)) invalid('highlight', 'must be an array of lines or [first, last] ranges');
-    value.highlight = Array.from(value.highlight, selection => {
+  for (const key of ['highlight', 'added', 'removed']) if (key in value) {
+    if (!Array.isArray(value[key])) invalid('highlight', 'must be an array of lines or [first, last] ranges');
+    value[key] = Array.from(value[key], selection => {
       if (Array.isArray(selection)) {
         if (selection.length !== 2) invalid('highlight', 'ranges require exactly two line numbers');
         for (let i = 0; i < 2; i++) integer(selection[i], 'highlight');

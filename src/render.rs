@@ -165,9 +165,14 @@ fn with_fallback_families(css: &str, families: &str) -> String {
     result
 }
 
-fn typography_css(font: &[u8], font_size: u32, line_count: usize) -> Result<String> {
+fn typography_css(
+    font: &[u8],
+    font_size: u32,
+    line_count: usize,
+    custom_numbering: bool,
+) -> Result<String> {
     // Keep the original CSS (and exported bytes) untouched at the default font size.
-    if font_size == 15 {
+    if font_size == 15 && !custom_numbering {
         return Ok(String::new());
     }
     let ratio = f64::from(font_size) / 15.0;
@@ -228,6 +233,7 @@ pub(crate) fn render(
         theme,
         mode,
         style.effective_comment_font().is_some(),
+        style,
     )?;
     let mut fallbacks = Fallbacks::default();
     if let Some(comment_font) = style.effective_comment_font() {
@@ -246,9 +252,12 @@ pub(crate) fn render(
     } else {
         fallbacks.include(font, source, TextRole::Code, true)?;
     }
+    if snippet.diff.is_some() {
+        fallbacks.include(font, "+−⋯ unchanged lines", TextRole::Code, true)?;
+    }
     let numbers = code.language != "plain"
         && match style.line_numbers {
-            LineNumbers::Auto => theme.line_numbers,
+            LineNumbers::Auto => theme.line_numbers && !snippet.language.is_terminal(),
             LineNumbers::Show => true,
             LineNumbers::Hide => false,
         };
@@ -257,8 +266,14 @@ pub(crate) fn render(
         .iter()
         .map(|(k, v)| format!("{k}:{v};"))
         .collect::<String>();
+    let largest_number = snippet
+        .diff
+        .as_ref()
+        .and_then(|d| d.display().ok())
+        .map(|(rows, _)| style.diff_numbers.largest(rows.iter()))
+        .unwrap_or(code.line_count.saturating_add(snippet.first_line - 1));
     let number_class = if numbers {
-        if code.line_count > 8 {
+        if largest_number > 8 {
             " Editor__showLineNumbers Editor__showLineNumbersLarge"
         } else {
             " Editor__showLineNumbers"
@@ -270,13 +285,17 @@ pub(crate) fn render(
         "<div class=\"Editor__editor{number_class}\" style=\"--editor-padding:16px;--code-weight:{weight};font-family:CodeMono;font-weight:{weight};{palette_css}\"><div class=\"Editor__formatted\"><pre><code>{}</code></pre></div></div>",
         code.html
     );
-    let language_name = assets::grammars()
-        .iter()
-        .find(|g| g.name == code.language || g.aliases.contains(&code.language))
-        .map(|g| g.display_name.as_str())
-        .unwrap_or("Plain Text");
+    let language_name = if snippet.language.is_terminal() {
+        "Terminal output"
+    } else {
+        assets::grammars()
+            .iter()
+            .find(|g| g.name == code.language || g.aliases.contains(&code.language))
+            .map(|g| g.display_name.as_str())
+            .unwrap_or("Plain Text")
+    };
     let original = if theme.selected_frame {
-        Some(selected_styles::frame(theme, style, code.line_count))
+        Some(selected_styles::frame(theme, style, largest_number))
     } else {
         theme
             .original
@@ -336,6 +355,37 @@ pub(crate) fn render(
     if !snippet.text_highlights.is_empty() {
         css += ".Editor__editor .highlighted-text{background-color:var(--ink-highlight,rgba(128,128,128,0.28))}";
     }
+    let diff_gutter = if snippet.diff.is_some() {
+        let digits = largest_number.to_string().len();
+        let columns = if style.diff_numbers == crate::DiffNumbers::Both {
+            digits * 2 + 2
+        } else {
+            digits
+        };
+        let number_width = if numbers {
+            columns as f32 * style.font_size as f32 * 0.68 + 8.0
+        } else {
+            0.0
+        };
+        let gutter = number_width + style.font_size as f32 * 1.5;
+        css += &format!(
+            "#capture .Editor__editor .line{{position:relative;padding:0 0 0 {gutter}px;margin:0;width:100%;background-image:none}}#capture .Editor__editor .line:before{{display:{};position:absolute;left:0;top:0;width:{number_width}px;margin:0;transform:none;opacity:.65;white-space:pre;text-align:right;content:attr(data-number)}}#capture .Editor__editor .line:after{{display:block;content:attr(data-sign);position:absolute;left:{number_width}px;top:0;width:{}px;height:auto;background:none;border:0;border-radius:0;color:var(--ink-foreground);font-family:CodeMono;font-size:inherit;line-height:inherit;text-align:center;white-space:pre}}",
+            if numbers { "block" } else { "none" },
+            style.font_size
+        );
+        if style.diff_numbers == crate::DiffNumbers::Both {
+            let column = digits as f32 * style.font_size as f32 * 0.68;
+            let second = number_width - column;
+            css += &format!(
+                "#capture .Editor__editor .line:before{{display:none}}#capture .Editor__editor .diff-numbers{{display:{};position:absolute;left:0;top:0;width:{number_width}px;height:100%;background:none;opacity:.65;font-family:CodeMono;white-space:pre}}#capture .diff-numbers:before,#capture .diff-numbers:after{{position:absolute;top:0;width:{column}px;text-align:right;white-space:pre}}#capture .diff-numbers:before{{content:attr(data-old);left:0}}#capture .diff-numbers:after{{content:attr(data-new);left:{second}px}}",
+                if numbers { "block" } else { "none" }
+            );
+        }
+        css += "#capture .Editor__editor .diff-added,#capture .Editor__editor .diff-added>.lc{background:var(--ink-diff-added)}#capture .Editor__editor .diff-removed,#capture .Editor__editor .diff-removed>.lc{background:var(--ink-diff-removed)}#capture .Editor__editor .diff-added:after{color:var(--ink-diff-added-sign)}#capture .Editor__editor .diff-removed:after{color:var(--ink-diff-removed-sign)}#capture .diff-added .diff-word{background-color:var(--ink-diff-added-word)}#capture .diff-removed .diff-word{background-color:var(--ink-diff-removed-word)}#capture .Editor__editor .diff-fold:before{display:block;content:attr(data-fold);position:static;width:auto;opacity:1;color:var(--ink-token-comment);text-align:left}#capture .Editor__editor .diff-fold:after{content:none}#capture .Editor__editor .diff-fold{padding-left:0}#capture .Editor__editor .highlighted-line{background-image:linear-gradient(var(--ink-highlight),var(--ink-highlight))}#capture .Editor__editor .highlighted-line>.lc{background:transparent}";
+        gutter
+    } else {
+        0.0
+    };
     let fallback_families = fallbacks.families();
     if style.width.is_none() {
         let measured_width = if !fallbacks.is_empty() || !source.is_ascii() {
@@ -352,7 +402,7 @@ pub(crate) fn render(
         };
         css += &format!(
             ".Editor__formatted>pre{{width:{}px}}",
-            measured_width.ceil()
+            measured_width.ceil() + diff_gutter
         );
     }
     let fill_template = |template: &str| {
@@ -389,7 +439,12 @@ pub(crate) fn render(
     };
     let html = format!("<div id=\"capture\" data-theme=\"{mode}\"{untitled}>{frame}</div>");
     css += "#capture{--font-space-mono:CodeMono;--font-soehne-mono:CodeMono}.Editor__editor .line{min-height:22.5px}";
-    css += &typography_css(font, style.font_size, code.line_count)?;
+    css += &typography_css(
+        font,
+        style.font_size,
+        largest_number,
+        snippet.first_line != 1,
+    )?;
     if !fallbacks.is_empty() {
         css = with_fallback_families(&css, &fallback_families);
     }

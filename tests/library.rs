@@ -146,7 +146,7 @@ fn catalog_parsing_discovery_and_filename_inference() {
         "missing".parse::<Language>(),
         Err(Error::UnknownLanguage(_))
     ));
-    assert_eq!(Language::all().count(), 232);
+    assert_eq!(Language::all().count(), 233);
     for language in Language::all() {
         assert!(!language.name().is_empty());
         assert_eq!(language.id().parse::<Language>().unwrap(), language);
@@ -165,6 +165,8 @@ fn catalog_parsing_discovery_and_filename_inference() {
         ("Dockerfile", "docker"),
         ("GNUmakefile", "make"),
         ("a.txt", "plain"),
+        ("change.patch", "diff"),
+        ("capture.ans", "ansi"),
     ] {
         assert_eq!(Language::for_file_name(file).unwrap().id(), expected);
     }

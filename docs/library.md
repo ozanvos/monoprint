@@ -112,7 +112,7 @@ CRLF/CR normalize to LF first. Selections may span lines, overlapping selections
 merge, and empty/reversed/out-of-bounds coordinates fail when rendered.
 `clear_highlights()` removes both line and text highlights.
 
-The title is a label, not a filename hint. Use `Language::for_file_name()` explicitly; it does not read the file. Unknown filenames return `None`; parsing an unknown explicit language returns an error. TypeScript aliases (`ts`, `mts`, `cts`) select TypeScript; TSX remains separate. TeX selects LaTeX. `Language::all()` lists these unique selections (231 highlighting languages plus plain text, backed by 232 bundled named grammars).
+The title is a label, not a filename hint. Use `Language::for_file_name()` explicitly; it does not read the file. Unknown filenames return `None`; parsing an unknown explicit language returns an error. TypeScript aliases (`ts`, `mts`, `cts`) select TypeScript; TSX remains separate. TeX selects LaTeX. `Language::all()` lists these unique selections (231 highlighting languages plus plain text and terminal output, backed by 232 bundled named grammars).
 
 `Theme::all()` lists 59 curated presets; matching light/dark appearances appear once.
 For example, `Style::new("ayu".parse()?).appearance(Appearance::Light)` selects
@@ -282,3 +282,61 @@ let style = Style::new(theme).background(Background::Halftone);
 ```
 
 `Background::{Theme, Solid, Lattice, Halftone, None}` controls the outer canvas. Colors follow the palette; the code window is retained. The Monoprint default uses halftone in both light and dark appearances. `transparent(true)` selects `None`, and `transparent(false)` restores `Theme`. These setters replace one another, so the last call wins. Imported themes preserve TextMate rules; language-server semantic coloring is not available. SynthWave ’84 includes its token-specific Neon Dreams glow.
+
+## Terminal input and unified changes
+
+`Language::ANSI`, `"ansi".parse()` and `Language::for_file_name("out.ans")` select
+terminal input; `Language::is_terminal()` tests for it. The snippet keeps the raw
+capture, and the renderer draws its visible text. `ansi::strip(source)` returns
+that visible text after escape removal, redraws and overstrikes; highlight
+ranges and `Renderer::highlight_source` offsets address it.
+`ansi::contains_sgr(source)` reports whether text contains color or style
+sequences, for offering terminal rendering without selecting it automatically.
+
+```rust
+use monoprint::{Context, Diff, DiffNumbers, Language, Renderer, Snippet, Style};
+
+fn main() -> Result<(), monoprint::Error> {
+    let renderer = Renderer::new();
+    let terminal = Snippet::new("\x1b[1;31mFAIL\x1b[0m src/lib.rs").language(Language::ANSI);
+    std::fs::write("terminal.svg", renderer.svg(&terminal, &Style::default())?).unwrap();
+
+    let diff = Diff::compare("let n = 1;\n", "let n = 2;\n")?.context(Context::All);
+    let change = Snippet::diff(diff).language("rust".parse()?).title("main.rs");
+    let style = Style::default().diff_numbers(DiffNumbers::Both).diff_words(true);
+    std::fs::write("change.html", renderer.html(&change, &style)?).unwrap();
+
+    let marked = Snippet::new("old()\nnew()").language("rust".parse()?).removed(1).added(2);
+    std::fs::write("marked.svg", renderer.svg(&marked, &Style::default())?).unwrap();
+    Ok(())
+}
+```
+
+`Diff::compare(old, new)` diffs two complete versions and highlights each
+separately. `Diff::from_patch(patch)` parses one unified file patch and fails
+for multi-file, binary, rename-only or mode-only patches, mismatched hunk
+counts and overlapping hunks; `path()` returns its file path for
+`Language::for_file_name`. Both inputs are limited to 1 MiB and return
+`InvalidOption::Diff` or `InvalidOption::SourceTooLarge` for invalid input.
+`context(Context::Lines(n))` or `Context::All` sets folding; the default is
+three lines.
+
+`Diff::marked(source)` labels one snippet with `.added()`, `.removed()` and
+`.first_line()`; `Snippet::added()` and `Snippet::removed()` are shortcuts.
+Marks never fold. A line marked both added and removed, zero or out-of-range
+marks, and marks added to compare or patch input fail when rendered. `Snippet::first_line()` also
+starts an ordinary snippet's gutter.
+
+`rows()` returns the displayed `Row`s, each with a `RowKind` (`Context`,
+`Added`, `Removed` or `Fold { hidden }`) and its `old`/`new` numbers.
+`displayed_source()` returns the code that line and text highlights address;
+fold labels are excluded. `patch()` serializes a comparison as a single-file
+patch with full context, so `from_patch` reproduces it; parsed patches return
+their original text.
+
+`Style::diff_numbers()` selects `DiffNumbers::New` (default), `Old` or `Both`.
+`Style::diff_words(false)` disables changed-word emphasis, which applies to
+compare and patch input only. A change rendered as `Language::ANSI` fails with
+`InvalidOption::Diff`. Side-by-side views are not available. See
+[terminal output and code changes](terminal-and-changes.md) for behavior shared
+with the CLI.

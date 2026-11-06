@@ -52,11 +52,14 @@
 //! default features to omit clap and the executable. All formats remain available.
 #![warn(missing_docs)]
 
+pub mod ansi;
 mod assets;
 mod background;
 mod catalog;
+mod diff;
 mod editor_theme;
 mod effects;
+pub use diff::{Context, Diff, DiffNumbers, Row, RowKind};
 mod error;
 mod fallback;
 mod font;
@@ -303,7 +306,25 @@ fn validate<'a>(snippet: &'a Snippet, style: &Style) -> Result<Cow<'a, str>, Err
     if !snippet.subtitle.is_empty() {
         return Err(InvalidOption::Subtitle { theme: style.theme }.into());
     }
-    let source = if snippet.source.contains('\r') {
+    if let Some(diff) = &snippet.diff {
+        diff.display()?;
+        if snippet.language.is_terminal() {
+            return Err(
+                InvalidOption::Diff("ANSI input cannot be combined with diff mode".into()).into(),
+            );
+        }
+    }
+    if snippet.first_line == 0
+        || snippet
+            .first_line
+            .checked_add(snippet.source.lines().count())
+            .is_none()
+    {
+        return Err(InvalidOption::Diff("invalid first line".into()).into());
+    }
+    let source = if snippet.language.is_terminal() {
+        Cow::Owned(ansi::strip(&snippet.source))
+    } else if snippet.source.contains('\r') {
         Cow::Owned(snippet.source.replace("\r\n", "\n").replace('\r', "\n"))
     } else {
         Cow::Borrowed(snippet.source.as_str())
@@ -340,7 +361,7 @@ mod tests {
     fn catalog_languages_resolve_in_the_embedded_registry() {
         let renderer = Renderer::new();
         let registry = renderer.registry().unwrap();
-        for language in Language::all() {
+        for language in Language::all().filter(|l| !l.is_terminal()) {
             assert!(registry.contains_grammar(language.id()), "{language}");
             for alias in language.aliases() {
                 assert!(

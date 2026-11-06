@@ -1,6 +1,6 @@
 # Bundled grammar licensing
 
-Monoprint embeds a reviewed subset of the pinned Shiki TextMate collection plus Hem: **232 named grammars and 18 helper/injection grammars**. The public catalog has 231 highlighting selections plus plain text; TypeScript and TSX are distinct choices; TeX selects LaTeX. Grammar curation does not alter theme assets or add attribution to generated images or HTML.
+Monoprint embeds a reviewed subset of the pinned Shiki TextMate collection plus Hem: **232 named grammars and 18 helper/injection grammars**. The public catalog has 231 highlighting selections plus plain text and terminal output; TypeScript and TSX are distinct choices; TeX selects LaTeX. Grammar curation does not alter theme assets or add attribution to generated images or HTML.
 
 `licenses/grammar-policy.json` records a decision for all 260 original inputs, including injections. Included entries have input and metadata SHA-256 hashes, an explicit license, a pinned original source, and a pinned license source. `licenses/grammar-license-evidence.json` preserves the reviewed license text or declaration, and the importer generates `licenses/grammars-NOTICE.txt` from it. These records describe this pinned bundle; they are not a legal opinion about every possible use of the project.
 

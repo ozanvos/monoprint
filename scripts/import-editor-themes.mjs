@@ -1,6 +1,7 @@
 // Maintenance only. Fetch exact reviewed inputs, retain licenses, and compile
 // inert palette JSON. The renderer never executes an extension or fetches data.
 import assert from 'node:assert/strict';
+import { changePalette } from './change-palettes.mjs';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
@@ -81,10 +82,12 @@ if (process.argv.includes('--check')) {
       background: { from: mix(surface, entry.accents[0], light ? .25 : .38), to: mix(surface, entry.accents[1], light ? .18 : .22) },
       editor: { family: entry.family, surface, foreground, gutter,
         border: mix(surface, foreground, .15), solid: mix(surface, entry.accents[0], light ? .12 : .14) } };
+    const terminal = changePalette(manifest[entry.id].syntax[mode], surface, colors);
+    Object.assign(manifest[entry.id].syntax[mode], terminal.tokens);
     const license = await input(entry.license);
     assert.match(license, /Permission is hereby granted/);
     notices.set(entry.license.url, license);
-    entries.push({ id: entry.id, upstream: entry.upstream, input: entry.input, license: 'MIT', licenseSource: entry.license,
+    entries.push({ terminalFallback: terminal.fallbackNames, colorAdjustments: 'Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs', id: entry.id, upstream: entry.upstream, input: entry.input, license: 'MIT', licenseSource: entry.license,
       ...(entry.appearance ? { modification: `Correct upstream type=${theme.type} to ${entry.appearance} for the light palette` } : {}) });
   }
   for (const extra of config.extraNotices) notices.set(extra.url, await input(extra));
@@ -92,7 +95,7 @@ if (process.argv.includes('--check')) {
   await input(config.glow);
   await write('assets/editor/themes.json', JSON.stringify(manifest, null, 2) + '\n');
   await write('licenses/editor-themes-NOTICE.txt', 'MONOPRINT EDITOR THEME NOTICES\n\nOriginal backgrounds and frame: Apache-2.0, Monoprint contributors.\nTheme inputs retain the licenses below. No upstream logos or wallpapers included.\n\n' + [...notices].map(([url, text]) => `${url}\n${text}\n`).join('\n---\n\n'));
-  for (const file of [configPath, 'scripts/import-editor-themes.mjs']) checksums[file] = digest(await fs.readFile(file));
+  for (const file of [configPath, 'scripts/import-editor-themes.mjs', 'scripts/change-palettes.mjs']) checksums[file] = digest(await fs.readFile(file));
   await fs.writeFile(receiptPath, JSON.stringify({ entries, glow: config.glow, checksums }, null, 2) + '\n');
   console.log(`Imported ${entries.length} editor palettes. Rebuild the Giallo registry next.`);
 }

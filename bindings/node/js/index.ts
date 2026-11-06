@@ -17,6 +17,8 @@ export type Highlight = number | readonly [number, number];
 
 /** Reusable appearance. Values omitted from a render inherit renderer defaults. */
 export interface Style {
+  diffNumbers?: 'new' | 'old' | 'both';
+  diffWords?: boolean;
   /** Monoprint by default. IDs and capabilities are discoverable with `getThemes()`. */
   theme?: ThemeId;
   /** The theme's preferred appearance by default; unsupported variants fail. */
@@ -39,6 +41,11 @@ export interface Style {
 
 /** Content metadata for a render. The source string is always the first argument. */
 export interface SnippetOptions {
+  /** Compare against a base version, or parse a single-file patch. */
+  diff?: 'patch' | { base: string; context?: number | 'all' };
+  added?: readonly Highlight[];
+  removed?: readonly Highlight[];
+  firstLine?: number;
   /** Language ID or alias, e.g. 'typescript', 'rs', 'py'. Defaults to plain text. */
   language?: LanguageId | (string & {});
   /** Frame label only; never used to infer the language. */
@@ -224,4 +231,10 @@ export function getLanguages(): readonly LanguageInfo[] { readCatalog(); return 
 export function languageForFileName(filename: string): LanguageId | undefined {
   if (typeof filename !== 'string') throw new MonoprintError('INVALID_ARGUMENT', 'filename must be a string');
   return native().languageForFileName(filename) ?? undefined;
+}
+
+/** Visible terminal text, including carriage-return redraws and overstrikes. */
+export function stripAnsi(source: string): string {
+  if (typeof source !== 'string') throw new MonoprintError('INVALID_ARGUMENT', 'source must be a string');
+  return native().stripAnsi(source);
 }

@@ -28,7 +28,7 @@ const html = await renderer.html('let a = 1;\nlet b = 2;', {
 
 Defaults are Monoprint, dark, 15px code size, 32px padding, automatic width, plain-text highlighting, theme-default line numbers, and 4× PNG scale. `language` accepts aliases such as `ts`, `rs`, and `py`; TypeScript and TSX are separate. Titles are labels and do not imply a language. Filesystem access belongs to the caller.
 
-`Style` contains `theme`, `appearance`, `padding`, `fontSize`, `width`, `background`, `transparent`, `lineNumbers`, and `font`. Render options additionally accept `language`, `title`, `subtitle`, and `highlight`; PNG alone accepts `scale` (1–6). `fontSize` is an integer from 8–72 CSS pixels; it changes code, comments, line numbers, and layout in every format, independently of PNG `scale`. `lineNumbers` accepts `true` or `false` to override any theme, or `'auto'` (the default) to follow the theme. Plain text never shows numbers. `subtitle` is retained for compatibility; current themes reject nonempty values. Unknown options and invalid numbers are rejected.
+`Style` contains `theme`, `appearance`, `padding`, `fontSize`, `width`, `background`, `transparent`, `lineNumbers`, `font`, `diffNumbers`, and `diffWords`. Render options additionally accept `language`, `title`, `subtitle`, `highlight`, `firstLine`, `diff`, `added`, and `removed` (see [terminal output and changes](#terminal-output-and-changes)); PNG alone accepts `scale` (1–6). `fontSize` is an integer from 8–72 CSS pixels; it changes code, comments, line numbers, and layout in every format, independently of PNG `scale`. `lineNumbers` accepts `true` or `false` to override any theme, or `'auto'` (the default) to follow the theme. Plain text never shows numbers. `subtitle` is retained for compatibility; current themes reject nonempty values. Unknown options and invalid numbers are rejected.
 
 PNG also accepts `compression: 'fast' | 'balanced'`. The default is `'fast'`,
 Choose `'balanced'` for smaller final exports
@@ -50,7 +50,7 @@ const lightThemes = getThemes().filter(t => t.appearances.includes('light'));
 const languages = getLanguages();
 ```
 
-The immutable catalogs include names, canonical IDs, legacy theme aliases, language aliases, supported appearances, and theme line-number policies. `getThemes()` lists 59 curated presets, pairing matching light/dark palettes. Use `{ theme: 'ayu', appearance: 'light' }` or the compatible `{ theme: 'ayu-light' }` alias. They contain 232 named grammars represented as 231 selectable highlighting languages plus plain text. The [grammar review](grammar-licenses.md) lists intentionally excluded source grammars.
+The immutable catalogs include names, canonical IDs, legacy theme aliases, language aliases, supported appearances, and theme line-number policies. `getThemes()` lists 59 curated presets, pairing matching light/dark palettes. Use `{ theme: 'ayu', appearance: 'light' }` or the compatible `{ theme: 'ayu-light' }` alias. They contain 232 named grammars represented as 231 selectable highlighting languages plus plain text and terminal output. The [grammar review](grammar-licenses.md) lists intentionally excluded source grammars.
 
 ## Fonts and errors
 
@@ -103,3 +103,63 @@ Editor palettes use their supported appearance automatically (for example, `catp
 const renderer = new Renderer({ theme: "catppuccin-mocha", background: "lattice" });
 const image = await renderer.png("const answer = 42;", { language: "ts", scale: 2 });
 ```
+
+## Terminal output and changes
+
+Render a terminal capture with `{ language: 'ansi' }` (aliases `terminal` and
+`ansi-escape`). `languageForFileName('build.ans')` returns `'ansi'`; other
+strings are never detected as terminal output. `stripAnsi(source)` returns the
+visible text after escape removal, redraws and overstrikes; `highlight` lines
+address that text. The 1 MiB source limit includes escape bytes.
+
+```ts
+import { execFile } from 'node:child_process';
+import { promisify } from 'node:util';
+import { readFile } from 'node:fs/promises';
+import { png, html, stripAnsi } from 'monoprint';
+
+const { stdout } = await promisify(execFile)('git', ['log', '--oneline', '--color=always', '-5']);
+const log = await png(stdout, { language: 'ansi', title: 'git log', scale: 2 });
+console.log(stripAnsi(stdout));
+
+const [before, after] = await Promise.all([
+  readFile('before.rs', 'utf8'), readFile('after.rs', 'utf8'),
+]);
+const change = await html(after, {
+  language: 'rust', title: 'after.rs',
+  diff: { base: before, context: 3 }, diffNumbers: 'both',
+});
+```
+
+A change uses one of three forms:
+
+| Form | Source | Options |
+| --- | --- | --- |
+| Compare | New version | `diff: { base: oldSource, context?: number \| 'all' }` |
+| Patch | Single-file unified patch | `diff: 'patch'` |
+| Marks | Snippet | `added`, `removed`, optional `firstLine` |
+
+```ts
+htmlSync(patchText, { diff: 'patch' });
+htmlSync(source, { language: 'rust', added: [[4, 6]], removed: [3], firstLine: 120 });
+```
+
+Compare context defaults to 3; `'all'` keeps every line. Patch input always
+uses three context lines in this API. Marks never fold. `firstLine` sets the
+first gutter number for marks and ordinary snippets; compare and patch numbers
+come from the input. Patch input infers its language from the patch's file
+path. Compare input has no filename, so pass `language` (for example from
+`languageForFileName`). Titles are never inferred.
+
+`diffNumbers` accepts `'new'` (default), `'old'`, or `'both'`; `diffWords: false`
+disables changed-word emphasis for compare and patch input. Both are style
+options and can be renderer defaults. `highlight` addresses displayed rows,
+excluding fold labels.
+
+Combining `diff` with `added`/`removed`, a line marked both added and removed,
+out-of-range marks, an oversized base, unsupported patches (multi-file, binary
+or rename-only) and changes with `language: 'ansi'` report `INVALID_OPTION`.
+Malformed option values, such as `context: -1` or `diffNumbers: 'all'`, report
+`INVALID_ARGUMENT`. Side-by-side views are not available. See
+[terminal output and code changes](terminal-and-changes.md) for supported
+escape sequences and change rendering.

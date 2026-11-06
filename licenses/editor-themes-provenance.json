@@ -1,6 +1,8 @@
 {
   "entries": [
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "ayu-dark",
       "upstream": "https://github.com/ayu-theme/vscode-ayu/blob/97f28cd3c392cb12672a25229f33c4dd420f96ea/ayu-dark.json",
       "input": {
@@ -14,6 +16,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "ayu-light",
       "upstream": "https://github.com/ayu-theme/vscode-ayu/blob/97f28cd3c392cb12672a25229f33c4dd420f96ea/ayu-light.json",
       "input": {
@@ -27,6 +31,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "ayu-mirage",
       "upstream": "https://github.com/ayu-theme/vscode-ayu/blob/97f28cd3c392cb12672a25229f33c4dd420f96ea/ayu-mirage.json",
       "input": {
@@ -40,6 +46,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "catppuccin-frappe",
       "upstream": "https://github.com/catppuccin/vscode/blob/befc9e6fc41980f4241408f7049755d47c06ff45/packages/catppuccin-vsc/package.json",
       "input": {
@@ -53,6 +61,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "catppuccin-latte",
       "upstream": "https://github.com/catppuccin/vscode/blob/befc9e6fc41980f4241408f7049755d47c06ff45/packages/catppuccin-vsc/package.json",
       "input": {
@@ -66,6 +76,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "catppuccin-macchiato",
       "upstream": "https://github.com/catppuccin/vscode/blob/befc9e6fc41980f4241408f7049755d47c06ff45/packages/catppuccin-vsc/package.json",
       "input": {
@@ -79,6 +91,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "catppuccin-mocha",
       "upstream": "https://github.com/catppuccin/vscode/blob/befc9e6fc41980f4241408f7049755d47c06ff45/packages/catppuccin-vsc/package.json",
       "input": {
@@ -92,6 +106,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "dracula",
       "upstream": "https://github.com/dracula/visual-studio-code/blob/61743d6ea21cde34d9ad1009ec784ffe6f5e457c/src/dracula.yml",
       "input": {
@@ -105,6 +121,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "dracula-soft",
       "upstream": "https://github.com/dracula/visual-studio-code/blob/61743d6ea21cde34d9ad1009ec784ffe6f5e457c/src/dracula.yml",
       "input": {
@@ -118,6 +136,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "github-dark-default",
       "upstream": "https://github.com/primer/github-vscode-theme/blob/f7a67d67fc2302a0ec36ddfb7bdd57142f4575e8/src/theme.js",
       "input": {
@@ -131,6 +151,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "github-dark-dimmed",
       "upstream": "https://github.com/primer/github-vscode-theme/blob/f7a67d67fc2302a0ec36ddfb7bdd57142f4575e8/src/theme.js",
       "input": {
@@ -144,6 +166,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "github-light-default",
       "upstream": "https://github.com/primer/github-vscode-theme/blob/f7a67d67fc2302a0ec36ddfb7bdd57142f4575e8/src/theme.js",
       "input": {
@@ -157,6 +181,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "gruvbox-dark-hard",
       "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
       "input": {
@@ -170,6 +196,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "gruvbox-dark-medium",
       "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
       "input": {
@@ -183,6 +211,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "gruvbox-dark-soft",
       "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
       "input": {
@@ -196,6 +226,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "gruvbox-light-hard",
       "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
       "input": {
@@ -209,6 +241,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "gruvbox-light-medium",
       "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
       "input": {
@@ -222,6 +256,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "gruvbox-light-soft",
       "upstream": "https://github.com/jdinhify/vscode-theme-gruvbox/blob/f0d6e1fc1f325da636b90591eccc45d2f44738fd/src/main.ts",
       "input": {
@@ -235,6 +271,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "night-owl",
       "upstream": "https://github.com/sdras/night-owl-vscode-theme/blob/d298950d6378c36c027f1387e307ebf3f145fc90/themes/Night%20Owl-color-theme.json",
       "input": {
@@ -248,6 +286,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "night-owl-light",
       "upstream": "https://github.com/sdras/night-owl-vscode-theme/blob/d298950d6378c36c027f1387e307ebf3f145fc90/themes/Night%20Owl-Light-color-theme.json",
       "input": {
@@ -261,6 +301,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "nord",
       "upstream": "https://github.com/arcticicestudio/nord-visual-studio-code/blob/27045851c5154fe2d9b116e7491c596cdcd72275/themes/nord-color-theme.json",
       "input": {
@@ -274,6 +316,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "one-dark-pro",
       "upstream": "https://github.com/Binaryify/OneDark-Pro/blob/d64c6d3c42e0d2f1a6a032af1ebfbb7f8e0acae6/themes/OneDark-Pro.json",
       "input": {
@@ -287,6 +331,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "rose-pine",
       "upstream": "https://github.com/rose-pine/vscode/blob/c9c08b4fe4131b8c686631046b8ce9223613fd24/themes/rose-pine-color-theme.json",
       "input": {
@@ -300,6 +346,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "rose-pine-dawn",
       "upstream": "https://github.com/rose-pine/vscode/blob/c9c08b4fe4131b8c686631046b8ce9223613fd24/themes/rose-pine-dawn-color-theme.json",
       "input": {
@@ -313,6 +361,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "rose-pine-moon",
       "upstream": "https://github.com/rose-pine/vscode/blob/c9c08b4fe4131b8c686631046b8ce9223613fd24/themes/rose-pine-moon-color-theme.json",
       "input": {
@@ -326,6 +376,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "solarized-dark",
       "upstream": "https://github.com/microsoft/vscode/blob/2aeed2bb0e981846488f132c7ab095d180e654e3/extensions/theme-solarized-dark/themes/solarized-dark-color-theme.json",
       "input": {
@@ -339,6 +391,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "solarized-light",
       "upstream": "https://github.com/microsoft/vscode/blob/2aeed2bb0e981846488f132c7ab095d180e654e3/extensions/theme-solarized-light/themes/solarized-light-color-theme.json",
       "input": {
@@ -352,6 +406,13 @@
       }
     },
     {
+      "terminalFallback": [
+        "terminal.ansiBlack",
+        "terminal.ansiWhite",
+        "terminal.ansiBrightBlack",
+        "terminal.ansiBrightWhite"
+      ],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "synthwave-84",
       "upstream": "https://github.com/robb0wen/synthwave-vscode/blob/7eaf45c07650295625e1e5ea73274fc50f9ea3c1/themes/synthwave-color-theme.json",
       "input": {
@@ -365,6 +426,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "tokyo-night",
       "upstream": "https://github.com/enkia/tokyo-night-vscode-theme/blob/da5546bc4163a02a30d6f3ced90d4ef7dfcb8460/themes/tokyo-night-color-theme.json",
       "input": {
@@ -378,6 +441,8 @@
       }
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "tokyo-night-light",
       "upstream": "https://raw.githubusercontent.com/enkia/tokyo-night-vscode-theme/da5546bc4163a02a30d6f3ced90d4ef7dfcb8460/themes/tokyo-night-light-color-theme.json",
       "input": {
@@ -392,6 +457,8 @@
       "modification": "Correct upstream type=dark to light for the light palette"
     },
     {
+      "terminalFallback": [],
+      "colorAdjustments": "Contrast-tuned terminal/diff tokens; see scripts/change-palettes.mjs",
       "id": "tokyo-night-storm",
       "upstream": "https://raw.githubusercontent.com/enkia/tokyo-night-vscode-theme/da5546bc4163a02a30d6f3ced90d4ef7dfcb8460/themes/tokyo-night-storm-color-theme.json",
       "input": {
@@ -441,9 +508,10 @@
     "assets/themes/editor-tokyo-night.json": "cb9593a9e80d5c0a6969e7d419405032fdff4c954150d95c79522de13276a882",
     "assets/themes/editor-tokyo-night-light.json": "940a317639bcd1f95dc558e44bf1c7a1c1eea824896265c00241eab0850e55ee",
     "assets/themes/editor-tokyo-night-storm.json": "bb0c3b1d15f36bd26adb18934b3e6956b093a8773cf954229a4b8803853121dc",
-    "assets/editor/themes.json": "acea954a0b299862e65e0da296fda0333fd507232d10076dd243f7d062e0bc30",
+    "assets/editor/themes.json": "b19bd477335f49e6d97fc8e4bd4a9c29937ea2337ea657623bffc8b46dad329c",
     "licenses/editor-themes-NOTICE.txt": "d14ee5498dfe34956a6f63cc60605541b8dec5fc2b6b4ddc297432f093fea3a7",
     "assets/editor/sources.json": "7476cd9fe40dbfcc42fdf9546b09996014609f3fd1a0be999dc781c2e1d9d7eb",
-    "scripts/import-editor-themes.mjs": "af9d75edb8f22ad6af08031387e93487279b9773ccfac69ebb6b8b0aa1d87f14"
+    "scripts/import-editor-themes.mjs": "fbd8ff1abf22698ce48bad6bfaa35cdd017857740ee709c96dc98a9a8bf668e7",
+    "scripts/change-palettes.mjs": "1256aaf32d0f62efa1c596f6b2a7b7e29a27d7c86090912030bd26ee8a69a9c5"
   }
 }

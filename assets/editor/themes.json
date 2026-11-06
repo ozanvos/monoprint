@@ -6,7 +6,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#bfbdb6ff",
-        "--ink-highlight": "#3388ff40"
+        "--ink-highlight": "#3388ff40",
+        "--ink-ansi-surface": "#10141c",
+        "--ink-ansi-0": "#5f6269",
+        "--ink-ansi-1": "#f06b73",
+        "--ink-ansi-2": "#70bf56",
+        "--ink-ansi-3": "#fdb04c",
+        "--ink-ansi-4": "#4fbfff",
+        "--ink-ansi-5": "#d0a1ff",
+        "--ink-ansi-6": "#93e2c8",
+        "--ink-ansi-7": "#c7c7c7",
+        "--ink-ansi-8": "#686868",
+        "--ink-ansi-9": "#f07178",
+        "--ink-ansi-10": "#aad94c",
+        "--ink-ansi-11": "#ffb454",
+        "--ink-ansi-12": "#59c2ff",
+        "--ink-ansi-13": "#d2a6ff",
+        "--ink-ansi-14": "#95e6cb",
+        "--ink-ansi-15": "#ffffff",
+        "--ink-diff-added": "#1a2522",
+        "--ink-diff-added-word": "#1c2923",
+        "--ink-diff-added-sign": "#70bf56",
+        "--ink-diff-removed": "#271d25",
+        "--ink-diff-removed-word": "#2b1f27",
+        "--ink-diff-removed-sign": "#f26d78"
       }
     },
     "background": {
@@ -29,7 +52,30 @@
     "syntax": {
       "light": {
         "--ink-foreground": "#5c6166ff",
-        "--ink-highlight": "#035bd626"
+        "--ink-highlight": "#035bd626",
+        "--ink-ansi-surface": "#fcfcfc",
+        "--ink-ansi-0": "#000000",
+        "--ink-ansi-1": "#eb696a",
+        "--ink-ansi-2": "#5ca239",
+        "--ink-ansi-3": "#c28700",
+        "--ink-ansi-4": "#209bd9",
+        "--ink-ansi-5": "#a176cb",
+        "--ink-ansi-6": "#40a281",
+        "--ink-ansi-7": "#919191",
+        "--ink-ansi-8": "#686868",
+        "--ink-ansi-9": "#e66c6c",
+        "--ink-ansi-10": "#779f00",
+        "--ink-ansi-11": "#c18600",
+        "--ink-ansi-12": "#209ad8",
+        "--ink-ansi-13": "#a37acc",
+        "--ink-ansi-14": "#41a282",
+        "--ink-ansi-15": "#929292",
+        "--ink-diff-added": "#ecf3e9",
+        "--ink-diff-added-word": "#eaf5e6",
+        "--ink-diff-added-sign": "#579a36",
+        "--ink-diff-removed": "#faedef",
+        "--ink-diff-removed-word": "#fcebed",
+        "--ink-diff-removed-sign": "#dc6471"
       }
     },
     "background": {
@@ -52,7 +98,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#cccac2ff",
-        "--ink-highlight": "#409fff40"
+        "--ink-highlight": "#409fff40",
+        "--ink-ansi-surface": "#242936",
+        "--ink-ansi-0": "#6f7277",
+        "--ink-ansi-1": "#f28273",
+        "--ink-ansi-2": "#87d96c",
+        "--ink-ansi-3": "#fcca60",
+        "--ink-ansi-4": "#6acdff",
+        "--ink-ansi-5": "#ddbbff",
+        "--ink-ansi-6": "#93e2c8",
+        "--ink-ansi-7": "#c7c7c7",
+        "--ink-ansi-8": "#737373",
+        "--ink-ansi-9": "#f28779",
+        "--ink-ansi-10": "#d5ff80",
+        "--ink-ansi-11": "#ffcd66",
+        "--ink-ansi-12": "#73d0ff",
+        "--ink-ansi-13": "#dfbfff",
+        "--ink-ansi-14": "#95e6cb",
+        "--ink-ansi-15": "#ffffff",
+        "--ink-diff-added": "#2e3b3b",
+        "--ink-diff-added-word": "#303e3d",
+        "--ink-diff-added-sign": "#87d96c",
+        "--ink-diff-removed": "#39313e",
+        "--ink-diff-removed-word": "#3d333f",
+        "--ink-diff-removed-sign": "#f27983"
       }
     },
     "background": {
@@ -75,7 +144,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#c6d0f5ff",
-        "--ink-highlight": "#949cbb40"
+        "--ink-highlight": "#949cbb40",
+        "--ink-ansi-surface": "#303446",
+        "--ink-ansi-0": "#797e8f",
+        "--ink-ansi-1": "#e78284",
+        "--ink-ansi-2": "#a6d189",
+        "--ink-ansi-3": "#e5c890",
+        "--ink-ansi-4": "#8caaee",
+        "--ink-ansi-5": "#f4b8e4",
+        "--ink-ansi-6": "#81c8be",
+        "--ink-ansi-7": "#a5adce",
+        "--ink-ansi-8": "#787d92",
+        "--ink-ansi-9": "#e67172",
+        "--ink-ansi-10": "#8ec772",
+        "--ink-ansi-11": "#d9ba73",
+        "--ink-ansi-12": "#7b9ef0",
+        "--ink-ansi-13": "#f2a4db",
+        "--ink-ansi-14": "#5abfb5",
+        "--ink-ansi-15": "#b5bfe2",
+        "--ink-diff-added": "#424b50",
+        "--ink-diff-added-word": "#485353",
+        "--ink-diff-added-sign": "#a6d189",
+        "--ink-diff-removed": "#4b404f",
+        "--ink-diff-removed-word": "#554452",
+        "--ink-diff-removed-sign": "#e78284"
       }
     },
     "background": {
@@ -98,7 +190,30 @@
     "syntax": {
       "light": {
         "--ink-foreground": "#4c4f69ff",
-        "--ink-highlight": "#7c7f934d"
+        "--ink-highlight": "#7c7f934d",
+        "--ink-ansi-surface": "#eff1f5",
+        "--ink-ansi-0": "#5c5f77",
+        "--ink-ansi-1": "#d20f39",
+        "--ink-ansi-2": "#3f9e2b",
+        "--ink-ansi-3": "#c07a19",
+        "--ink-ansi-4": "#1e66f5",
+        "--ink-ansi-5": "#cc67b1",
+        "--ink-ansi-6": "#179299",
+        "--ink-ansi-7": "#888b96",
+        "--ink-ansi-8": "#6c6f85",
+        "--ink-ansi-9": "#de293e",
+        "--ink-ansi-10": "#429e37",
+        "--ink-ansi-11": "#bc7e24",
+        "--ink-ansi-12": "#456eff",
+        "--ink-ansi-13": "#c969ab",
+        "--ink-ansi-14": "#2b99a1",
+        "--ink-ansi-15": "#878a93",
+        "--ink-diff-added": "#d5e5d7",
+        "--ink-diff-added-word": "#cce1cd",
+        "--ink-diff-added-sign": "#3a9128",
+        "--ink-diff-removed": "#ebcfd9",
+        "--ink-diff-removed-word": "#e9c4cf",
+        "--ink-diff-removed-sign": "#d20f39"
       }
     },
     "background": {
@@ -121,7 +236,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#cad3f5ff",
-        "--ink-highlight": "#939ab740"
+        "--ink-highlight": "#939ab740",
+        "--ink-ansi-surface": "#24273a",
+        "--ink-ansi-0": "#6d7183",
+        "--ink-ansi-1": "#ed8796",
+        "--ink-ansi-2": "#a6da95",
+        "--ink-ansi-3": "#eed49f",
+        "--ink-ansi-4": "#8aadf4",
+        "--ink-ansi-5": "#f5bde6",
+        "--ink-ansi-6": "#8bd5ca",
+        "--ink-ansi-7": "#a5adcb",
+        "--ink-ansi-8": "#6b7086",
+        "--ink-ansi-9": "#ec7486",
+        "--ink-ansi-10": "#8ccf7f",
+        "--ink-ansi-11": "#e1c682",
+        "--ink-ansi-12": "#78a1f6",
+        "--ink-ansi-13": "#f2a9dd",
+        "--ink-ansi-14": "#63cbc0",
+        "--ink-ansi-15": "#b8c0e0",
+        "--ink-diff-added": "#374248",
+        "--ink-diff-added-word": "#3e4b4c",
+        "--ink-diff-added-sign": "#a6da95",
+        "--ink-diff-removed": "#423548",
+        "--ink-diff-removed-word": "#4c3a4c",
+        "--ink-diff-removed-sign": "#ed8796"
       }
     },
     "background": {
@@ -144,7 +282,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#cdd6f4ff",
-        "--ink-highlight": "#9399b240"
+        "--ink-highlight": "#9399b240",
+        "--ink-ansi-surface": "#1e1e2e",
+        "--ink-ansi-0": "#686a79",
+        "--ink-ansi-1": "#f38ba8",
+        "--ink-ansi-2": "#a6e3a1",
+        "--ink-ansi-3": "#f9e2af",
+        "--ink-ansi-4": "#89b4fa",
+        "--ink-ansi-5": "#f5c2e7",
+        "--ink-ansi-6": "#94e2d5",
+        "--ink-ansi-7": "#a6adc8",
+        "--ink-ansi-8": "#676a7d",
+        "--ink-ansi-9": "#f37799",
+        "--ink-ansi-10": "#89d88b",
+        "--ink-ansi-11": "#ebd391",
+        "--ink-ansi-12": "#74a8fc",
+        "--ink-ansi-13": "#f2aede",
+        "--ink-ansi-14": "#6bd7ca",
+        "--ink-ansi-15": "#bac2de",
+        "--ink-diff-added": "#323b3f",
+        "--ink-diff-added-word": "#394545",
+        "--ink-diff-added-sign": "#a6e3a1",
+        "--ink-diff-removed": "#3e2e40",
+        "--ink-diff-removed-word": "#493446",
+        "--ink-diff-removed-sign": "#f38ba8"
       }
     },
     "background": {
@@ -167,7 +328,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#f8f8f2ff",
-        "--ink-highlight": "#44475aff"
+        "--ink-highlight": "#44475aff",
+        "--ink-ansi-surface": "#282a36",
+        "--ink-ansi-0": "#73747a",
+        "--ink-ansi-1": "#ff5555",
+        "--ink-ansi-2": "#50fa7b",
+        "--ink-ansi-3": "#f1fa8c",
+        "--ink-ansi-4": "#bd93f9",
+        "--ink-ansi-5": "#ff79c6",
+        "--ink-ansi-6": "#8be9fd",
+        "--ink-ansi-7": "#f8f8f2",
+        "--ink-ansi-8": "#6272a4",
+        "--ink-ansi-9": "#ff6e6e",
+        "--ink-ansi-10": "#69ff94",
+        "--ink-ansi-11": "#ffffa5",
+        "--ink-ansi-12": "#d6acff",
+        "--ink-ansi-13": "#ff92df",
+        "--ink-ansi-14": "#a4ffff",
+        "--ink-ansi-15": "#ffffff",
+        "--ink-diff-added": "#2c3f3d",
+        "--ink-diff-added-word": "#2d443f",
+        "--ink-diff-added-sign": "#50fa7b",
+        "--ink-diff-removed": "#3e2e39",
+        "--ink-diff-removed-word": "#6b3740",
+        "--ink-diff-removed-sign": "#ff5555"
       }
     },
     "background": {
@@ -190,7 +374,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#f6f6f4ff",
-        "--ink-highlight": "#44475aff"
+        "--ink-highlight": "#44475aff",
+        "--ink-ansi-surface": "#282a36",
+        "--ink-ansi-0": "#747474",
+        "--ink-ansi-1": "#ee6666",
+        "--ink-ansi-2": "#62e884",
+        "--ink-ansi-3": "#e7ee98",
+        "--ink-ansi-4": "#bf9eee",
+        "--ink-ansi-5": "#f286c4",
+        "--ink-ansi-6": "#97e1f1",
+        "--ink-ansi-7": "#f6f6f4",
+        "--ink-ansi-8": "#7b7f8b",
+        "--ink-ansi-9": "#f07c7c",
+        "--ink-ansi-10": "#78f09a",
+        "--ink-ansi-11": "#f6f6ae",
+        "--ink-ansi-12": "#d6b4f7",
+        "--ink-ansi-13": "#f49dda",
+        "--ink-ansi-14": "#adf6f6",
+        "--ink-ansi-15": "#ffffff",
+        "--ink-diff-added": "#2e3d3e",
+        "--ink-diff-added-word": "#2d443f",
+        "--ink-diff-added-sign": "#62e884",
+        "--ink-diff-removed": "#3c303b",
+        "--ink-diff-removed-word": "#6b3740",
+        "--ink-diff-removed-sign": "#ee6666"
       }
     },
     "background": {
@@ -213,7 +420,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#e6edf3ff",
-        "--ink-highlight": "#2e3238ff"
+        "--ink-highlight": "#2e3238ff",
+        "--ink-ansi-surface": "#0d1117",
+        "--ink-ansi-0": "#5a6169",
+        "--ink-ansi-1": "#ff7b72",
+        "--ink-ansi-2": "#3fb950",
+        "--ink-ansi-3": "#d29922",
+        "--ink-ansi-4": "#58a6ff",
+        "--ink-ansi-5": "#bc8cff",
+        "--ink-ansi-6": "#39c5cf",
+        "--ink-ansi-7": "#b1bac4",
+        "--ink-ansi-8": "#6e7681",
+        "--ink-ansi-9": "#ffa198",
+        "--ink-ansi-10": "#56d364",
+        "--ink-ansi-11": "#e3b341",
+        "--ink-ansi-12": "#79c0ff",
+        "--ink-ansi-13": "#d2a8ff",
+        "--ink-ansi-14": "#56d4dd",
+        "--ink-ansi-15": "#ffffff",
+        "--ink-diff-added": "#10221c",
+        "--ink-diff-added-word": "#1c4428",
+        "--ink-diff-added-sign": "#3fb950",
+        "--ink-diff-removed": "#2c171b",
+        "--ink-diff-removed-word": "#563132",
+        "--ink-diff-removed-sign": "#f85149"
       }
     },
     "background": {
@@ -236,7 +466,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#adbac7ff",
-        "--ink-highlight": "#373d45ff"
+        "--ink-highlight": "#373d45ff",
+        "--ink-ansi-surface": "#22272e",
+        "--ink-ansi-0": "#69707a",
+        "--ink-ansi-1": "#f47067",
+        "--ink-ansi-2": "#57ab5a",
+        "--ink-ansi-3": "#c69026",
+        "--ink-ansi-4": "#539bf5",
+        "--ink-ansi-5": "#b083f0",
+        "--ink-ansi-6": "#39c5cf",
+        "--ink-ansi-7": "#909dab",
+        "--ink-ansi-8": "#66717e",
+        "--ink-ansi-9": "#ff938a",
+        "--ink-ansi-10": "#6bc46d",
+        "--ink-ansi-11": "#daaa3f",
+        "--ink-ansi-12": "#6cb6ff",
+        "--ink-ansi-13": "#dcbdfb",
+        "--ink-ansi-14": "#56d4dd",
+        "--ink-ansi-15": "#cdd9e5",
+        "--ink-diff-added": "#253430",
+        "--ink-diff-added-word": "#324f3b",
+        "--ink-diff-added-sign": "#57ab5a",
+        "--ink-diff-removed": "#3b2a2f",
+        "--ink-diff-removed-word": "#613d3f",
+        "--ink-diff-removed-sign": "#e5534b"
       }
     },
     "background": {
@@ -259,7 +512,30 @@
     "syntax": {
       "light": {
         "--ink-foreground": "#1f2328ff",
-        "--ink-highlight": "#dddedfff"
+        "--ink-highlight": "#dddedfff",
+        "--ink-ansi-surface": "#ffffff",
+        "--ink-ansi-0": "#24292f",
+        "--ink-ansi-1": "#cf222e",
+        "--ink-ansi-2": "#116329",
+        "--ink-ansi-3": "#4d2d00",
+        "--ink-ansi-4": "#0969da",
+        "--ink-ansi-5": "#8250df",
+        "--ink-ansi-6": "#1b7c83",
+        "--ink-ansi-7": "#6e7781",
+        "--ink-ansi-8": "#57606a",
+        "--ink-ansi-9": "#a40e26",
+        "--ink-ansi-10": "#1a7f37",
+        "--ink-ansi-11": "#633c01",
+        "--ink-ansi-12": "#218bff",
+        "--ink-ansi-13": "#a475f9",
+        "--ink-ansi-14": "#3192aa",
+        "--ink-ansi-15": "#8c959f",
+        "--ink-diff-added": "#e6faea",
+        "--ink-diff-added-word": "#b7eec5",
+        "--ink-diff-added-sign": "#1a7f37",
+        "--ink-diff-removed": "#fff0ef",
+        "--ink-diff-removed-word": "#ffcdcd",
+        "--ink-diff-removed-sign": "#cf222e"
       }
     },
     "background": {
@@ -282,7 +558,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#ebdbb2ff",
-        "--ink-highlight": "#689d6a40"
+        "--ink-highlight": "#689d6a40",
+        "--ink-ansi-surface": "#1d2021",
+        "--ink-ansi-0": "#6d6a68",
+        "--ink-ansi-1": "#cd261f",
+        "--ink-ansi-2": "#98971a",
+        "--ink-ansi-3": "#d79921",
+        "--ink-ansi-4": "#458588",
+        "--ink-ansi-5": "#b16286",
+        "--ink-ansi-6": "#689d6a",
+        "--ink-ansi-7": "#a89984",
+        "--ink-ansi-8": "#928374",
+        "--ink-ansi-9": "#fb4934",
+        "--ink-ansi-10": "#b8bb26",
+        "--ink-ansi-11": "#fabd2f",
+        "--ink-ansi-12": "#83a598",
+        "--ink-ansi-13": "#d3869b",
+        "--ink-ansi-14": "#8ec07c",
+        "--ink-ansi-15": "#ebdbb2",
+        "--ink-diff-added": "#323330",
+        "--ink-diff-added-word": "#3a3d22",
+        "--ink-diff-added-sign": "#ebdbb2",
+        "--ink-diff-removed": "#2f2121",
+        "--ink-diff-removed-word": "#472825",
+        "--ink-diff-removed-sign": "#cf2f28"
       }
     },
     "background": {
@@ -305,7 +604,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#ebdbb2ff",
-        "--ink-highlight": "#689d6a40"
+        "--ink-highlight": "#689d6a40",
+        "--ink-ansi-surface": "#282828",
+        "--ink-ansi-0": "#757270",
+        "--ink-ansi-1": "#d13831",
+        "--ink-ansi-2": "#98971a",
+        "--ink-ansi-3": "#d79921",
+        "--ink-ansi-4": "#458588",
+        "--ink-ansi-5": "#b16286",
+        "--ink-ansi-6": "#689d6a",
+        "--ink-ansi-7": "#a89984",
+        "--ink-ansi-8": "#928374",
+        "--ink-ansi-9": "#fb4934",
+        "--ink-ansi-10": "#b8bb26",
+        "--ink-ansi-11": "#fabd2f",
+        "--ink-ansi-12": "#83a598",
+        "--ink-ansi-13": "#d3869b",
+        "--ink-ansi-14": "#8ec07c",
+        "--ink-ansi-15": "#ebdbb2",
+        "--ink-diff-added": "#3c3a36",
+        "--ink-diff-added-word": "#434428",
+        "--ink-diff-added-sign": "#ebdbb2",
+        "--ink-diff-removed": "#392a29",
+        "--ink-diff-removed-word": "#502e2a",
+        "--ink-diff-removed-sign": "#d3423b"
       }
     },
     "background": {
@@ -328,7 +650,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#ebdbb2ff",
-        "--ink-highlight": "#689d6a40"
+        "--ink-highlight": "#689d6a40",
+        "--ink-ansi-surface": "#32302f",
+        "--ink-ansi-0": "#7c7a78",
+        "--ink-ansi-1": "#d54943",
+        "--ink-ansi-2": "#98971a",
+        "--ink-ansi-3": "#d79921",
+        "--ink-ansi-4": "#458588",
+        "--ink-ansi-5": "#b16286",
+        "--ink-ansi-6": "#689d6a",
+        "--ink-ansi-7": "#a89984",
+        "--ink-ansi-8": "#928374",
+        "--ink-ansi-9": "#fb4934",
+        "--ink-ansi-10": "#b8bb26",
+        "--ink-ansi-11": "#fabd2f",
+        "--ink-ansi-12": "#83a598",
+        "--ink-ansi-13": "#d3869b",
+        "--ink-ansi-14": "#8ec07c",
+        "--ink-ansi-15": "#ebdbb2",
+        "--ink-diff-added": "#45413c",
+        "--ink-diff-added-word": "#4b4a2d",
+        "--ink-diff-added-sign": "#ebdbb2",
+        "--ink-diff-removed": "#423331",
+        "--ink-diff-removed-word": "#583530",
+        "--ink-diff-removed-sign": "#d8544e"
       }
     },
     "background": {
@@ -351,7 +696,30 @@
     "syntax": {
       "light": {
         "--ink-foreground": "#3c3836ff",
-        "--ink-highlight": "#689d6a40"
+        "--ink-highlight": "#689d6a40",
+        "--ink-ansi-surface": "#f9f5d7",
+        "--ink-ansi-0": "#968c72",
+        "--ink-ansi-1": "#cc241d",
+        "--ink-ansi-2": "#929119",
+        "--ink-ansi-3": "#b7821c",
+        "--ink-ansi-4": "#458588",
+        "--ink-ansi-5": "#b16286",
+        "--ink-ansi-6": "#659867",
+        "--ink-ansi-7": "#7c6f64",
+        "--ink-ansi-8": "#928374",
+        "--ink-ansi-9": "#9d0006",
+        "--ink-ansi-10": "#79740e",
+        "--ink-ansi-11": "#b57614",
+        "--ink-ansi-12": "#076678",
+        "--ink-ansi-13": "#8f3f71",
+        "--ink-ansi-14": "#427b58",
+        "--ink-ansi-15": "#3c3836",
+        "--ink-diff-added": "#e6e2c7",
+        "--ink-diff-added-word": "#e1ddb1",
+        "--ink-diff-added-sign": "#3c3836",
+        "--ink-diff-removed": "#f5e0c4",
+        "--ink-diff-removed-word": "#e8c7b0",
+        "--ink-diff-removed-sign": "#cc241d"
       }
     },
     "background": {
@@ -374,7 +742,30 @@
     "syntax": {
       "light": {
         "--ink-foreground": "#3c3836ff",
-        "--ink-highlight": "#689d6a40"
+        "--ink-highlight": "#689d6a40",
+        "--ink-ansi-surface": "#fbf1c7",
+        "--ink-ansi-0": "#948a70",
+        "--ink-ansi-1": "#cc241d",
+        "--ink-ansi-2": "#908f19",
+        "--ink-ansi-3": "#b5811c",
+        "--ink-ansi-4": "#458588",
+        "--ink-ansi-5": "#b16286",
+        "--ink-ansi-6": "#649766",
+        "--ink-ansi-7": "#7c6f64",
+        "--ink-ansi-8": "#928374",
+        "--ink-ansi-9": "#9d0006",
+        "--ink-ansi-10": "#79740e",
+        "--ink-ansi-11": "#b57614",
+        "--ink-ansi-12": "#076678",
+        "--ink-ansi-13": "#8f3f71",
+        "--ink-ansi-14": "#427b58",
+        "--ink-ansi-15": "#3c3836",
+        "--ink-diff-added": "#e8dfb9",
+        "--ink-diff-added-word": "#e3d9a4",
+        "--ink-diff-added-sign": "#3c3836",
+        "--ink-diff-removed": "#f6ddb6",
+        "--ink-diff-removed-word": "#e9c4a3",
+        "--ink-diff-removed-sign": "#cc241d"
       }
     },
     "background": {
@@ -397,7 +788,30 @@
     "syntax": {
       "light": {
         "--ink-foreground": "#3c3836ff",
-        "--ink-highlight": "#689d6a40"
+        "--ink-highlight": "#689d6a40",
+        "--ink-ansi-surface": "#f2e5bc",
+        "--ink-ansi-0": "#8b8169",
+        "--ink-ansi-1": "#cc241d",
+        "--ink-ansi-2": "#878617",
+        "--ink-ansi-3": "#ac7a1a",
+        "--ink-ansi-4": "#458588",
+        "--ink-ansi-5": "#b16286",
+        "--ink-ansi-6": "#5e8d5f",
+        "--ink-ansi-7": "#7c6f64",
+        "--ink-ansi-8": "#8f8072",
+        "--ink-ansi-9": "#9d0006",
+        "--ink-ansi-10": "#79740e",
+        "--ink-ansi-11": "#b57614",
+        "--ink-ansi-12": "#076678",
+        "--ink-ansi-13": "#8f3f71",
+        "--ink-ansi-14": "#427b58",
+        "--ink-ansi-15": "#3c3836",
+        "--ink-diff-added": "#e0d4af",
+        "--ink-diff-added-word": "#dbd09b",
+        "--ink-diff-added-sign": "#3c3836",
+        "--ink-diff-removed": "#eed2ac",
+        "--ink-diff-removed-word": "#e2ba9a",
+        "--ink-diff-removed-sign": "#cc241d"
       }
     },
     "background": {
@@ -420,7 +834,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#d6deebff",
-        "--ink-highlight": "#1d3b53ff"
+        "--ink-highlight": "#1d3b53ff",
+        "--ink-ansi-surface": "#011627",
+        "--ink-ansi-0": "#576570",
+        "--ink-ansi-1": "#ef5350",
+        "--ink-ansi-2": "#22da6e",
+        "--ink-ansi-3": "#c5e478",
+        "--ink-ansi-4": "#82aaff",
+        "--ink-ansi-5": "#c792ea",
+        "--ink-ansi-6": "#21c7a8",
+        "--ink-ansi-7": "#ffffff",
+        "--ink-ansi-8": "#636262",
+        "--ink-ansi-9": "#ef5350",
+        "--ink-ansi-10": "#22da6e",
+        "--ink-ansi-11": "#ffeb95",
+        "--ink-ansi-12": "#82aaff",
+        "--ink-ansi-13": "#c792ea",
+        "--ink-ansi-14": "#7fdbca",
+        "--ink-ansi-15": "#ffffff",
+        "--ink-diff-added": "#042a2e",
+        "--ink-diff-added-word": "#162c31",
+        "--ink-diff-added-sign": "#22da6e",
+        "--ink-diff-removed": "#191c2b",
+        "--ink-diff-removed-word": "#31222f",
+        "--ink-diff-removed-sign": "#ef5350"
       }
     },
     "background": {
@@ -443,7 +880,30 @@
     "syntax": {
       "light": {
         "--ink-foreground": "#403f53ff",
-        "--ink-highlight": "#e0e0e0ff"
+        "--ink-highlight": "#e0e0e0ff",
+        "--ink-ansi-surface": "#fbfbfb",
+        "--ink-ansi-0": "#403f53",
+        "--ink-ansi-1": "#de3d3b",
+        "--ink-ansi-2": "#08916a",
+        "--ink-ansi-3": "#b38c02",
+        "--ink-ansi-4": "#288ed7",
+        "--ink-ansi-5": "#d6438a",
+        "--ink-ansi-6": "#2aa298",
+        "--ink-ansi-7": "#879494",
+        "--ink-ansi-8": "#403f53",
+        "--ink-ansi-9": "#de3d3b",
+        "--ink-ansi-10": "#08916a",
+        "--ink-ansi-11": "#b38b01",
+        "--ink-ansi-12": "#288ed7",
+        "--ink-ansi-13": "#d6438a",
+        "--ink-ansi-14": "#2aa298",
+        "--ink-ansi-15": "#879494",
+        "--ink-diff-added": "#e3f0ed",
+        "--ink-diff-added-word": "#c6e4db",
+        "--ink-diff-added-sign": "#08916a",
+        "--ink-diff-removed": "#f8e8e8",
+        "--ink-diff-removed-word": "#f5d1d1",
+        "--ink-diff-removed-sign": "#de3d3b"
       }
     },
     "background": {
@@ -466,7 +926,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#d8dee9ff",
-        "--ink-highlight": "#434c5ecc"
+        "--ink-highlight": "#434c5ecc",
+        "--ink-ansi-surface": "#2e3440",
+        "--ink-ansi-0": "#787d88",
+        "--ink-ansi-1": "#bf616a",
+        "--ink-ansi-2": "#a3be8c",
+        "--ink-ansi-3": "#ebcb8b",
+        "--ink-ansi-4": "#81a1c1",
+        "--ink-ansi-5": "#b48ead",
+        "--ink-ansi-6": "#88c0d0",
+        "--ink-ansi-7": "#e5e9f0",
+        "--ink-ansi-8": "#757d8c",
+        "--ink-ansi-9": "#bf616a",
+        "--ink-ansi-10": "#a3be8c",
+        "--ink-ansi-11": "#ebcb8b",
+        "--ink-ansi-12": "#81a1c1",
+        "--ink-ansi-13": "#b48ead",
+        "--ink-ansi-14": "#8fbcbb",
+        "--ink-ansi-15": "#eceff4",
+        "--ink-diff-added": "#3a4248",
+        "--ink-diff-added-word": "#3f4a5a",
+        "--ink-diff-added-sign": "#a3be8c",
+        "--ink-diff-removed": "#3d3944",
+        "--ink-diff-removed-word": "#5a424d",
+        "--ink-diff-removed-sign": "#c36a73"
       }
     },
     "background": {
@@ -489,7 +972,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#abb2bfff",
-        "--ink-highlight": "#67769660"
+        "--ink-highlight": "#67769660",
+        "--ink-ansi-surface": "#282c34",
+        "--ink-ansi-0": "#71757e",
+        "--ink-ansi-1": "#e05561",
+        "--ink-ansi-2": "#8cc265",
+        "--ink-ansi-3": "#d18f52",
+        "--ink-ansi-4": "#4aa5f0",
+        "--ink-ansi-5": "#c162de",
+        "--ink-ansi-6": "#42b3c2",
+        "--ink-ansi-7": "#d7dae0",
+        "--ink-ansi-8": "#707683",
+        "--ink-ansi-9": "#ff616e",
+        "--ink-ansi-10": "#a5e075",
+        "--ink-ansi-11": "#f0a45d",
+        "--ink-ansi-12": "#4dc4ff",
+        "--ink-ansi-13": "#de73ff",
+        "--ink-ansi-14": "#4cd1e0",
+        "--ink-ansi-15": "#e6e6e6",
+        "--ink-diff-added": "#323b39",
+        "--ink-diff-added-word": "#203d49",
+        "--ink-diff-added-sign": "#8cc265",
+        "--ink-diff-removed": "#3a3039",
+        "--ink-diff-removed-word": "#50353e",
+        "--ink-diff-removed-sign": "#e05561"
       }
     },
     "background": {
@@ -512,7 +1018,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#e0def4ff",
-        "--ink-highlight": "#6e6a8633"
+        "--ink-highlight": "#6e6a8633",
+        "--ink-ansi-surface": "#191724",
+        "--ink-ansi-0": "#656373",
+        "--ink-ansi-1": "#eb6f92",
+        "--ink-ansi-2": "#31748f",
+        "--ink-ansi-3": "#f6c177",
+        "--ink-ansi-4": "#9ccfd8",
+        "--ink-ansi-5": "#c4a7e7",
+        "--ink-ansi-6": "#ebbcba",
+        "--ink-ansi-7": "#e0def4",
+        "--ink-ansi-8": "#908caa",
+        "--ink-ansi-9": "#eb6f92",
+        "--ink-ansi-10": "#31748f",
+        "--ink-ansi-11": "#f6c177",
+        "--ink-ansi-12": "#9ccfd8",
+        "--ink-ansi-13": "#c4a7e7",
+        "--ink-ansi-14": "#ebbcba",
+        "--ink-ansi-15": "#e0def4",
+        "--ink-diff-added": "#2d323f",
+        "--ink-diff-added-word": "#2d323f",
+        "--ink-diff-added-sign": "#9ccfd8",
+        "--ink-diff-removed": "#382434",
+        "--ink-diff-removed-word": "#382434",
+        "--ink-diff-removed-sign": "#908caa"
       }
     },
     "background": {
@@ -535,7 +1064,30 @@
     "syntax": {
       "light": {
         "--ink-foreground": "#575279ff",
-        "--ink-highlight": "#6e6a8614"
+        "--ink-highlight": "#6e6a8614",
+        "--ink-ansi-surface": "#faf4ed",
+        "--ink-ansi-0": "#918c87",
+        "--ink-ansi-1": "#b4637a",
+        "--ink-ansi-2": "#286983",
+        "--ink-ansi-3": "#be7f2a",
+        "--ink-ansi-4": "#56949f",
+        "--ink-ansi-5": "#907aa9",
+        "--ink-ansi-6": "#c67874",
+        "--ink-ansi-7": "#575279",
+        "--ink-ansi-8": "#797593",
+        "--ink-ansi-9": "#b4637a",
+        "--ink-ansi-10": "#286983",
+        "--ink-ansi-11": "#be7f2a",
+        "--ink-ansi-12": "#56949f",
+        "--ink-ansi-13": "#907aa9",
+        "--ink-ansi-14": "#c67874",
+        "--ink-ansi-15": "#575279",
+        "--ink-diff-added": "#e2e6e1",
+        "--ink-diff-added-word": "#e2e6e1",
+        "--ink-diff-added-sign": "#518b95",
+        "--ink-diff-removed": "#f0dedc",
+        "--ink-diff-removed-word": "#f0dedc",
+        "--ink-diff-removed-sign": "#797593"
       }
     },
     "background": {
@@ -558,7 +1110,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#e0def4ff",
-        "--ink-highlight": "#817c9c26"
+        "--ink-highlight": "#817c9c26",
+        "--ink-ansi-surface": "#232136",
+        "--ink-ansi-0": "#6e6c81",
+        "--ink-ansi-1": "#eb6f92",
+        "--ink-ansi-2": "#3e8fb0",
+        "--ink-ansi-3": "#f6c177",
+        "--ink-ansi-4": "#9ccfd8",
+        "--ink-ansi-5": "#c4a7e7",
+        "--ink-ansi-6": "#ea9a97",
+        "--ink-ansi-7": "#e0def4",
+        "--ink-ansi-8": "#908caa",
+        "--ink-ansi-9": "#eb6f92",
+        "--ink-ansi-10": "#3e8fb0",
+        "--ink-ansi-11": "#f6c177",
+        "--ink-ansi-12": "#9ccfd8",
+        "--ink-ansi-13": "#c4a7e7",
+        "--ink-ansi-14": "#ea9a97",
+        "--ink-ansi-15": "#e0def4",
+        "--ink-diff-added": "#353b4e",
+        "--ink-diff-added-word": "#353b4e",
+        "--ink-diff-added-sign": "#9ccfd8",
+        "--ink-diff-removed": "#412d44",
+        "--ink-diff-removed-word": "#412d44",
+        "--ink-diff-removed-sign": "#908caa"
       }
     },
     "background": {
@@ -581,7 +1156,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#839496ff",
-        "--ink-highlight": "#274642ff"
+        "--ink-highlight": "#274642ff",
+        "--ink-ansi-surface": "#002b36",
+        "--ink-ansi-0": "#56767e",
+        "--ink-ansi-1": "#dc322f",
+        "--ink-ansi-2": "#859900",
+        "--ink-ansi-3": "#b58900",
+        "--ink-ansi-4": "#268bd2",
+        "--ink-ansi-5": "#d33682",
+        "--ink-ansi-6": "#2aa198",
+        "--ink-ansi-7": "#eee8d5",
+        "--ink-ansi-8": "#59757c",
+        "--ink-ansi-9": "#cb4b16",
+        "--ink-ansi-10": "#5f747b",
+        "--ink-ansi-11": "#657b83",
+        "--ink-ansi-12": "#839496",
+        "--ink-ansi-13": "#6c71c4",
+        "--ink-ansi-14": "#93a1a1",
+        "--ink-ansi-15": "#fdf6e3",
+        "--ink-diff-added": "#052f34",
+        "--ink-diff-added-word": "#052f34",
+        "--ink-diff-added-sign": "#859900",
+        "--ink-diff-removed": "#162c35",
+        "--ink-diff-removed-word": "#1f2c35",
+        "--ink-diff-removed-sign": "#dc322f"
       }
     },
     "background": {
@@ -604,7 +1202,30 @@
     "syntax": {
       "light": {
         "--ink-foreground": "#657b83ff",
-        "--ink-highlight": "#eee8d5ff"
+        "--ink-highlight": "#eee8d5ff",
+        "--ink-ansi-surface": "#fdf6e3",
+        "--ink-ansi-0": "#073642",
+        "--ink-ansi-1": "#dc322f",
+        "--ink-ansi-2": "#849700",
+        "--ink-ansi-3": "#b38800",
+        "--ink-ansi-4": "#268bd2",
+        "--ink-ansi-5": "#d33682",
+        "--ink-ansi-6": "#299e95",
+        "--ink-ansi-7": "#918e82",
+        "--ink-ansi-8": "#002b36",
+        "--ink-ansi-9": "#cb4b16",
+        "--ink-ansi-10": "#586e75",
+        "--ink-ansi-11": "#657b83",
+        "--ink-ansi-12": "#809193",
+        "--ink-ansi-13": "#6c71c4",
+        "--ink-ansi-14": "#849191",
+        "--ink-ansi-15": "#908c81",
+        "--ink-diff-added": "#080707",
+        "--ink-diff-added-word": "#080707",
+        "--ink-diff-added-sign": "#849700",
+        "--ink-diff-removed": "#080707",
+        "--ink-diff-removed-word": "#080707",
+        "--ink-diff-removed-sign": "#dc322f"
       }
     },
     "background": {
@@ -627,7 +1248,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#ffffffff",
-        "--ink-highlight": "#ffffff20"
+        "--ink-highlight": "#ffffff20",
+        "--ink-ansi-surface": "#262335",
+        "--ink-ansi-0": "#6d7074",
+        "--ink-ansi-1": "#fe4450",
+        "--ink-ansi-2": "#72f1b8",
+        "--ink-ansi-3": "#f3e70f",
+        "--ink-ansi-4": "#03edf9",
+        "--ink-ansi-5": "#ff7edb",
+        "--ink-ansi-6": "#03edf9",
+        "--ink-ansi-7": "#e6e6e6",
+        "--ink-ansi-8": "#8a8f98",
+        "--ink-ansi-9": "#fe4450",
+        "--ink-ansi-10": "#72f1b8",
+        "--ink-ansi-11": "#fede5d",
+        "--ink-ansi-12": "#03edf9",
+        "--ink-ansi-13": "#ff7edb",
+        "--ink-ansi-14": "#03edf9",
+        "--ink-ansi-15": "#ffffff",
+        "--ink-diff-added": "#2e3842",
+        "--ink-diff-added-word": "#204d4a",
+        "--ink-diff-added-sign": "#72f1b8",
+        "--ink-diff-removed": "#3c2638",
+        "--ink-diff-removed-word": "#532a3b",
+        "--ink-diff-removed-sign": "#fe4450"
       }
     },
     "background": {
@@ -650,7 +1294,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#a9b1d6ff",
-        "--ink-highlight": "#515c7e4d"
+        "--ink-highlight": "#515c7e4d",
+        "--ink-ansi-surface": "#1a1b26",
+        "--ink-ansi-0": "#62667a",
+        "--ink-ansi-1": "#f7768e",
+        "--ink-ansi-2": "#73daca",
+        "--ink-ansi-3": "#e0af68",
+        "--ink-ansi-4": "#7aa2f7",
+        "--ink-ansi-5": "#bb9af7",
+        "--ink-ansi-6": "#7dcfff",
+        "--ink-ansi-7": "#787c99",
+        "--ink-ansi-8": "#62667a",
+        "--ink-ansi-9": "#f7768e",
+        "--ink-ansi-10": "#73daca",
+        "--ink-ansi-11": "#e0af68",
+        "--ink-ansi-12": "#7aa2f7",
+        "--ink-ansi-13": "#bb9af7",
+        "--ink-ansi-14": "#7dcfff",
+        "--ink-ansi-15": "#acb0d0",
+        "--ink-diff-added": "#1f2c38",
+        "--ink-diff-added-word": "#1f2c38",
+        "--ink-diff-added-sign": "#449dab",
+        "--ink-diff-removed": "#34212b",
+        "--ink-diff-removed-word": "#34212b",
+        "--ink-diff-removed-sign": "#9c5e65"
       }
     },
     "background": {
@@ -673,7 +1340,30 @@
     "syntax": {
       "light": {
         "--ink-foreground": "#343b59ff",
-        "--ink-highlight": "#acb0bf40"
+        "--ink-highlight": "#acb0bf40",
+        "--ink-ansi-surface": "#e6e7ed",
+        "--ink-ansi-0": "#343b58",
+        "--ink-ansi-1": "#8c4351",
+        "--ink-ansi-2": "#33635c",
+        "--ink-ansi-3": "#8f5e15",
+        "--ink-ansi-4": "#2959aa",
+        "--ink-ansi-5": "#7b43ba",
+        "--ink-ansi-6": "#006c86",
+        "--ink-ansi-7": "#707280",
+        "--ink-ansi-8": "#343b58",
+        "--ink-ansi-9": "#8c4351",
+        "--ink-ansi-10": "#33635c",
+        "--ink-ansi-11": "#8f5e15",
+        "--ink-ansi-12": "#2959aa",
+        "--ink-ansi-13": "#7b43ba",
+        "--ink-ansi-14": "#006c86",
+        "--ink-ansi-15": "#707280",
+        "--ink-diff-added": "#cfdee1",
+        "--ink-diff-added-word": "#cfdee1",
+        "--ink-diff-added-sign": "#166775",
+        "--ink-diff-removed": "#e6dee4",
+        "--ink-diff-removed-word": "#e6dee4",
+        "--ink-diff-removed-sign": "#914c54"
       }
     },
     "background": {
@@ -696,7 +1386,30 @@
     "syntax": {
       "dark": {
         "--ink-foreground": "#a9b1d6ff",
-        "--ink-highlight": "#6f7bb640"
+        "--ink-highlight": "#6f7bb640",
+        "--ink-ansi-surface": "#24283b",
+        "--ink-ansi-0": "#6d728b",
+        "--ink-ansi-1": "#f7768e",
+        "--ink-ansi-2": "#73daca",
+        "--ink-ansi-3": "#e0af68",
+        "--ink-ansi-4": "#7aa2f7",
+        "--ink-ansi-5": "#bb9af7",
+        "--ink-ansi-6": "#7dcfff",
+        "--ink-ansi-7": "#8089b3",
+        "--ink-ansi-8": "#6d728b",
+        "--ink-ansi-9": "#f7768e",
+        "--ink-ansi-10": "#73daca",
+        "--ink-ansi-11": "#e0af68",
+        "--ink-ansi-12": "#7aa2f7",
+        "--ink-ansi-13": "#bb9af7",
+        "--ink-ansi-14": "#7dcfff",
+        "--ink-ansi-15": "#a9b1d6",
+        "--ink-diff-added": "#28384a",
+        "--ink-diff-added-word": "#28384a",
+        "--ink-diff-added-sign": "#449dab",
+        "--ink-diff-removed": "#3c2d3d",
+        "--ink-diff-removed-word": "#3c2d3d",
+        "--ink-diff-removed-sign": "#a56c74"
       }
     },
     "background": {

@@ -70,30 +70,87 @@ fn run() -> Result<()> {
             output.display()
         );
     }
-    let source = match &args.input {
-        Some(path) if path.as_os_str() != "-" => read_source(
-            fs::File::open(path).with_context(|| format!("opening {}", path.display()))?,
-        )
-        .with_context(|| format!("reading {} as UTF-8", path.display()))?,
-        _ => {
-            if io::stdin().is_terminal() {
-                bail!("provide an input file or pipe UTF-8 source into stdin");
+    let read = |path: Option<&std::path::Path>| -> Result<String> {
+        match path {
+            Some(path) if path.as_os_str() != "-" => read_source(
+                fs::File::open(path).with_context(|| format!("opening {}", path.display()))?,
+            ),
+            _ => {
+                if io::stdin().is_terminal() {
+                    bail!("provide an input file or pipe UTF-8 source into stdin");
+                }
+                read_source(io::stdin().lock())
             }
-            read_source(io::stdin().lock()).context("reading stdin as UTF-8")?
         }
     };
-    let language = match &args.language {
-        Some(id) => id.parse()?,
-        None => args
-            .input
-            .as_deref()
-            .and_then(Language::for_file_name)
-            .unwrap_or_default(),
+    let context = if args.context == "all" {
+        monoprint::Context::All
+    } else {
+        monoprint::Context::Lines(
+            args.context
+                .parse()
+                .context("context must be a nonnegative number or all")?,
+        )
     };
-    let mut snippet = Snippet::new(source)
-        .language(language)
-        .title(&args.title)
-        .subtitle(&args.subtitle);
+    if args.diff.is_empty() && args.patch.is_none() && (args.context != "3" || args.no_diff_words) {
+        bail!("--context and --no-diff-words require --diff or --patch");
+    }
+    let mut inferred = args.input.as_deref().and_then(Language::for_file_name);
+    let mut title = args.title.clone();
+    let mut snippet = if !args.diff.is_empty() {
+        if args.diff.iter().all(|p| p.as_os_str() == "-") {
+            bail!("only one diff input may read stdin");
+        }
+        let old = read(Some(&args.diff[0]))?;
+        let new = read(Some(&args.diff[1]))?;
+        if old == new {
+            eprintln!("monoprint: inputs are identical");
+        }
+        inferred = Language::for_file_name(&args.diff[1]);
+        if title.is_empty() {
+            title = args.diff[1]
+                .file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned();
+        }
+        Snippet::diff(monoprint::Diff::compare(&old, &new)?.context(context))
+    } else if let Some(path) = &args.patch {
+        let diff = monoprint::Diff::from_patch(&read(Some(path))?)?.context(context);
+        inferred = diff.path().and_then(Language::for_file_name);
+        if title.is_empty() {
+            title = diff
+                .path()
+                .and_then(|p| std::path::Path::new(p).file_name())
+                .map(|p| p.to_string_lossy().into_owned())
+                .unwrap_or_default();
+        }
+        Snippet::diff(diff)
+    } else {
+        let source = read(args.input.as_deref())?;
+        if args.added.is_some() || args.removed.is_some() {
+            let mut diff = monoprint::Diff::marked(&source).first_line(args.first_line);
+            for r in cli::Args::ranges(args.added.as_deref().unwrap_or(""))? {
+                diff = diff.added(r);
+            }
+            for r in cli::Args::ranges(args.removed.as_deref().unwrap_or(""))? {
+                diff = diff.removed(r);
+            }
+            Snippet::diff(diff)
+        } else {
+            Snippet::new(source).first_line(args.first_line)
+        }
+    }
+    .language(
+        args.language
+            .as_deref()
+            .map(str::parse)
+            .transpose()?
+            .or(inferred)
+            .unwrap_or_default(),
+    )
+    .title(title)
+    .subtitle(&args.subtitle);
     for range in args.highlighted_ranges()? {
         snippet = snippet.highlight(range);
     }
@@ -101,6 +158,8 @@ fn run() -> Result<()> {
         snippet = snippet.highlight_text(*range);
     }
     let mut style = Style::new(args.theme.parse()?)
+        .diff_numbers(args.diff_numbers)
+        .diff_words(!args.no_diff_words)
         .transparent(args.transparent)
         .padding(args.padding)
         .font_size(args.font_size)

@@ -20,6 +20,8 @@ resolver = "3"
 
 [dependencies]
 anyhow = "1"
+similar = "2.7"
+unicode-segmentation = "1"
 base64 = "0.22"
 clap = { version = "4.6", features = ["derive"], optional = true }
 giallo = { version = "=0.5.2", features = ["dump"] }

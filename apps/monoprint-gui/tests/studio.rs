@@ -7,6 +7,9 @@ mod assets;
 #[path = "../src/canvas_resize.rs"]
 mod canvas_resize;
 #[allow(dead_code, unused_imports)]
+#[path = "../src/change_input.rs"]
+mod change_input;
+#[allow(dead_code, unused_imports)]
 #[path = "../src/cli_command.rs"]
 mod cli_command;
 #[allow(dead_code, unused_imports)] // Shared source also contains standard-harness tests.
@@ -1807,7 +1810,7 @@ mod macos {
             assert_dropdown_motion(&mut cx, handle, &studio);
             header_control_click(&mut cx, handle, &studio, "ui-appearance", 1);
             let revision = cx.read_entity(&studio, |s, _| {
-                assert_eq!(s.open_sections, [true, false, true, true]);
+                assert_eq!(s.open_sections, [true, false, true, true, false]);
                 s.revision
             });
             cx.update_window(handle.into(), |_, window, _| {
@@ -3187,6 +3190,78 @@ mod macos {
             cx.read_entity(&studio, |s, _| assert!(s.document.highlights.is_empty()));
             assert_fallback_glyphs(&mut cx, handle, &studio, width as u32);
             assert_original_style_picker(&mut cx, handle, &studio, width as u32);
+            // New modes use the same editor and coalesced worker, with ANSI raw
+            // bytes retained even though its editor buffer is visible text only.
+            let capture_source = "\x1b[31mFAIL\x1b[0m\rOK\x1b[K";
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.install_source("capture.ans".into(), capture_source.into(), window, cx);
+                    s.editor.update(cx, |editor, cx| editor.focus(window, cx));
+                })
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, cx| {
+                assert_eq!(s.document.source, capture_source);
+                assert_eq!(s.editor.read(cx).value().to_string(), "OK");
+                assert!(s.error.is_none());
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                window.input("cannot edit", cx)
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, cx| {
+                assert_eq!(s.document.source, capture_source);
+                assert_eq!(s.editor.read(cx).value().to_string(), "OK");
+                assert!(!cli_command::command(&s.document).unwrap().contains('\x1b'));
+            });
+            capture(&mut cx, handle, &format!("terminal-input-{}", width as u32));
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.install_source("after.rs".into(), "let count = 2;".into(), window, cx);
+                    cx.write_to_clipboard(ClipboardItem::new_string("let count = 1;".into()));
+                    s.compare_clipboard(cx);
+                })
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert_eq!(s.document.diff_base.as_deref(), Some("let count = 1;"));
+                assert!(s.error.is_none());
+                assert!(
+                    cli_command::command(&s.document)
+                        .unwrap()
+                        .contains("--patch -")
+                );
+            });
+            capture(&mut cx, handle, &format!("diff-input-{}", width as u32));
+            let patch = "--- a/test.rs\n+++ b/test.rs\n@@ -1 +1 @@\n-let n = 1;\n+let n = 2;\n";
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| {
+                    s.install_source("test.patch".into(), patch.into(), window, cx);
+                    s.show_patch(window, cx);
+                })
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, cx| {
+                assert!(s.document.diff_patch);
+                assert_eq!(s.document.language, "rust");
+                assert_eq!(s.editor.read(cx).value().to_string(), patch);
+                assert!(s.error.is_none());
+            });
+            cx.update_window(handle.into(), |_, window, cx| {
+                studio.update(cx, |s, cx| s.stop_diff(window, cx))
+            })
+            .unwrap();
+            settle(&mut cx, handle, &studio);
+            cx.read_entity(&studio, |s, _| {
+                assert!(!s.document.diff_patch);
+                assert_eq!(s.document.language, "diff");
+                assert_eq!(s.document.source, patch);
+                assert!(s.error.is_none());
+            });
             println!(
                 "Studio {}×{}: render, sidebar resizing, virtual theme scrolling/filtering, transparency, format, source highlighting, copy feedback, typography, automatic emoji/CJK fallback, interface appearance, canvas pan/pinch/drag/live resize, source selections, validation and recovery passed",
                 width, height

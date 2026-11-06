@@ -170,6 +170,12 @@ impl Default for Language {
 impl Language {
     /// Unhighlighted plain text; line numbers are always hidden.
     pub const PLAIN: Self = Self("plain");
+    /// Terminal output with ANSI styling.
+    pub const ANSI: Self = Self("ansi");
+    /// Whether this language is a terminal capture.
+    pub fn is_terminal(self) -> bool {
+        self == Self::ANSI
+    }
     /// Every selectable language and plain text. No renderer is initialized.
     /// TeX is represented by LaTeX, matching the parsing alias.
     pub fn all() -> impl Iterator<Item = Self> {
@@ -177,7 +183,7 @@ impl Language {
             .iter()
             .filter(|g| g.name != "tex")
             .map(|g| Self(&g.name))
-            .chain([Self::PLAIN])
+            .chain([Self::PLAIN, Self::ANSI])
     }
     /// Canonical grammar ID.
     pub fn id(self) -> &'static str {
@@ -185,6 +191,9 @@ impl Language {
     }
     /// Human-readable language name.
     pub fn name(self) -> &'static str {
+        if self.is_terminal() {
+            return "Terminal output";
+        }
         self.data()
             .map(|g| g.display_name.as_str())
             .unwrap_or("Plain Text")
@@ -193,7 +202,13 @@ impl Language {
     ///
     /// Parsing also accepts conventional file extensions such as `rs` and `mts`.
     pub fn aliases(self) -> impl Iterator<Item = &'static str> {
-        let extra: &[&str] = if self.0 == "latex" { &["tex"] } else { &[] };
+        let extra: &[&str] = if self.0 == "latex" {
+            &["tex"]
+        } else if self.is_terminal() {
+            &["terminal", "ansi-escape"]
+        } else {
+            &[]
+        };
         self.data()
             .map(|g| g.aliases.as_slice())
             .unwrap_or(&[])
@@ -237,9 +252,13 @@ impl FromStr for Language {
             "ex" | "exs" => "elixir",
             "rb" => "ruby",
             "tex" => "latex",
+            "patch" => "diff",
             "txt" | "text" | "plaintext" => "plain",
             other => other,
         };
+        if matches!(candidate, "ansi" | "terminal" | "ansi-escape" | "ans") {
+            return Ok(Self::ANSI);
+        }
         if candidate == "plain" {
             return Ok(Self::PLAIN);
         }

@@ -426,6 +426,50 @@ impl Studio {
                             .smooth_hover(p, HoverStyle::Control),
                     ),
             )
+            .when(self.document.terminal(), |view| {
+                view.child(
+                    Button::new("edit-terminal")
+                        .label("Terminal output · Edit as plain text")
+                        .on_click(
+                            cx.listener(|this, _, window, cx| this.edit_terminal(window, cx)),
+                        ),
+                )
+            })
+            .when(
+                !self.document.terminal()
+                    && !self.keep_terminal_text
+                    && monoprint::ansi::contains_sgr(&self.document.source),
+                |view| {
+                    view.child(
+                        div()
+                            .p(px(8.))
+                            .child("This looks like terminal output. Render its colors?")
+                            .child(
+                                Button::new("use-terminal")
+                                    .label("Use terminal colors")
+                                    .on_click(cx.listener(|this, _, window, cx| {
+                                        this.use_terminal(window, cx)
+                                    })),
+                            )
+                            .child(Button::new("keep-terminal").label("Keep as text").on_click(
+                                cx.listener(|this, _, _, cx| {
+                                    this.keep_terminal_text = true;
+                                    cx.notify();
+                                }),
+                            )),
+                    )
+                },
+            )
+            .when(
+                self.document.language == "diff" && !self.document.diff_patch,
+                |view| {
+                    view.child(
+                        Button::new("show-patch").label("Show as change").on_click(
+                            cx.listener(|this, _, window, cx| this.show_patch(window, cx)),
+                        ),
+                    )
+                },
+            )
             .child(
                 div()
                     .relative()
@@ -435,6 +479,7 @@ impl Studio {
                     .overflow_hidden()
                     .child(
                         Editor::new(&self.editor)
+                            .readonly(self.document.terminal())
                             .appearance(false)
                             .bordered(false)
                             .h_full()
@@ -1776,6 +1821,84 @@ impl Studio {
             )
     }
 
+    fn diff_settings(&self, cx: &Context<Self>) -> impl IntoElement {
+        let p = palette(cx);
+        settings_section(p)
+            .open(self.open_sections[InspectorSection::Diff as usize])
+            .child(self.section_header(InspectorSection::Diff, "", cx))
+            .content(
+                div()
+                    .p(px(12.))
+                    .flex()
+                    .flex_col()
+                    .gap(px(6.))
+                    .child(
+                        Button::new("diff-off").label("Off").on_click(
+                            cx.listener(|this, _, window, cx| this.stop_diff(window, cx)),
+                        ),
+                    )
+                    .child(
+                        Button::new("diff-file")
+                            .label("Choose previous version…")
+                            .disabled(self.document.terminal())
+                            .on_click(
+                                cx.listener(|this, _, window, cx| this.choose_base(window, cx)),
+                            ),
+                    )
+                    .child(
+                        Button::new("diff-paste")
+                            .label("Compare with clipboard")
+                            .disabled(self.document.terminal())
+                            .on_click(cx.listener(|this, _, _, cx| this.compare_clipboard(cx))),
+                    )
+                    .child(
+                        Button::new("diff-added")
+                            .label("Mark added")
+                            .disabled(self.document.terminal())
+                            .on_click(cx.listener(|this, _, _, cx| this.mark_change(true, cx))),
+                    )
+                    .child(
+                        Button::new("diff-removed")
+                            .label("Mark removed")
+                            .disabled(self.document.terminal())
+                            .on_click(cx.listener(|this, _, _, cx| this.mark_change(false, cx))),
+                    )
+                    .child(
+                        Button::new("diff-context")
+                            .label(format!(
+                                "Context: {}",
+                                self.document
+                                    .diff_context
+                                    .map(|n| n.to_string())
+                                    .unwrap_or("all".into())
+                            ))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.document.diff_context = match this.document.diff_context {
+                                    Some(0) => Some(3),
+                                    Some(3) => Some(10),
+                                    Some(_) => None,
+                                    None => Some(0),
+                                };
+                                this.changed(cx);
+                            })),
+                    )
+                    .child(
+                        Button::new("diff-numbers")
+                            .label(format!("Numbers: {}", self.document.diff_numbers))
+                            .on_click(cx.listener(|this, _, _, cx| {
+                                this.document.diff_numbers =
+                                    match this.document.diff_numbers.as_str() {
+                                        "new" => "old",
+                                        "old" => "both",
+                                        _ => "new",
+                                    }
+                                    .into();
+                                this.changed(cx);
+                            })),
+                    ),
+            )
+    }
+
     fn inspector_settings(&self, cx: &Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         div()
@@ -1899,6 +2022,7 @@ impl Studio {
                             )),
                     ),
             )
+            .child(self.diff_settings(cx))
     }
 
     fn inspector(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {

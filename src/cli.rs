@@ -15,6 +15,30 @@ pub enum Format {
 pub struct Args {
     /// UTF-8 source file; omit or use - to read stdin.
     pub input: Option<PathBuf>,
+    /// Compare old and new UTF-8 files (one may be stdin).
+    #[arg(long, num_args=2, conflicts_with_all=["input","patch","added","removed"])]
+    pub diff: Vec<PathBuf>,
+    /// Render a single-file unified patch; - reads stdin.
+    #[arg(long, conflicts_with_all=["input","added","removed"])]
+    pub patch: Option<PathBuf>,
+    /// Mark inserted lines, e.g. 3,5-7.
+    #[arg(long)]
+    pub added: Option<String>,
+    /// Mark deleted lines.
+    #[arg(long)]
+    pub removed: Option<String>,
+    /// Unchanged context lines, or all.
+    #[arg(long, default_value = "3")]
+    pub context: String,
+    /// Gutter numbering: new, old, or both.
+    #[arg(long, default_value = "new")]
+    pub diff_numbers: monoprint::DiffNumbers,
+    /// Disable word emphasis.
+    #[arg(long)]
+    pub no_diff_words: bool,
+    /// First displayed number for snippets and mark mode.
+    #[arg(long, default_value_t = 1)]
+    pub first_line: usize,
     /// Output path (.png, .svg, .html), or - for stdout with --format.
     #[arg(short, long)]
     pub output: Option<PathBuf>,
@@ -132,11 +156,14 @@ impl Args {
     }
 
     pub fn highlighted_ranges(&self) -> Result<Vec<LineRange>> {
+        Self::ranges(&self.highlight)
+    }
+    pub fn ranges(value: &str) -> Result<Vec<LineRange>> {
         let mut result = Vec::new();
-        if self.highlight.is_empty() {
+        if value.is_empty() {
             return Ok(result);
         }
-        for item in self.highlight.split(',') {
+        for item in value.split(',') {
             let item = item.trim();
             let (start, end) = item.split_once('-').unwrap_or((item, item));
             let start: usize = start
