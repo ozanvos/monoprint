@@ -1,0 +1,419 @@
+/* Fig. 1: the Studio window drawn compact at 1180 × 680 so the preview and the controls the loop
+   uses fill the figure; scaled to it by scripts/loops.ts. The parts match the macOS app's. */
+.studio-demo {
+  position: relative;
+  aspect-ratio: 1180 / 680;
+  background: #fafaf9;
+
+  .loop-scene {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 1180px;
+    height: 680px;
+    transform: scale(var(--k, 1));
+    transform-origin: 0 0;
+    font-family: var(--mono);
+    font-size: 12px;
+    color: #262626;
+  }
+
+  b {
+    font-weight: inherit;
+  }
+
+  svg {
+    flex: none;
+  }
+
+  .studio-toolbar {
+    position: absolute;
+    inset: 0 299px auto 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 40px;
+    padding-inline: 14px 14px;
+    border-bottom: 1px solid #dcdcd9;
+    background: #f3f3f2;
+    color: #3a3a38;
+  }
+
+  .lights {
+    display: flex;
+    gap: 10px;
+    margin-right: 22px;
+
+    i {
+      width: 13px;
+      height: 13px;
+      border-radius: 50%;
+      background: #dcdcd9;
+    }
+  }
+
+  .tool {
+    display: grid;
+    place-items: center;
+    width: 24px;
+    height: 24px;
+    border: 1px solid #d3d3d0;
+    border-radius: 5px;
+    background: #fbfbfa;
+  }
+
+  .language {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: 116px;
+    height: 24px;
+    padding-inline: 8px;
+    border: 1px solid #d3d3d0;
+    border-radius: 5px;
+    background: #fbfbfa;
+    font-size: 12px;
+  }
+
+  .zoom {
+    display: flex;
+    margin-left: auto;
+    padding: 2px;
+    border: 1px solid #d3d3d0;
+    border-radius: 5px;
+    background: #fbfbfa;
+    font-size: 10px;
+
+    span {
+      padding: 3px 7px;
+      border-radius: 3px;
+    }
+
+    .on {
+      background: #e6e6e4;
+    }
+  }
+
+  .studio-source {
+    position: absolute;
+    top: 40px;
+    left: 0;
+    bottom: 0;
+    width: 272px;
+    margin: 0;
+    padding: 21px 0 0;
+    overflow: hidden;
+    list-style: none;
+    counter-reset: line;
+    border-right: 1px solid #dcdcd9;
+    background: #f8f8f7;
+    font-size: 11px;
+    line-height: 19px;
+    white-space: pre;
+
+    li {
+      counter-increment: line;
+    }
+
+    li::before {
+      content: counter(line);
+      display: inline-block;
+      width: 22px;
+      margin-right: 18px;
+      text-align: right;
+      color: #262626;
+    }
+
+    .c { color: #6e7781; }
+    .k { color: #cf222e; }
+    .t { color: #953800; }
+    .f { color: #8250df; }
+    .s { color: #0a3069; }
+    .n { color: #0550ae; }
+  }
+
+  .studio-canvas {
+    position: absolute;
+    top: 40px;
+    left: 273px;
+    right: 299px;
+    bottom: 0;
+    background: #e3e3e1;
+  }
+
+  /* One render per appearance and backdrop, stacked; the one in use fades over the last. Shown at
+     Fit, smaller than its 640 px width, as the app does in a narrow canvas. */
+  .preview {
+    position: absolute;
+    top: 112px;
+    left: 44px;
+    display: grid;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 6%);
+
+    img {
+      grid-area: 1 / 1;
+      width: 100%;
+      height: auto;
+      opacity: 0;
+      transition: opacity 280ms ease-out;
+    }
+
+    img[data-on] {
+      opacity: 1;
+    }
+  }
+
+  .preview-size {
+    position: absolute;
+    top: 498px;
+    left: 44px;
+    font-size: 10px;
+    color: #6b6b69;
+  }
+
+  .inspector {
+    position: absolute;
+    inset: 0 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    width: 299px;
+    border-left: 1px solid #dcdcd9;
+    background: #fafaf9;
+  }
+
+  .section {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    padding: 16px 13px 18px;
+    border-bottom: 1px solid #e3e3e1;
+  }
+
+  .heading {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 16px;
+    font-size: 11px;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+    color: #4a4a48;
+  }
+
+  .row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 24px;
+
+    .segmented {
+      margin-left: auto;
+    }
+  }
+
+  .theme-card {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    height: 57px;
+    margin-top: 4px;
+    padding: 0 12px 0 8px;
+    border: 1px solid #d3d3d0;
+    border-radius: 6px;
+    background: #fff;
+    font-size: 13px;
+
+    svg {
+      margin-left: auto;
+    }
+  }
+
+  .thumb {
+    display: grid;
+    width: 65px;
+    height: 41px;
+    overflow: hidden;
+    border-radius: 3px;
+    box-shadow: 0 0 0 1px rgb(0 0 0 / 8%);
+
+    img {
+      grid-area: 1 / 1;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      object-position: 20% 30%;
+      opacity: 0;
+      transition: opacity 280ms ease-out;
+    }
+
+    img[data-on] {
+      opacity: 1;
+    }
+  }
+
+  /* A segmented control: one marker slides under the selected option. */
+  .segmented {
+    position: relative;
+    display: flex;
+    padding: 2px;
+    border: 1px solid #d3d3d0;
+    border-radius: 5px;
+    background: #fff;
+    font-size: 11px;
+
+    span {
+      position: relative;
+      flex: 1;
+      padding: 3px 8px;
+      text-align: center;
+    }
+
+    .marker {
+      position: absolute;
+      top: 2px;
+      bottom: 2px;
+      left: 0;
+      width: var(--w, 0);
+      border-radius: 3px;
+      background: #e6e6e4;
+      transform: translateX(var(--x, 0));
+      transition: transform 220ms cubic-bezier(0.45, 0, 0.1, 1), width 220ms cubic-bezier(0.45, 0, 0.1, 1);
+    }
+  }
+
+  .frame .segmented {
+    font-size: 10px;
+
+    span {
+      padding-inline: 0;
+    }
+  }
+
+  .label {
+    margin-bottom: -4px;
+    font-size: 11px;
+    color: #4a4a48;
+  }
+
+  .pair {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 6px 10px;
+  }
+
+  .field {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 25px;
+    padding-inline: 10px;
+    border: 1px solid #d3d3d0;
+    border-radius: 5px;
+    background: #fff;
+
+    small {
+      margin-left: auto;
+      font-size: 11px;
+      color: #6b6b69;
+    }
+  }
+
+  .reset {
+    display: flex;
+    margin-left: auto;
+    color: #4a4a48;
+  }
+
+  .toggle {
+    position: relative;
+    width: 28px;
+    height: 16px;
+    border-radius: 8px;
+    background: #4170e0;
+  }
+
+  .toggle::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    right: 2px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: #fff;
+  }
+
+  .export {
+    margin-top: auto;
+    border-top: 1px solid #e3e3e1;
+    border-bottom: 0;
+  }
+
+  .export-size {
+    margin-left: auto;
+    margin-right: 8px;
+    text-transform: none;
+    letter-spacing: 0;
+    font-size: 11px;
+    color: #4a4a48;
+  }
+
+  .export .row .segmented {
+    width: 226px;
+  }
+
+  .actions {
+    display: grid;
+    grid-template-columns: 156px 1fr;
+    gap: 8px;
+    height: 33px;
+  }
+
+  .export-button,.copy-button {
+    display: grid;
+    place-items: center;
+    border-radius: 5px;
+    font-size: 13px;
+  }
+
+  .export-button {
+    background: #262626;
+    color: #fff;
+  }
+
+  .copy-button {
+    border: 1px solid #d3d3d0;
+    background: #fff;
+    transition: background-color 120ms;
+  }
+
+  .copy-button.down {
+    background: #ececea;
+  }
+
+  /* Copy and Copied share one slot, so the button never changes size. */
+  .copy-face {
+    grid-area: 1 / 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(3px);
+    transition: opacity 180ms, transform 180ms;
+  }
+
+  .copy-face[data-on] {
+    opacity: 1;
+    transform: none;
+  }
+
+  .pointer {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 36px;
+    height: 36px;
+    opacity: 0;
+    transform-origin: 13px 9px;
+  }
+}

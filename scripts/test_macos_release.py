@@ -60,6 +60,35 @@ class MacOSReleaseTests(unittest.TestCase):
                 release.notarize_app('/tmp/app', 'profile')
             self.assertFalse(any(c.args[0][:2] == ['xcrun', 'stapler'] for c in run.call_args_list))
 
+    def test_dmg_uses_proof_sheet_and_signs_before_notarization(self):
+        with tempfile.TemporaryDirectory() as folder:
+            image = (Path(folder) / 'app.dmg').resolve()
+            calls = []
+            def run(command, **kwargs):
+                calls.append(command)
+                if 'dmgbuild' in command:
+                    self.assertIn('-s', command)
+                    self.assertTrue(any('dmg-settings.py' in arg for arg in command))
+                    self.assertTrue(any('proof-sheet.tiff' in arg for arg in command))
+            def notarize(*args):
+                self.assertEqual(args, (image, 'profile', 'notary.keychain'))
+                self.assertTrue(any(c[0] == 'codesign' and '--sign' in c for c in calls))
+                return {'status': 'Accepted'}
+            with patch.object(release.subprocess, 'run', side_effect=run), patch.object(release, 'notarize', side_effect=notarize):
+                result = release.dmg_app('/tmp/Monoprint.app', image, 'Developer ID Application: Test',
+                                         'sign.keychain', 'profile', 'notary.keychain')
+            self.assertEqual(result['status'], 'Accepted')
+            self.assertIn(['xcrun', 'stapler', 'staple', str(image)], calls)
+            self.assertIn(['xcrun', 'stapler', 'validate', str(image)], calls)
+
+    def test_existing_dmg_preserved(self):
+        with tempfile.TemporaryDirectory() as folder:
+            image = Path(folder) / 'keep.dmg'
+            image.write_bytes(b'keep')
+            with self.assertRaises(FileExistsError):
+                release.dmg_app('/tmp/app', image)
+            self.assertEqual(image.read_bytes(), b'keep')
+
     def test_existing_archive_preserved(self):
         with tempfile.TemporaryDirectory() as folder:
             archive = Path(folder) / 'keep.zip'

@@ -13,22 +13,3 @@ export function shell(line) {
     return span(word.startsWith('-') ? 'k' : 's', word);
   }).join('');
 }
-
-const keywords = new Set(['fn', 'let', 'mut', 'use', 'pub', 'impl', 'return', 'struct']);
-export function rust(line) {
-  return line.replace(/([A-Za-z_][A-Za-z0-9_]*)(?=\s*\()|([A-Z][A-Z0-9_]+)\b|([A-Za-z_][A-Za-z0-9_]*)|([&?])|([^A-Za-z_&?]+)/g, (_, call, constant, word, operator, rest) => {
-    if (call) return span('f', call);
-    if (constant) return span('s', constant);
-    if (word) return span(keywords.has(word) ? 'k' : '', word);
-    if (operator) return span('k', operator);
-    return escape(rest);
-  });
-}
-
-// Shortcut lists: the keys, then what they do.
-export function keys(line) {
-  const [, key, gap, action] = line.match(/^(\S+)(\s+)(.*)$/) ?? [, line, '', ''];
-  return span('k', key) + escape(gap) + span('c', action);
-}
-
-export const highlighters = { shell, rust, keys };

@@ -1,4 +1,4 @@
-"""Verify a relocated app ZIP, preserving code-signature extended attributes."""
+"""Verify a direct-download DMG and relocated app ZIP, preserving code-signature extended attributes."""
 import argparse
 import hashlib
 import json
@@ -57,4 +57,47 @@ with tempfile.TemporaryDirectory(prefix='monoprint-app-consumer-') as temporary:
         assert receipt['signed'] and receipt['stapled'] and receipt['notarization']['status'] == 'Accepted'
         subprocess.run(['xcrun', 'stapler', 'validate', str(app)], check=True)
         subprocess.run(['spctl', '--assess', '--type', 'execute', str(app)], check=True)
-print('Relocated ZIP signature, embedded icon, source archives and bundled CLI passed.')
+    if not receipt.get('appStore'):
+        name = receipt['diskImage']
+        assert Path(name).name == name and name.endswith('.dmg')
+        image = (args.source / name).resolve()
+        assert image.stat().st_size == receipt['diskImageBytes']
+        assert hashlib.sha256(image.read_bytes()).hexdigest() == receipt['diskImageSha256']
+        verify_code(image)
+        if args.require_notarized:
+            assert receipt['diskImageStapled'] and receipt['diskImageNotarization']['status'] == 'Accepted'
+            subprocess.run(['xcrun', 'stapler', 'validate', str(image)], check=True)
+            subprocess.run(['spctl', '--assess', '--type', 'open', '--context',
+                            'context:primary-signature', str(image)], check=True)
+        mount = folder / 'mounted'
+        subprocess.run(['hdiutil', 'attach', '-readonly', '-nobrowse', '-mountpoint', str(mount), str(image)], check=True)
+        try:
+            from ds_store import DSStore
+            with DSStore.open(str(mount / '.DS_Store'), 'r') as settings:
+                assert settings['Monoprint.app']['Iloc'] == (165, 176)
+                assert settings['Applications']['Iloc'] == (435, 176)
+                view = settings['.']['icvp']
+                assert view['iconSize'] == 128 and view['textSize'] == 12
+                assert view['backgroundType'] == 2 and view['backgroundImageAlias']
+                window = settings['.']['bwsp']
+                assert not window['ShowToolbar'] and not window['ShowSidebar']
+                assert window['ShowStatusBar'] and window['ShowPathbar']
+                assert window['WindowBounds'] == '{{200, 200}, {600, 460}}'
+            artwork = Path(__file__).resolve().parents[1] / 'apps/monoprint-gui/assets/dmg/proof-sheet.tiff'
+            assert (mount / '.background.tiff').read_bytes() == artwork.read_bytes()
+            assert (mount / 'Applications').is_symlink()
+            assert (mount / 'Applications').readlink() == Path('/Applications')
+            # Copy out as a user would; verify signatures and exact ZIP app contents.
+            installed = folder / 'installed/Monoprint.app'
+            installed.parent.mkdir()
+            subprocess.run(['ditto', str(mount / 'Monoprint.app'), str(installed)], check=True)
+            subprocess.run(['diff', '-r', str(app), str(installed)], check=True)
+            verify_code(installed)
+            if args.require_notarized:
+                subprocess.run(['xcrun', 'stapler', 'validate', str(installed)], check=True)
+                subprocess.run(['spctl', '--assess', '--type', 'execute', str(installed)], check=True)
+            subprocess.run([str(installed / 'Contents/MacOS/monoprint'), str(snippet), '--scale', '1',
+                            '-o', str(folder / 'dmg-sample.png')], check=True)
+        finally:
+            subprocess.run(['hdiutil', 'detach', str(mount)], check=True)
+print('DMG and relocated ZIP signature, embedded icon, source archives and bundled CLI passed.')
