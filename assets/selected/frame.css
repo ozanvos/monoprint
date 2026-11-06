@@ -10,7 +10,7 @@ div{display:block}
 .Original .Editor__editor .line{display:block;position:relative;width:auto;white-space:pre-wrap}
 .Original .Editor__editor .line:before{display:none}
 .Original .Editor__showLineNumbers .Editor__formatted{padding-left:var(--original-gutter)}
-.Original .Editor__showLineNumbers .line:before{display:block;position:absolute;left:calc(-1 * var(--original-gutter));transform:none;top:0;width:var(--original-number-width);margin:0;content:attr(data-line);text-align:right;color:var(--ink-foreground);opacity:.45;font-size:inherit;line-height:inherit}
+.Original .Editor__showLineNumbers .line:before{display:block;position:absolute;left:calc(-1 * var(--original-gutter));transform:none;top:0;width:var(--original-number-width);margin:0;content:attr(data-number);text-align:right;color:var(--ink-foreground);opacity:.45;font-size:inherit;line-height:inherit}
 .Original .line .lc{white-space:pre-wrap;overflow-wrap:anywhere}
 .Original .Editor__editor .highlighted-line{background-color:var(--ink-highlight)}
 .Original .label,.Original .file,.Original .filename{max-width:80%;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}

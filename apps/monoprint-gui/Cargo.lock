@@ -4419,10 +4419,12 @@ dependencies = [
  "rayon",
  "serde",
  "serde_json",
+ "similar",
  "takumi",
  "takumi-raster 0.5.1",
  "takumi-svg",
  "ttf-parser",
+ "unicode-segmentation",
 ]
 
 [[package]]

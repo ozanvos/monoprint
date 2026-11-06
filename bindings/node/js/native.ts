@@ -9,5 +9,6 @@ export interface NativeBinding {
   NativeRenderer: new () => NativeRenderer;
   createFont(bytes: Uint8Array): { font?: NativeFont | null; failure?: string | null };
   catalog(): string;
+  stripAnsi(source: string): string;
   languageForFileName(filename: string): LanguageId | null;
 }

@@ -104,7 +104,7 @@ test('catalog discovery is immutable, canonical, and follows reviewed grammar ex
   const signature = getThemes().find(t => t.id === 'monoprint');
   assert.equal(signature.name, 'Monoprint');
   assert.deepEqual(signature.appearances, ['dark', 'light']);
-  assert.equal(getLanguages().length, 232);
+  assert.equal(getLanguages().length, 233);
   assert.deepEqual(getThemes().find(t => t.id === 'nord').appearances, ['dark']);
   assert.ok(getLanguages().some(l => l.id === 'typescript' && l.aliases.includes('ts')));
   assert.ok(!getLanguages().some(l => l.id === 'nginx'));

@@ -12,12 +12,19 @@ use std::{cell::RefCell, ops::Range, rc::Rc, sync::OnceLock, time::Duration};
 
 type Runs = Vec<(Range<usize>, HighlightStyle)>;
 
-pub fn factory(light: bool) -> InputHighlighterFactory {
+pub fn document_factory(
+    light: bool,
+    document: &crate::document::Document,
+) -> InputHighlighterFactory {
+    make_factory(light, document.terminal().then(|| document.source.clone()))
+}
+fn make_factory(light: bool, terminal: Option<String>) -> InputHighlighterFactory {
     Rc::new(move |language| {
         let language = language.parse::<monoprint::Language>().ok()?;
         Some(Box::new(SourceHighlighter {
             language: language.id().into(),
             light,
+            terminal: terminal.clone(),
             runs: Rc::default(),
             task: None,
         }))
@@ -27,6 +34,7 @@ pub fn factory(light: bool) -> InputHighlighterFactory {
 struct SourceHighlighter {
     language: SharedString,
     light: bool,
+    terminal: Option<String>,
     runs: Rc<RefCell<Runs>>,
     task: Option<Task<()>>,
 }
@@ -60,7 +68,7 @@ impl InputHighlighter for SourceHighlighter {
         } else {
             self.runs.borrow_mut().clear();
         }
-        let text = text.clone();
+        let text = self.terminal.clone().unwrap_or_else(|| text.to_string());
         let language = self.language.clone();
         let runs = self.runs.clone();
         let light = self.light;
@@ -70,7 +78,7 @@ impl InputHighlighter for SourceHighlighter {
                 .await;
             let result = cx
                 .background_executor()
-                .spawn(async move { highlight(&text.to_string(), &language, light) })
+                .spawn(async move { highlight(&text, &language, light) })
                 .await;
             match result {
                 Ok(result) => {
@@ -151,6 +159,11 @@ fn editor_style(span: &monoprint::SyntaxSpan) -> HighlightStyle {
     let color = Rgba::try_from(span.foreground.as_str()).expect("bundled RGBA palette");
     HighlightStyle {
         color: Some(color.into()),
+        background_color: span
+            .background
+            .as_ref()
+            .and_then(|c| Rgba::try_from(c.as_str()).ok())
+            .map(Into::into),
         font_weight: span.bold.then_some(FontWeight::BOLD),
         font_style: span.italic.then_some(FontStyle::Italic),
         underline: span.underline.then_some(UnderlineStyle {

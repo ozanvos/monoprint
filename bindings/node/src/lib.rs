@@ -189,3 +189,8 @@ pub fn catalog() -> String {
     })).collect();
     serde_json::json!({ "themes": themes, "languages": languages }).to_string()
 }
+
+#[napi]
+pub fn strip_ansi(source: String) -> String {
+    monoprint::ansi::strip(&source)
+}

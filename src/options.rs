@@ -230,16 +230,48 @@ impl From<RangeInclusive<usize>> for LineRange {
 /// Owns the source so it can move into a worker thread. CRLF and CR normalize to
 /// LF at render time; other text, blank lines, and trailing newlines survive.
 /// The empty source has one logical line. A final newline adds a logical line.
-#[derive(Clone, Debug, Default)]
+#[derive(Clone, Debug)]
 pub struct Snippet {
     pub(crate) source: String,
+    pub(crate) diff: Option<crate::Diff>,
+    pub(crate) first_line: usize,
     pub(crate) language: Language,
     pub(crate) title: String,
     pub(crate) subtitle: String,
     pub(crate) highlights: Vec<LineRange>,
     pub(crate) text_highlights: Vec<TextRange>,
 }
+impl Default for Snippet {
+    fn default() -> Self {
+        Self {
+            source: String::new(),
+            diff: None,
+            first_line: 1,
+            language: Language::default(),
+            title: String::new(),
+            subtitle: String::new(),
+            highlights: vec![],
+            text_highlights: vec![],
+        }
+    }
+}
 impl Snippet {
+    /// Render a unified change.
+    pub fn diff(diff: crate::Diff) -> Self {
+        Self {
+            source: diff.displayed_source(),
+            diff: Some(diff),
+            ..Self::default()
+        }
+    }
+    /// Start the display gutter at this one-based number.
+    pub fn first_line(mut self, number: usize) -> Self {
+        self.first_line = number;
+        if let Some(diff) = self.diff.take() {
+            self.diff = Some(diff.first_line(number));
+        }
+        self
+    }
     /// Source text, using plain text highlighting until a language is selected.
     /// Size is checked at render time, before normalization.
     pub fn new(source: impl Into<String>) -> Self {
@@ -247,6 +279,28 @@ impl Snippet {
             source: source.into(),
             ..Self::default()
         }
+    }
+    /// Mark inserted lines in this snippet.
+    pub fn added(mut self, range: impl Into<LineRange>) -> Self {
+        let diff = self
+            .diff
+            .take()
+            .unwrap_or_else(|| crate::Diff::marked(&self.source).first_line(self.first_line))
+            .added(range);
+        self.source = diff.displayed_source();
+        self.diff = Some(diff);
+        self
+    }
+    /// Mark deleted lines in this snippet.
+    pub fn removed(mut self, range: impl Into<LineRange>) -> Self {
+        let diff = self
+            .diff
+            .take()
+            .unwrap_or_else(|| crate::Diff::marked(&self.source).first_line(self.first_line))
+            .removed(range);
+        self.source = diff.displayed_source();
+        self.diff = Some(diff);
+        self
     }
     /// Set the highlighting language. Does not infer from the title.
     #[must_use]
@@ -306,6 +360,8 @@ pub struct Style {
     pub(crate) width: Option<u32>,
     pub(crate) font_size: u32,
     pub(crate) line_numbers: LineNumbers,
+    pub(crate) diff_numbers: crate::DiffNumbers,
+    pub(crate) diff_words: bool,
     pub(crate) font: Option<Font>,
     pub(crate) comment_font: Option<Font>,
     theme_comment_font: bool,
@@ -338,6 +394,8 @@ impl Default for Style {
             width: None,
             font_size: 15,
             line_numbers: LineNumbers::Auto,
+            diff_numbers: crate::DiffNumbers::New,
+            diff_words: true,
             font: None,
             comment_font: None,
             theme_comment_font: true,
@@ -347,6 +405,16 @@ impl Default for Style {
     }
 }
 impl Style {
+    /// Choose old, new or both diff gutters.
+    pub fn diff_numbers(mut self, numbers: crate::DiffNumbers) -> Self {
+        self.diff_numbers = numbers;
+        self
+    }
+    /// Emphasize changed words in compared or patched lines.
+    pub fn diff_words(mut self, enabled: bool) -> Self {
+        self.diff_words = enabled;
+        self
+    }
     /// Use a theme's preferred appearance with all other defaults unchanged.
     pub fn new(theme: Theme) -> Self {
         let mut style = Self {

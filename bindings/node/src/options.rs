@@ -6,6 +6,12 @@ use serde::Deserialize;
 #[serde(rename_all = "camelCase", deny_unknown_fields)]
 struct Options {
     format: Format,
+    diff: Option<DiffInput>,
+    added: Option<Vec<Selection>>,
+    removed: Option<Vec<Selection>>,
+    first_line: Option<usize>,
+    diff_numbers: Option<String>,
+    diff_words: Option<bool>,
     language: Option<String>,
     title: Option<String>,
     subtitle: Option<String>,
@@ -20,6 +26,15 @@ struct Options {
     line_numbers: Option<Numbers>,
     scale: Option<u32>,
     compression: Option<String>,
+}
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum DiffInput {
+    Patch(String),
+    Compare {
+        base: String,
+        context: Option<serde_json::Value>,
+    },
 }
 #[derive(Deserialize)]
 #[serde(rename_all = "lowercase")]
@@ -60,7 +75,57 @@ pub fn render(
 ) -> Result<Output, String> {
     let options: Options = serde_json::from_str(options)
         .map_err(|e| errors::internal(&format!("invalid native options: {e}")))?;
-    let mut snippet = Snippet::new(source);
+    let invalid =
+        |message: &str| errors::encode(monoprint::InvalidOption::Diff(message.into()).into());
+    if options.diff.is_some() && (options.added.is_some() || options.removed.is_some()) {
+        return Err(invalid("conflicting diff forms"));
+    }
+    let mut inferred = None;
+    let mut snippet = if let Some(diff) = options.diff {
+        let diff = match diff {
+            DiffInput::Patch(kind) if kind == "patch" => {
+                monoprint::Diff::from_patch(source).map_err(errors::encode)?
+            }
+            DiffInput::Patch(_) => return Err(invalid("diff must be patch or a comparison")),
+            DiffInput::Compare { base, context } => {
+                let context = match context {
+                    None => monoprint::Context::Lines(3),
+                    Some(v) if v == "all" => monoprint::Context::All,
+                    Some(v) => monoprint::Context::Lines(
+                        v.as_u64()
+                            .and_then(|n| usize::try_from(n).ok())
+                            .ok_or_else(|| invalid("invalid context"))?,
+                    ),
+                };
+                monoprint::Diff::compare(&base, source)
+                    .map_err(errors::encode)?
+                    .context(context)
+            }
+        };
+        inferred = diff.path().and_then(monoprint::Language::for_file_name);
+        Snippet::diff(diff)
+    } else if options.added.is_some() || options.removed.is_some() {
+        let mut diff = monoprint::Diff::marked(source).first_line(options.first_line.unwrap_or(1));
+        for (marks, added) in [(options.added, true), (options.removed, false)] {
+            for mark in marks.unwrap_or_default() {
+                let range: monoprint::LineRange = match mark {
+                    Selection::Line(n) => (n as usize).into(),
+                    Selection::Range([a, b]) => (a as usize..=b as usize).into(),
+                };
+                diff = if added {
+                    diff.added(range)
+                } else {
+                    diff.removed(range)
+                };
+            }
+        }
+        Snippet::diff(diff)
+    } else {
+        Snippet::new(source).first_line(options.first_line.unwrap_or(1))
+    };
+    if let Some(language) = inferred {
+        snippet = snippet.language(language);
+    }
     if let Some(language) = options.language {
         snippet = snippet.language(language.parse().map_err(errors::encode)?);
     }
@@ -77,6 +142,12 @@ pub fn render(
         };
     }
     let mut style = Style::default();
+    if let Some(numbers) = options.diff_numbers {
+        style = style.diff_numbers(numbers.parse().map_err(errors::encode)?);
+    }
+    if let Some(words) = options.diff_words {
+        style = style.diff_words(words);
+    }
     if let Some(theme) = options.theme {
         style = style.theme(theme.parse().map_err(errors::encode)?);
     }

@@ -42,6 +42,8 @@ pub enum Error {
 #[derive(Debug, Clone, PartialEq, Eq)]
 #[non_exhaustive]
 pub enum InvalidOption {
+    /// Invalid diff input or configuration.
+    Diff(String),
     /// Source exceeds [`crate::MAX_SOURCE_BYTES`], before newline normalization.
     SourceTooLarge {
         /// Supplied byte length.
@@ -172,6 +174,7 @@ impl fmt::Display for Error {
 impl fmt::Display for InvalidOption {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
+            Self::Diff(message) => f.write_str(message),
             Self::SourceTooLarge { .. } => {
                 f.write_str("source exceeds 1 MiB; select a smaller snippet")
             }

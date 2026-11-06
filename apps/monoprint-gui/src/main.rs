@@ -6,6 +6,7 @@
 mod appearance;
 mod assets;
 mod canvas_resize;
+mod change_input;
 mod cli_command;
 mod document;
 mod handoff;
