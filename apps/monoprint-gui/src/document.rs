@@ -13,6 +13,8 @@ use std::{
     sync::Mutex,
 };
 
+const MAX_SESSION_BYTES: usize = 8 * 1024 * 1024;
+
 pub const EXAMPLE: &str = "// A little code. A lasting impression.\ntype Theme = { name: string; dark: boolean };\n\nexport function print(theme: Theme): string {\n  const scale = 2;\n  return `${theme.name} at ${scale}×`;\n}\n\nprint({ name: \"Monoprint\", dark: true });";
 
 /// Valid outer widths after padding has been validated (0–512 px).
@@ -104,22 +106,73 @@ impl Default for Document {
     }
 }
 
+/// The custom-typeface fields for code or comments.
+pub struct FontSlot<'a> {
+    pub id: &'a Option<String>,
+    pub path: &'a Option<PathBuf>,
+    pub bookmark: &'a Option<Vec<u8>>,
+}
+
 impl Document {
+    /// The selected theme, falling back to the default for unknown IDs.
+    pub fn theme(&self) -> Theme {
+        self.theme.parse().unwrap_or_default()
+    }
+    pub fn appearance(&self) -> Appearance {
+        if self.light {
+            Appearance::Light
+        } else {
+            Appearance::Dark
+        }
+    }
     pub fn numbers_visible(&self) -> bool {
         self.language != Language::PLAIN.id()
-            && self.line_numbers.unwrap_or_else(|| {
-                match self
-                    .theme
-                    .parse::<Theme>()
-                    .unwrap_or_default()
-                    .line_numbers()
-                {
+            && self
+                .line_numbers
+                .unwrap_or_else(|| match self.theme().line_numbers() {
                     LineNumberPolicy::Toggleable { default } | LineNumberPolicy::Fixed(default) => {
                         default
                     }
                     _ => false,
-                }
-            })
+                })
+    }
+    pub fn font_slot(&self, comments: bool) -> FontSlot<'_> {
+        if comments {
+            FontSlot {
+                id: &self.comment_font_id,
+                path: &self.comment_font_path,
+                bookmark: &self.comment_font_bookmark,
+            }
+        } else {
+            FontSlot {
+                id: &self.font_id,
+                path: &self.font_path,
+                bookmark: &self.font_bookmark,
+            }
+        }
+    }
+    /// Replace the code or comment typeface with a bundled ID or a custom file.
+    pub fn set_font(
+        &mut self,
+        comments: bool,
+        id: Option<String>,
+        path: Option<PathBuf>,
+        bookmark: Option<Vec<u8>>,
+    ) {
+        let (slot_id, slot_path, slot_bookmark) = if comments {
+            (
+                &mut self.comment_font_id,
+                &mut self.comment_font_path,
+                &mut self.comment_font_bookmark,
+            )
+        } else {
+            (
+                &mut self.font_id,
+                &mut self.font_path,
+                &mut self.font_bookmark,
+            )
+        };
+        (*slot_id, *slot_path, *slot_bookmark) = (id, path, bookmark);
     }
 
     pub fn background(&self) -> Result<Background> {
@@ -135,27 +188,20 @@ impl Document {
         self.background = background.to_string();
     }
     pub fn typeface_selection(&self, comments: bool) -> &str {
-        let (id, path) = if comments {
-            (&self.comment_font_id, &self.comment_font_path)
-        } else {
-            (&self.font_id, &self.font_path)
-        };
-        id.as_deref()
-            .unwrap_or(if path.is_some() { "custom" } else { "" })
+        let slot = self.font_slot(comments);
+        slot.id
+            .as_deref()
+            .unwrap_or(if slot.path.is_some() { "custom" } else { "" })
     }
 
     /// Select a bundled ID, or an empty ID to restore inheritance.
     pub fn select_typeface(&mut self, comments: bool, id: &str) {
-        let id = (!id.is_empty()).then(|| id.to_owned());
-        if comments {
-            self.comment_font_id = id;
-            self.comment_font_path = None;
-            self.comment_font_bookmark = None;
-        } else {
-            self.font_id = id;
-            self.font_path = None;
-            self.font_bookmark = None;
-        }
+        self.set_font(
+            comments,
+            (!id.is_empty()).then(|| id.to_owned()),
+            None,
+            None,
+        );
     }
 
     pub fn prepare(
@@ -168,11 +214,7 @@ impl Document {
             "Code is too large. Use a snippet smaller than 1 MiB."
         );
         let theme: Theme = self.theme.parse()?;
-        let appearance = if self.light {
-            Appearance::Light
-        } else {
-            Appearance::Dark
-        };
+        let appearance = self.appearance();
         ensure!(
             theme.supports(appearance),
             "{} does not support {appearance} appearance.",
@@ -227,13 +269,7 @@ impl Document {
         if !self.title.is_empty() {
             snippet = snippet.title(&self.title);
         }
-        let lines = self
-            .source
-            .replace("\r\n", "\n")
-            .replace('\r', "\n")
-            .split('\n')
-            .count();
-        for (start, end) in highlight_ranges(&self.highlights, lines)? {
+        for (start, end) in highlight_ranges(&self.highlights, self.line_count())? {
             snippet = snippet.highlight(start..=end);
         }
         for range in self
@@ -245,15 +281,16 @@ impl Document {
         }
         Ok((snippet, style))
     }
+    /// Lines as the renderer counts them: CRLF, CR and LF each end a line.
+    pub fn line_count(&self) -> usize {
+        self.source
+            .replace("\r\n", "\n")
+            .split(['\n', '\r'])
+            .count()
+    }
     pub fn select_theme(&mut self, theme: Theme) {
         self.theme = theme.canonical().id().into();
-        if theme != theme.canonical()
-            || !theme.supports(if self.light {
-                Appearance::Light
-            } else {
-                Appearance::Dark
-            })
-        {
+        if theme != theme.canonical() || !theme.supports(self.appearance()) {
             self.light = theme.default_appearance() == Appearance::Light;
         }
     }
@@ -300,14 +337,13 @@ pub(crate) fn highlight_ranges(value: &str, lines: usize) -> Result<Vec<(usize, 
         .map(|part| {
             let part = part.trim();
             let (first, last) = part.split_once('-').unwrap_or((part, part));
-            let first: usize = first
-                .trim()
-                .parse()
-                .context("Use line numbers such as 1, 3-5 for highlights.")?;
-            let last: usize = last
-                .trim()
-                .parse()
-                .context("Use line numbers such as 1, 3-5 for highlights.")?;
+            let line = |value: &str| {
+                value
+                    .trim()
+                    .parse::<usize>()
+                    .context("Use line numbers such as 1, 3-5 for highlights.")
+            };
+            let (first, last) = (line(first)?, line(last)?);
             ensure!(
                 first > 0 && first <= last && last <= lines,
                 "Highlight lines must be between 1 and {lines}, in ascending ranges."
@@ -341,19 +377,7 @@ pub struct FontCache {
 }
 impl FontCache {
     pub fn load_document(&mut self, document: &Document, comments: bool) -> Result<Option<Font>> {
-        let (id, path, bookmark) = if comments {
-            (
-                &document.comment_font_id,
-                &document.comment_font_path,
-                &document.comment_font_bookmark,
-            )
-        } else {
-            (
-                &document.font_id,
-                &document.font_path,
-                &document.font_bookmark,
-            )
-        };
+        let FontSlot { id, path, bookmark } = document.font_slot(comments);
         if id.is_some() || path.is_none() {
             return self.load_selection(id.as_deref(), path.as_deref());
         }
@@ -482,10 +506,10 @@ pub fn data_directory() -> Option<PathBuf> {
 pub fn load_session(path: &Path) -> Result<Document> {
     let mut bytes = Vec::new();
     fs::File::open(path)?
-        .take(8 * 1024 * 1024 + 1)
+        .take(MAX_SESSION_BYTES as u64 + 1)
         .read_to_end(&mut bytes)?;
     ensure!(
-        bytes.len() <= 8 * 1024 * 1024,
+        bytes.len() <= MAX_SESSION_BYTES,
         "Saved session is too large."
     );
     let mut saved: serde_json::Value = serde_json::from_slice(&bytes)?;
@@ -521,7 +545,7 @@ pub fn save_session(path: &Path, document: &Document) -> Result<()> {
     );
     let bytes = serde_json::to_vec(document)?;
     ensure!(
-        bytes.len() <= 8 * 1024 * 1024,
+        bytes.len() <= MAX_SESSION_BYTES,
         "Session exceeds 8 MiB; the previous session was retained."
     );
     if let Some(parent) = path.parent().filter(|p| !p.as_os_str().is_empty()) {

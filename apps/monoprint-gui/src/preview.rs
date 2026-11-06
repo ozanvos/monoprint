@@ -1,5 +1,5 @@
 use crate::document::{Document, FontCache, SessionStore};
-use gpui_kit::RenderImage;
+use gpui_kit::{Pixels, RenderImage, Size, px, size};
 use monoprint::{Renderer, Scale};
 use std::{
     sync::{Arc, Condvar, Mutex},
@@ -11,6 +11,12 @@ pub struct Preview {
     pub image: Arc<RenderImage>,
     pub width: u32,
     pub height: u32,
+}
+impl Preview {
+    /// The image size in logical pixels; previews render at 2×.
+    pub fn logical_size(&self) -> Size<Pixels> {
+        size(px(self.width as f32 / 2.), px(self.height as f32 / 2.))
+    }
 }
 const LIVE_REFRESH_INTERVAL: Duration = Duration::from_millis(100);
 
