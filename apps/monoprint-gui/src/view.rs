@@ -333,15 +333,7 @@ impl Studio {
                     .bg(rgb(p.surface))
                     .window_control_area(WindowControlArea::Drag)
                     .child(
-                        Button::new("open-source")
-                            .outline()
-                            .xsmall()
-                            .size(px(26.))
-                            .flex_shrink_0()
-                            .p_0()
-                            .border_color(rgb(p.strong))
-                            .bg(rgb(p.control))
-                            .child(Icon::new(IconName::FolderOpen).size(px(16.)))
+                        icon_button(p, "open-source", IconName::FolderOpen)
                             .accessibility_label("Open source file")
                             .tooltip("Open source file · ⌘O")
                             .on_click(
@@ -352,15 +344,7 @@ impl Studio {
                             .smooth_hover(p, HoverStyle::Control),
                     )
                     .child(
-                        Button::new("paste-source")
-                            .outline()
-                            .xsmall()
-                            .size(px(26.))
-                            .flex_shrink_0()
-                            .p_0()
-                            .border_color(rgb(p.strong))
-                            .bg(rgb(p.control))
-                            .child(Icon::new(IconName::ClipboardPaste).size(px(16.)))
+                        icon_button(p, "paste-source", IconName::ClipboardPaste)
                             .accessibility_label("Paste source code")
                             .tooltip("Replace code with clipboard text")
                             .on_click(cx.listener(|this, _, window, cx| {
@@ -370,15 +354,7 @@ impl Studio {
                     )
                     .when(highlighted, |view| {
                         view.child(
-                            Button::new("clear-highlights")
-                                .outline()
-                                .xsmall()
-                                .size(px(26.))
-                                .flex_shrink_0()
-                                .p_0()
-                                .border_color(rgb(p.strong))
-                                .bg(rgb(p.control))
-                                .child(Icon::new(IconName::Eraser).size(px(16.)))
+                            icon_button(p, "clear-highlights", IconName::Eraser)
                                 .accessibility_label("Clear all highlights")
                                 .tooltip("Clear all line and text highlights")
                                 .on_click(cx.listener(|this, _, _, cx| this.clear_highlights(cx)))
@@ -400,16 +376,8 @@ impl Studio {
                         .on_mouse_down(MouseButton::Left, |_, window, _| window.prevent_default()),
                     )
                     .child(
-                        Button::new("wrap-source")
-                            .outline()
-                            .xsmall()
-                            .size(px(26.))
-                            .flex_shrink_0()
-                            .p_0()
-                            .border_color(rgb(p.strong))
-                            .bg(rgb(p.control))
+                        icon_button(p, "wrap-source", IconName::TextWrap)
                             .text_color(rgb(if self.wrap { p.ink } else { p.muted }))
-                            .child(Icon::new(IconName::TextWrap).size(px(16.)))
                             .accessibility_label("Toggle soft wrap")
                             .toggled(self.wrap)
                             .tooltip(if self.wrap {
@@ -597,12 +565,33 @@ impl Studio {
         )
     }
     fn preview_size(&self) -> Option<gpui_kit::Size<Pixels>> {
-        self.preview.as_ref().map(|preview| {
-            size(
-                px(preview.width as f32 / 2.),
-                px(preview.height as f32 / 2.),
-            )
-        })
+        self.preview
+            .as_ref()
+            .map(crate::preview::Preview::logical_size)
+    }
+
+    fn resizing_canvas(&self) -> bool {
+        self.canvas_resize
+            .as_ref()
+            .is_some_and(|resize| resize.dragging)
+    }
+
+    /// Pan or zoom the preview unless a canvas resize owns the gesture.
+    fn steer_viewport(
+        &mut self,
+        cx: &mut Context<Self>,
+        steer: impl FnOnce(&mut crate::viewport::PreviewViewport, gpui_kit::Size<Pixels>),
+    ) {
+        if self.canvas_resize.is_some() {
+            cx.stop_propagation();
+            return;
+        }
+        if let Some(image) = self.preview_size() {
+            self.zoom_motion.follow();
+            steer(&mut self.viewport, image);
+            cx.stop_propagation();
+            cx.notify();
+        }
     }
 
     fn preview_canvas(
@@ -620,29 +609,14 @@ impl Studio {
             .overflow_hidden()
             .flex()
             .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| {
-                if this.canvas_resize.is_some() {
-                    cx.stop_propagation();
-                    return;
-                }
-                if let Some(image) = this.preview_size() {
-                    this.zoom_motion.follow();
-                    this.viewport
-                        .pan_by(event.delta.pixel_delta(px(24.)), image);
-                    cx.stop_propagation();
-                    cx.notify();
-                }
+                let delta = event.delta.pixel_delta(px(24.));
+                this.steer_viewport(cx, |viewport, image| viewport.pan_by(delta, image));
             }))
             .on_pinch(cx.listener(|this, event: &PinchEvent, _, cx| {
-                if this.canvas_resize.is_some() {
-                    cx.stop_propagation();
-                    return;
-                }
-                if let Some(image) = this.preview_size() {
-                    this.zoom_motion.follow();
-                    this.viewport.zoom_by(event.delta, event.position, image);
-                    cx.stop_propagation();
-                    cx.notify();
-                }
+                let (delta, position) = (event.delta, event.position);
+                this.steer_viewport(cx, |viewport, image| {
+                    viewport.zoom_by(delta, position, image)
+                });
             }))
             .on_mouse_down(
                 MouseButton::Left,
@@ -828,11 +802,7 @@ impl Studio {
                             return;
                         }
                         let _ = moving.update(cx, |this, cx| {
-                            if this
-                                .canvas_resize
-                                .as_ref()
-                                .is_some_and(|resize| resize.dragging)
-                            {
+                            if this.resizing_canvas() {
                                 if event.pressed_button == Some(MouseButton::Left) {
                                     this.update_canvas_resize(event.position, window, cx);
                                 } else {
@@ -855,11 +825,7 @@ impl Studio {
                     window.on_mouse_event(move |event: &MouseUpEvent, phase, window, cx| {
                         if phase.capture() && event.button == MouseButton::Left {
                             let _ = studio.update(cx, |this, cx| {
-                                if this
-                                    .canvas_resize
-                                    .as_ref()
-                                    .is_some_and(|resize| resize.dragging)
-                                {
+                                if this.resizing_canvas() {
                                     this.update_canvas_resize(event.position, window, cx);
                                     this.end_canvas_resize(cx);
                                     cx.stop_propagation();
@@ -923,16 +889,14 @@ impl Studio {
                             ]
                             .into_iter()
                             .map(|(id, label, zoom)| {
-                                segment(p, id)
-                                    .label(label)
-                                    .selected(self.viewport.zoom == zoom)
-                                    .toggled(self.viewport.zoom == zoom)
-                                    .on_click(cx.listener(move |this, _, _, cx| {
+                                toggle_segment(p, id, label, self.viewport.zoom == zoom).on_click(
+                                    cx.listener(move |this, _, _, cx| {
                                         this.canvas_resize = None;
                                         this.zoom_motion.spring();
                                         this.viewport.reset(zoom);
                                         cx.notify();
-                                    }))
+                                    }),
+                                )
                             }),
                         ),
                     )
@@ -981,33 +945,19 @@ impl Studio {
             )
             .when_some(self.error.clone(), |view, error| {
                 view.child(
-                    div()
-                        .mx_5()
-                        .mb_3()
-                        .p_3()
-                        .rounded_md()
-                        .bg(rgb(if p.light { 0xFBEAEA } else { 0x382627 }))
-                        .text_color(rgb(if p.light { 0xA33838 } else { 0xFFB4B4 }))
-                        .text_size(px(12.))
-                        .child(error)
-                        .when(self.preview.is_some(), |view| {
-                            view.child(div().mt_2().child("Showing the previous preview."))
-                        }),
+                    banner(
+                        rgb(if p.light { 0xFBEAEA } else { 0x382627 }),
+                        rgb(if p.light { 0xA33838 } else { 0xFFB4B4 }),
+                    )
+                    .child(error)
+                    .when(self.preview.is_some(), |view| {
+                        view.child(div().mt_2().child("Showing the previous preview."))
+                    }),
                 )
             })
             .children(self.update_notification(cx))
             .when_some(self.notice.clone(), |view, notice| {
-                view.child(
-                    div()
-                        .mx_5()
-                        .mb_3()
-                        .p_3()
-                        .rounded_md()
-                        .bg(rgb(p.accent).opacity(0.12))
-                        .text_color(rgb(p.accent))
-                        .text_size(px(12.))
-                        .child(notice),
-                )
+                view.child(banner(rgb(p.accent).opacity(0.12), rgb(p.accent)).child(notice))
             })
     }
     fn section_header(
@@ -1051,24 +1001,35 @@ impl Studio {
             .map(|trigger| hover_text(trigger, p))
     }
 
+    /// A theme's preview, in its light variant when requested and available.
+    fn thumbnail<'a>(
+        &'a self,
+        theme: &ImageTheme,
+        image: &'a std::sync::Arc<Image>,
+        light: bool,
+    ) -> &'a std::sync::Arc<Image> {
+        if light {
+            self.light_thumbnails.get(theme).unwrap_or(image)
+        } else {
+            image
+        }
+    }
+
+    /// Whether the theme filter shows the document's current appearance.
+    fn filter_shows_appearance(&self) -> bool {
+        self.theme_filter
+            .appearance()
+            .is_none_or(|appearance| self.document.appearance() == appearance)
+    }
+
     fn theme_settings(&self, cx: &Context<Self>) -> impl IntoElement {
         let p = palette(cx);
-        let theme = self
-            .document
-            .theme
-            .parse::<ImageTheme>()
-            .unwrap_or_default();
+        let theme = self.document.theme();
         let image = self
             .thumbnails
             .iter()
             .find(|(item, _)| *item == theme)
-            .map(|(_, image)| {
-                if self.document.light {
-                    self.light_thumbnails.get(&theme).unwrap_or(image)
-                } else {
-                    image
-                }
-            });
+            .map(|(_, image)| self.thumbnail(&theme, image, self.document.light));
         settings_section(p)
             // The inspector has no toolbar row; center the first header on the
             // 40px source and canvas toolbars beside it.
@@ -1142,12 +1103,7 @@ impl Studio {
 
     fn theme_appearance(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
         let p = palette(cx);
-        let theme = self
-            .document
-            .theme
-            .parse::<ImageTheme>()
-            .unwrap_or_default();
-        has_light_and_dark(theme).then(|| {
+        has_light_and_dark(self.document.theme()).then(|| {
             field(
                 p,
                 "Variant",
@@ -1159,11 +1115,8 @@ impl Studio {
                     .into_iter()
                     .map(|(id, label, appearance)| {
                         let light = appearance == Appearance::Light;
-                        segment(p, id)
+                        toggle_segment(p, id, label, self.document.light == light)
                             .flex_1()
-                            .label(label)
-                            .selected(self.document.light == light)
-                            .toggled(self.document.light == light)
                             .tooltip(format!(
                                 "Render the image in the {} variant",
                                 label.to_lowercase()
@@ -1249,14 +1202,18 @@ impl Studio {
                                     .into_iter()
                                     .map(
                                         |(id, label, filter)| {
-                                            segment(p, id)
-                                                .label(label)
-                                                .selected(self.theme_filter == filter)
-                                                .toggled(self.theme_filter == filter)
-                                                .on_click(cx.listener(move |this, _, _, cx| {
+                                            toggle_segment(
+                                                p,
+                                                id,
+                                                label,
+                                                self.theme_filter == filter,
+                                            )
+                                            .on_click(
+                                                cx.listener(move |this, _, _, cx| {
                                                     this.theme_filter = filter;
                                                     this.filter_themes(cx);
-                                                }))
+                                                }),
+                                            )
                                         },
                                     ),
                                 ),
@@ -1339,11 +1296,7 @@ impl Studio {
             .iter()
             .map(|&index| self.thumbnails[index].0)
             .find(|candidate| candidate.id() == theme)
-            .filter(|_| {
-                self.theme_filter.appearance().is_none_or(|appearance| {
-                    self.document.light == (appearance == Appearance::Light)
-                })
-            })
+            .filter(|_| self.filter_shows_appearance())
             .map(|theme| theme.id())
     }
 
@@ -1355,17 +1308,9 @@ impl Studio {
     ) -> impl IntoElement {
         let p = palette(cx);
         let (theme, image) = &self.thumbnails[index];
-        let image = if self.theme_filter == ThemeFilter::Light {
-            self.light_thumbnails.get(theme).unwrap_or(image)
-        } else {
-            image
-        };
+        let image = self.thumbnail(theme, image, self.theme_filter == ThemeFilter::Light);
         let theme = *theme;
-        let selected = self.document.theme == theme.id()
-            && self
-                .theme_filter
-                .appearance()
-                .is_none_or(|appearance| self.document.light == (appearance == Appearance::Light));
+        let selected = self.document.theme == theme.id() && self.filter_shows_appearance();
         let tile = Button::new(("theme-swatch", index))
             .ghost()
             .p_0()
@@ -1485,12 +1430,7 @@ impl Studio {
                             .flex_1()
                             .min_w_0()
                             .aria_label("Font size")
-                            .suffix(
-                                div()
-                                    .text_color(rgb(p.muted))
-                                    .text_size(px(11.))
-                                    .child("px"),
-                            ),
+                            .suffix(px_suffix(p)),
                     )
                     .children(
                         [
@@ -1509,16 +1449,8 @@ impl Studio {
                         ]
                         .into_iter()
                         .map(|(id, icon, description, delta)| {
-                            Button::new(id)
-                                .outline()
-                                .xsmall()
-                                .size(px(26.))
-                                .flex_shrink_0()
-                                .p_0()
-                                .border_color(rgb(p.strong))
-                                .bg(rgb(p.control))
+                            icon_button(p, id, icon)
                                 .text_color(rgb(p.ink))
-                                .child(Icon::new(icon).size(px(16.)))
                                 .accessibility_label(description)
                                 .tooltip(description)
                                 .disabled(value == Some(if delta < 0 { 8 } else { 72 }))
@@ -1584,34 +1516,23 @@ impl Studio {
                     .when(
                         !self.document.typeface_selection(comments).is_empty(),
                         |view| {
+                            let (id, label, tooltip) = if comments {
+                                (
+                                    "reset-comment-font",
+                                    "Reset comment typeface",
+                                    "Use code typeface",
+                                )
+                            } else {
+                                ("theme-font", "Reset code typeface", "Use theme typeface")
+                            };
                             view.child(
-                                Button::new(if comments {
-                                    "reset-comment-font"
-                                } else {
-                                    "theme-font"
-                                })
-                                .ghost()
-                                .xsmall()
-                                .size(px(26.))
-                                .flex_shrink_0()
-                                .p_0()
-                                .child(Icon::new(IconName::RotateCcw).size(px(16.)))
-                                .accessibility_label(if comments {
-                                    "Reset comment typeface"
-                                } else {
-                                    "Reset code typeface"
-                                })
-                                .tooltip(if comments {
-                                    "Use code typeface"
-                                } else {
-                                    "Use theme typeface"
-                                })
-                                .on_click(cx.listener(move |this, _, window, cx| {
-                                    this.document.select_typeface(comments, "");
-                                    this.sync_typeface(comments, window, cx);
-                                    this.changed(cx);
-                                }))
-                                .smooth_hover(p, HoverStyle::Ghost),
+                                reset_button(id, label, tooltip)
+                                    .on_click(cx.listener(move |this, _, window, cx| {
+                                        this.document.select_typeface(comments, "");
+                                        this.sync_typeface(comments, window, cx);
+                                        this.changed(cx);
+                                    }))
+                                    .smooth_hover(p, HoverStyle::Ghost),
                             )
                         },
                     ),
@@ -1630,51 +1551,40 @@ impl Studio {
     ) -> impl IntoElement {
         let p = palette(cx);
         let input = state.clone();
-        text_input(p, state)
-            .aria_label(aria_label)
-            .suffix(
-                div()
-                    .flex()
-                    .items_center()
-                    .gap(px(3.))
-                    .child(
-                        div()
-                            .text_color(rgb(p.muted))
-                            .text_size(px(11.))
-                            .child("px"),
-                    )
-                    .child(
-                        Button::new(id)
-                            .ghost()
-                            .xsmall()
-                            .size(px(18.))
-                            .p_0()
-                            .child(Icon::new(IconName::ChevronDown).size(px(14.)))
-                            .accessibility_label(menu_label)
-                            .tooltip("Choose a preset or type an exact value")
-                            .smooth_hover(p, HoverStyle::Ghost)
-                            .dropdown_menu_with_anchor(Anchor::TopRight, move |mut menu, _, cx| {
-                                let selected = input.read(cx).value().parse::<u32>().ok();
-                                for &preset in presets {
-                                    let input = input.clone();
-                                    menu = menu.item(
-                                        PopupMenuItem::new(format!("{preset} px"))
-                                            .checked(selected == Some(preset))
-                                            .on_click(move |_, window, cx| {
-                                                input.update(cx, |state, cx| {
-                                                    state.replace_all(
-                                                        preset.to_string(),
-                                                        window,
-                                                        cx,
-                                                    )
-                                                });
-                                            }),
-                                    );
-                                }
-                                menu
-                            }),
-                    ),
-            )
+        text_input(p, state).aria_label(aria_label).suffix(
+            div()
+                .flex()
+                .items_center()
+                .gap(px(3.))
+                .child(px_suffix(p))
+                .child(
+                    Button::new(id)
+                        .ghost()
+                        .xsmall()
+                        .size(px(18.))
+                        .p_0()
+                        .child(Icon::new(IconName::ChevronDown).size(px(14.)))
+                        .accessibility_label(menu_label)
+                        .tooltip("Choose a preset or type an exact value")
+                        .smooth_hover(p, HoverStyle::Ghost)
+                        .dropdown_menu_with_anchor(Anchor::TopRight, move |mut menu, _, cx| {
+                            let selected = input.read(cx).value().parse::<u32>().ok();
+                            for &preset in presets {
+                                let input = input.clone();
+                                menu = menu.item(
+                                    PopupMenuItem::new(format!("{preset} px"))
+                                        .checked(selected == Some(preset))
+                                        .on_click(move |_, window, cx| {
+                                            input.update(cx, |state, cx| {
+                                                state.replace_all(preset.to_string(), window, cx)
+                                            });
+                                        }),
+                                );
+                            }
+                            menu
+                        }),
+                ),
+        )
     }
 
     fn cli_command(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -1894,22 +1804,16 @@ impl Studio {
                                     .gap(px(5.))
                                     .when(self.document.line_numbers.is_some(), |view| {
                                         view.child(
-                                            Button::new("reset-line-numbers")
-                                                .ghost()
-                                                .xsmall()
-                                                .size(px(26.))
-                                                .flex_shrink_0()
-                                                .p_0()
-                                                .child(Icon::new(IconName::RotateCcw).size(px(16.)))
-                                                .accessibility_label(
-                                                    "Use theme default line numbers",
-                                                )
-                                                .tooltip("Use theme default")
-                                                .on_click(cx.listener(|this, _, _, cx| {
-                                                    this.document.line_numbers = None;
-                                                    this.changed(cx);
-                                                }))
-                                                .smooth_hover(p, HoverStyle::Ghost),
+                                            reset_button(
+                                                "reset-line-numbers",
+                                                "Use theme default line numbers",
+                                                "Use theme default",
+                                            )
+                                            .on_click(cx.listener(|this, _, _, cx| {
+                                                this.document.line_numbers = None;
+                                                this.changed(cx);
+                                            }))
+                                            .smooth_hover(p, HoverStyle::Ghost),
                                         )
                                     })
                                     .child(
@@ -2142,6 +2046,54 @@ fn segment(p: Palette, id: impl Into<ElementId>) -> Button {
         .px(px(7.))
         .rounded(px(3.))
         .text_size(px(11.))
+}
+
+fn toggle_segment(p: Palette, id: impl Into<ElementId>, label: &'static str, on: bool) -> Button {
+    segment(p, id).label(label).selected(on).toggled(on)
+}
+
+/// A square outline toolbar button with a 16 px icon.
+fn icon_button(p: Palette, id: impl Into<ElementId>, icon: IconName) -> Button {
+    Button::new(id)
+        .outline()
+        .xsmall()
+        .size(px(26.))
+        .flex_shrink_0()
+        .p_0()
+        .border_color(rgb(p.strong))
+        .bg(rgb(p.control))
+        .child(Icon::new(icon).size(px(16.)))
+}
+
+/// A ghost button that restores an inherited default.
+fn reset_button(id: &'static str, label: &'static str, tooltip: &'static str) -> Button {
+    Button::new(id)
+        .ghost()
+        .xsmall()
+        .size(px(26.))
+        .flex_shrink_0()
+        .p_0()
+        .child(Icon::new(IconName::RotateCcw).size(px(16.)))
+        .accessibility_label(label)
+        .tooltip(tooltip)
+}
+
+fn px_suffix(p: Palette) -> Div {
+    div()
+        .text_color(rgb(p.muted))
+        .text_size(px(11.))
+        .child("px")
+}
+
+fn banner(background: Rgba, foreground: Rgba) -> Div {
+    div()
+        .mx_5()
+        .mb_3()
+        .p_3()
+        .rounded_md()
+        .bg(background)
+        .text_color(foreground)
+        .text_size(px(12.))
 }
 
 fn highlight_button_style(cx: &App) -> ButtonCustomVariant {
