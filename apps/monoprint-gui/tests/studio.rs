@@ -1956,7 +1956,7 @@ mod macos {
                         s.preview.as_ref().unwrap().image.clone(),
                     )
                 });
-            let maximum = if width == 1440. { 560. } else { 480. };
+            let maximum = if width == 1440. { 560. } else { 464. };
             for (target, expected, label) in [
                 (440., 440., "wide"),
                 (2000., maximum, "max"),

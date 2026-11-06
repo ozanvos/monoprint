@@ -48,7 +48,7 @@ fn default_monoprint_exports_both_approved_appearances() {
         for text in [
             "create.ts",
             "TypeScript",
-            "<div class=\"Monoprint__foot\" aria-hidden=\"true\"></div>",
+            "<div class=\"Monoprint__foot\"><div class=\"Monoprint__language\">TypeScript</div></div>",
             keyword,
             literal,
         ] {
@@ -129,7 +129,7 @@ fn monoprint_grows_with_wrapped_code_and_keeps_appearance_when_transparent() {
         assert_eq!(b.width(), 360);
         assert!(b.height() > a.height() + 12 * 29);
         let html = renderer.html(&long, &style).unwrap();
-        assert!(html.contains("<div class=\"Monoprint__foot\" aria-hidden=\"true\"></div>"));
+        assert!(html.contains("<div class=\"Monoprint__foot\"><div class=\"Monoprint__language\">TypeScript</div></div>"));
         assert!(html.contains("世界-and-__TITLE__.ts"));
         assert!(html.contains("class=\"line highlighted-line\" data-line=\"2\""));
         let clear = renderer

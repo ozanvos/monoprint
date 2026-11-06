@@ -3,7 +3,8 @@
 .Monoprint__mast,.Monoprint__foot{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;padding:var(--masthead-label-padding) var(--masthead-label-inset);font-family:CodeMono;font-size:var(--masthead-label-size);line-height:1.5;color:var(--monoprint-label);overflow-wrap:anywhere}
 .Monoprint__mast{min-height:var(--masthead-mast-height);border-bottom:1px solid var(--monoprint-rule)}
 .Monoprint__file{flex:1;min-width:0;font-size:var(--masthead-file-size);font-weight:650;letter-spacing:-.02em;color:var(--ink-foreground)}
-.Monoprint__language{max-width:50%}
+.Monoprint__language{max-width:50%;margin-left:auto;text-align:right}
+#capture[data-untitled] .Monoprint__mast{display:none}
 .Monoprint__foot{min-height:var(--masthead-foot-height);padding-top:var(--masthead-foot-padding);padding-bottom:var(--masthead-foot-padding);background:var(--monoprint-footer);border-top:1px solid var(--monoprint-rule)}
 .Monoprint__body{padding:var(--masthead-body-padding) var(--masthead-inset)}
 .Monoprint .Editor__formatted{padding:0;font-size:var(--masthead-code-size);line-height:var(--masthead-leading);letter-spacing:0}
