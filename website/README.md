@@ -5,7 +5,9 @@ Cloudflare Workers Static Assets. Fonts and images are served locally.
 Fig. 1 is the Studio drawn in HTML from its macOS window and played as a loop;
 its preview images are the CLI's own renders. The theme picker samples and their
 CLI commands come from `src/data/demo.mjs`; the Monoprint CLI renders them and
-the images the interface card demos show. The demos' content is in
+the images the interface card demos show. The link-preview card, `assets/social-card.png`, is
+committed; regenerate it with `node website/scripts/social-card.mjs` after changing
+the brand, tagline or shipped platforms (it needs the CLI and Playwright Chromium or `CHROME_PATH`). The demos' content is in
 `src/data/loops.mjs`.
 
 ## Development

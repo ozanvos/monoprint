@@ -3,7 +3,7 @@ import Icon from '../components/Icon.astro';
 import PartDemo from '../components/PartDemo.astro';
 import Proof from '../components/Proof.astro';
 import StudioDemo from '../components/StudioDemo.astro';
-import { themes, initialTheme, command } from '../data/demo.mjs';
+import { themes, initialTheme, command, socialCard } from '../data/demo.mjs';
 import { shell } from '../scripts/highlight.mjs';
 import release from '../../../release/config.json';
 import { downloads, installs, manifest } from '../data/downloads.mjs';
@@ -16,8 +16,15 @@ const cliDocs = `${repository}/blob/main/docs/cli.md`;
 const parts = [
   { title: 'Studio', body: 'Live preview, line and text highlights, custom fonts, clipboard export and a saved local draft.' },
   { title: 'CLI', body: 'Reads a file or stdin. The output extension picks PNG, SVG or HTML; --transparent drops the backdrop for docs.' },
-  { title: 'Library', body: 'Render in memory from Rust, or from Node.js 22+ with native packages for macOS, Linux and Windows.' },
+  { title: 'Library', body: 'Render in memory from Rust, or from Node.js 22+ with prebuilt native packages. No Rust toolchain needed.' },
 ] as const;
+// Name only the desktop platforms that ship, so the page and link previews never promise one early.
+const desktopNames = [['macos-', 'macOS'], ['win-', 'Windows'], ['linux-', 'Linux']]
+  .filter(([prefix]) => release.desktopPlatforms.some(runtime => runtime.startsWith(prefix)))
+  .map(([, name]) => name);
+const description = `Create code images locally with Monoprint for ${new Intl.ListFormat('en', { type: 'conjunction' }).format(desktopNames)}, the CLI, or Rust and TypeScript APIs. Free and open source.`;
+const title = 'Monoprint | Code images';
+const socialImage = release.homepage && `${release.homepage}/assets/${socialCard.file}`;
 const thumb = (palette: Record<string, string>) => Object.entries(palette).map(([key, value]) => `--${key}:${value}`).join(';');
 ---
 <!doctype html>
@@ -25,11 +32,28 @@ const thumb = (palette: Record<string, string>) => Object.entries(palette).map((
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="description" content="Create code images locally with Monoprint for macOS, Windows and Linux, the CLI, or Rust and TypeScript APIs." />
+    <meta name="description" content={description} />
     {release.websitePublishing !== true && <meta name="robots" content="noindex,nofollow" />}
     {release.homepage && <link rel="canonical" href={release.homepage + '/'} />}
-    <title>Monoprint | Code images</title>
-    <link rel="icon" href="/assets/icon.png" />
+    <title>{title}</title>
+    <meta property="og:type" content="website" />
+    <meta property="og:site_name" content="Monoprint" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    {release.homepage && <meta property="og:url" content={release.homepage + '/'} />}
+    {socialImage && <>
+      <meta property="og:image" content={socialImage} />
+      <meta property="og:image:type" content="image/png" />
+      <meta property="og:image:width" content={String(socialCard.width)} />
+      <meta property="og:image:height" content={String(socialCard.height)} />
+      <meta property="og:image:alt" content={socialCard.alt} />
+    </>}
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:title" content={title} />
+    <meta name="twitter:description" content={description} />
+    {socialImage && <><meta name="twitter:image" content={socialImage} /><meta name="twitter:image:alt" content={socialCard.alt} /></>}
+    <link rel="icon" href="/assets/favicon-32.png" sizes="32x32" type="image/png" />
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
     <link rel="preload" href="/assets/jetbrains-mono.ttf" as="font" type="font/ttf" crossorigin />
     <script is:inline>if (!matchMedia('(prefers-reduced-motion: reduce)').matches) document.documentElement.classList.add('motion');</script>
   </head>
@@ -42,7 +66,7 @@ const thumb = (palette: Record<string, string>) => Object.entries(palette).map((
       </header>
       <main id="main">
         <section class="hero" aria-labelledby="hero-title">
-          <p class="eyebrow">macOS · Windows · Linux · CLI · Rust · TypeScript</p>
+          <p class="eyebrow">{[...desktopNames, 'CLI', 'Rust', 'TypeScript'].join(' · ')}</p>
           <h1 id="hero-title">Code images.</h1>
           <p class="lede">Turn source code into PNG, SVG or HTML on your computer. Fonts, themes and grammars are bundled, so your code stays on the machine.</p>
           <div class="actions">

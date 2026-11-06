@@ -22,3 +22,11 @@ export const initialTheme = themes[themes.findIndex(theme => theme.id === 'night
 export function command(theme) {
   return `monoprint share.rs -o share.png --theme ${theme.cli}${theme.appearance === 'light' ? ' --light' : ''} --highlight 4`;
 }
+// The link-preview card is a committed image made by scripts/social-card.mjs. The asset builder
+// checks its size against these dimensions, which the page declares in og:image.
+export const socialCard = {
+  file: 'social-card.png',
+  width: 1200,
+  height: 630,
+  alt: 'Monoprint: code images. A Rust snippet rendered in the Monoprint and Gruvbox themes, beside the Monoprint logo.',
+};

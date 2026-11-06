@@ -3,7 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { root, run, revision, isDirty, sha256 } from '../../bindings/node/scripts/shared.mjs';
 import { checkRelease } from '../../scripts/release-config.mjs';
-import { themes, source } from '../src/data/demo.mjs';
+import { themes, source, socialCard } from '../src/data/demo.mjs';
 import { loopThemes, palette, previews } from '../src/data/loops.mjs';
 
 export const website = path.join(root, 'website');
@@ -12,7 +12,8 @@ export async function prepareAssets(directory = path.join(website, '.generated/p
   await fs.mkdir(path.join(directory, 'assets'), { recursive: true });
   const assets = path.join(directory, 'assets');
   for (const name of ['inter.ttf', 'inter-OFL.txt', 'jetbrains-mono.ttf', 'jetbrains-mono-OFL.txt']) await fs.copyFile(path.join(root, 'assets/fonts', name), path.join(assets, name));
-  await fs.copyFile(path.join(website, 'assets/icon.png'), path.join(assets, 'icon.png'));
+  for (const name of ['icon.png', 'favicon-32.png']) await fs.copyFile(path.join(website, 'assets', name), path.join(assets, name));
+  await fs.copyFile(path.join(website, 'assets/apple-touch-icon.png'), path.join(directory, 'apple-touch-icon.png'));
   await fs.copyFile(path.join(root, 'LICENSE'), path.join(directory, 'LICENSE'));
   const images = [];
   // Theme picker samples share one snippet and match the command shown beside them.
@@ -30,6 +31,9 @@ export async function prepareAssets(directory = path.join(website, '.generated/p
       images.push({ name: `output-${theme.id}`, source: 'share.rs', theme: theme.cli, appearance: theme.appearance, format: 'png', highlight: null, transparent: false, sha256: sha256(await fs.readFile(output)) });
     }
   } finally { await fs.unlink(pickerInput); }
+  const card = await fs.readFile(path.join(website, 'assets', socialCard.file));
+  if (card.readUInt32BE(16) !== socialCard.width || card.readUInt32BE(20) !== socialCard.height) throw new Error('Social card size does not match socialCard in src/data/demo.mjs; run scripts/social-card.mjs');
+  await fs.writeFile(path.join(assets, socialCard.file), card);
   const paletteInput = path.join(directory, 'palette.rs');
   await fs.writeFile(paletteInput, palette.join('\n'));
   try {
