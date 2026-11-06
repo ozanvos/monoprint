@@ -229,7 +229,7 @@ impl Studio {
                     .px(px(9.))
                     .text_size(px(11.))
                     // Reserve space for Copying… so feedback cannot resize Export.
-                    .w(px(110.))
+                    .w(px(98.))
                     .label(match self.copy_state {
                         CopyState::Idle => "Copy",
                         CopyState::Copying => "Copying…",
@@ -247,6 +247,7 @@ impl Studio {
                         IconName::Copy
                     }),
             )
+            .child(self.cli_command(cx))
     }
 
     fn drag_image(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -898,7 +899,6 @@ impl Studio {
                     .bg(rgb(p.surface))
                     .window_control_area(WindowControlArea::Drag)
                     .gap(px(7.))
-                    .child(self.cli_command(cx))
                     .child(div().flex_1())
                     .when_some(
                         match self.viewport.zoom {
@@ -956,7 +956,12 @@ impl Studio {
                             } else {
                                 "Use light interface"
                             })
-                            .tooltip("Toggle interface appearance · ⌘⇧L")
+                            // The image's own light/dark lives under Theme › Variant.
+                            .tooltip(if p.light {
+                                "Dark app interface · ⌘⇧L"
+                            } else {
+                                "Light app interface · ⌘⇧L"
+                            })
                             .on_click(cx.listener(|this, _, window, cx| {
                                 this.toggle_ui_appearance(&ToggleUiAppearance, window, cx)
                             }))
@@ -1065,6 +1070,9 @@ impl Studio {
                 }
             });
         settings_section(p)
+            // The inspector has no toolbar row; center the first header on the
+            // 40px source and canvas toolbars beside it.
+            .pt(px(8.))
             .open(self.open_sections[InspectorSection::Theme as usize])
             .child(self.section_header(InspectorSection::Theme, "", cx))
             .content(
@@ -1140,22 +1148,26 @@ impl Studio {
             .parse::<ImageTheme>()
             .unwrap_or_default();
         has_light_and_dark(theme).then(|| {
-            row(
+            field(
                 p,
-                "Appearance",
-                segments(p).children(
+                "Variant",
+                segments(p).w_full().children(
                     [
-                        ("light-appearance", "light", Appearance::Light),
-                        ("dark-appearance", "dark", Appearance::Dark),
+                        ("light-appearance", "Light", Appearance::Light),
+                        ("dark-appearance", "Dark", Appearance::Dark),
                     ]
                     .into_iter()
                     .map(|(id, label, appearance)| {
                         let light = appearance == Appearance::Light;
                         segment(p, id)
+                            .flex_1()
                             .label(label)
                             .selected(self.document.light == light)
                             .toggled(self.document.light == light)
-                            .tooltip(format!("Use the {label} variant"))
+                            .tooltip(format!(
+                                "Render the image in the {} variant",
+                                label.to_lowercase()
+                            ))
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.document.light = light;
                                 this.changed(cx);
@@ -1230,9 +1242,9 @@ impl Studio {
                             .child(
                                 segments(p).children(
                                     [
-                                        ("themes-all", "all", ThemeFilter::All),
-                                        ("themes-light", "light", ThemeFilter::Light),
-                                        ("themes-dark", "dark", ThemeFilter::Dark),
+                                        ("themes-all", "All", ThemeFilter::All),
+                                        ("themes-light", "Light", ThemeFilter::Light),
+                                        ("themes-dark", "Dark", ThemeFilter::Dark),
                                     ]
                                     .into_iter()
                                     .map(
@@ -1606,11 +1618,20 @@ impl Studio {
             )
     }
 
-    fn padding_input(&self, cx: &Context<Self>) -> impl IntoElement {
+    /// A pixel input with a presets menu, so Width and Padding behave alike.
+    fn preset_input(
+        &self,
+        state: &Entity<input::InputState>,
+        id: &'static str,
+        aria_label: &'static str,
+        menu_label: &'static str,
+        presets: &'static [u32],
+        cx: &Context<Self>,
+    ) -> impl IntoElement {
         let p = palette(cx);
-        let input = self.padding.clone();
-        text_input(p, &self.padding)
-            .aria_label("Image padding")
+        let input = state.clone();
+        text_input(p, state)
+            .aria_label(aria_label)
             .suffix(
                 div()
                     .flex()
@@ -1623,26 +1644,26 @@ impl Studio {
                             .child("px"),
                     )
                     .child(
-                        Button::new("padding-presets")
+                        Button::new(id)
                             .ghost()
                             .xsmall()
                             .size(px(18.))
                             .p_0()
                             .child(Icon::new(IconName::ChevronDown).size(px(14.)))
-                            .accessibility_label("Padding presets")
-                            .tooltip("Choose padding or type an exact value")
+                            .accessibility_label(menu_label)
+                            .tooltip("Choose a preset or type an exact value")
                             .smooth_hover(p, HoverStyle::Ghost)
                             .dropdown_menu_with_anchor(Anchor::TopRight, move |mut menu, _, cx| {
                                 let selected = input.read(cx).value().parse::<u32>().ok();
-                                for padding in [0u32, 16, 32, 64, 96] {
+                                for &preset in presets {
                                     let input = input.clone();
                                     menu = menu.item(
-                                        PopupMenuItem::new(format!("{padding} px"))
-                                            .checked(selected == Some(padding))
+                                        PopupMenuItem::new(format!("{preset} px"))
+                                            .checked(selected == Some(preset))
                                             .on_click(move |_, window, cx| {
                                                 input.update(cx, |state, cx| {
                                                     state.replace_all(
-                                                        padding.to_string(),
+                                                        preset.to_string(),
                                                         window,
                                                         cx,
                                                     )
@@ -1660,19 +1681,18 @@ impl Studio {
         let p = palette(cx);
         let studio = cx.entity();
         Popover::new("cli-command-popover")
-            .anchor(Anchor::TopLeft)
+            .anchor(Anchor::BottomRight)
             .trigger_style(StyleRefinement::default().flex_shrink_0())
             .trigger(
                 Button::new("cli-command")
                     .outline()
-                    .xsmall()
-                    .h(px(26.))
-                    .px(px(9.))
+                    .size(px(34.))
+                    .p_0()
                     .border_color(rgb(p.strong))
                     .bg(rgb(p.control))
-                    .label(">_ CLI")
-                    .accessibility_label("CLI command")
-                    .tooltip("Reproduce this image in your terminal")
+                    .child(Icon::new(IconName::SquareTerminal).size(px(16.)))
+                    .accessibility_label("Copy as terminal command")
+                    .tooltip("Copy as terminal command")
                     .smooth_hover(p, HoverStyle::Control),
             )
             .content(move |_, _, cx| {
@@ -1805,18 +1825,32 @@ impl Studio {
                                         field(
                                             p,
                                             "Width",
-                                            text_input(p, &self.width)
-                                                .aria_label("Image width")
-                                                .suffix(
-                                                    div()
-                                                        .text_color(rgb(p.muted))
-                                                        .text_size(px(11.))
-                                                        .child("px"),
-                                                ),
+                                            self.preset_input(
+                                                &self.width,
+                                                "width-presets",
+                                                "Image width",
+                                                "Width presets",
+                                                &[480, 640, 720, 960, 1200],
+                                                cx,
+                                            ),
                                         )
                                         .flex_1(),
                                     )
-                                    .child(field(p, "Padding", self.padding_input(cx)).flex_1()),
+                                    .child(
+                                        field(
+                                            p,
+                                            "Padding",
+                                            self.preset_input(
+                                                &self.padding,
+                                                "padding-presets",
+                                                "Image padding",
+                                                "Padding presets",
+                                                &[0, 16, 32, 64, 96],
+                                                cx,
+                                            ),
+                                        )
+                                        .flex_1(),
+                                    ),
                             )
                             .child(field(
                                 p,
@@ -1980,8 +2014,8 @@ impl Studio {
                                     .gap(px(9.))
                                     .child(
                                         div()
-                                            .text_size(px(12.))
-                                            .text_color(rgb(p.muted))
+                                            .text_size(px(11.))
+                                            .text_color(rgb(p.ink2))
                                             .child("Scale"),
                                     )
                                     .child(segments(p).flex_1().children(
@@ -2165,10 +2199,11 @@ fn field(p: Palette, label: &'static str, element: impl IntoElement) -> Div {
         .flex_shrink_0()
         .min_w_0()
         .gap(px(5.))
+        // Same label style as row(): one label voice across the inspector.
         .child(
             div()
-                .text_size(px(10.))
-                .text_color(rgb(p.muted))
+                .text_size(px(11.))
+                .text_color(rgb(p.ink2))
                 .child(label),
         )
         .child(element)
@@ -2219,6 +2254,6 @@ fn canvas_checker(p: Palette) -> impl IntoElement {
 fn pane_widths(width: f32) -> (f32, f32) {
     (
         (width * 0.22).clamp(240., 318.),
-        (width * 0.21).clamp(260., 300.),
+        (width * 0.22).clamp(276., 316.),
     )
 }
