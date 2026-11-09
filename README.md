@@ -3,8 +3,28 @@
 Create code images locally with a native desktop editor, a CLI, and Rust and
 Node.js APIs. Export PNG, SVG, or self-contained HTML.
 
+<p align="center">
+  <img src="docs/images/hero.png" width="880" alt="The Monoprint desktop editor: source on the left, the code image preview in the middle, and theme, frame and export settings on the right">
+</p>
+
 Fonts, themes, and syntax grammars are bundled. Rendering runs on your device
 without a browser, network connection, or installed fonts.
+
+Besides source code, it renders
+[terminal output and code changes](docs/terminal-and-changes.md):
+
+<p align="center">
+  <img src="docs/images/samples.png" width="880" alt="Two Monoprint renders side by side: colored cargo test output, and a Rust code change with removed and added lines">
+</p>
+
+```sh
+monoprint fixtures/example.ts --highlight 6 -o code.png
+cargo test --color=always 2>&1 | monoprint -l ansi --title 'cargo test' -o terminal.png
+monoprint --diff fixtures/diff/before.rs fixtures/diff/after.rs -o change.png
+```
+
+See more themes and a demo of the desktop editor on the
+[website](https://monoprint.7ea.st).
 
 ## Install
 
