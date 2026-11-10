@@ -314,7 +314,7 @@ mod tests {
             .unwrap();
             native += 1;
         }
-        assert!(native >= 80);
+        assert!(native >= 166);
         assert!(
             auto.0.registry.get().is_none(),
             "supported lexers must not initialize Giallo"
@@ -340,6 +340,41 @@ mod tests {
             assert_eq!(actual.background, expected.background);
         }
         assert!(auto.0.registry.get().is_some());
+    }
+
+    #[test]
+    fn newly_supported_languages_use_native_styles_and_utf8_ranges() {
+        let renderer = Renderer::new();
+        for (language, source) in [
+            ("abap", "DATA message TYPE string VALUE 'café'."),
+            ("lean", "def greeting : String := \"café\""),
+            ("apex", "String greeting = 'café';"),
+        ] {
+            let result = highlight(
+                &renderer,
+                language.parse().unwrap(),
+                source,
+                "original-monoprint-dark",
+                false,
+            )
+            .unwrap();
+            assert!(!result.runs.is_empty(), "{language}");
+            let mut offset = 0;
+            for run in &result.runs {
+                assert_eq!(run.range.start, offset, "{language}");
+                assert!(source.get(run.range.clone()).is_some(), "{language}");
+                offset = run.range.end;
+            }
+            assert_eq!(offset, source.len(), "{language}");
+            assert!(
+                result
+                    .runs
+                    .windows(2)
+                    .any(|runs| runs[0].style != runs[1].style),
+                "{language} must receive syntax colors"
+            );
+        }
+        assert!(renderer.0.registry.get().is_none());
     }
 
     #[test]

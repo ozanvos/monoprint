@@ -58,15 +58,20 @@ Balanced compression preserves pixels while trading more encoding time for small
 
 Reuse one renderer to retain native lexer arenas, the fallback grammar registry, compiled grammar patterns, and prepared bundled fonts. Clone a style to derive a variation without changing the original.
 
-Monoprint uses [pierre-highlights-rs 0.1.0](https://crates.io/crates/pierre-highlights-rs/0.1.0)
+Monoprint uses [pierre-highlights-rs 0.2.0](https://crates.io/crates/pierre-highlights-rs/0.2.0)
 from crates.io. The highlighter is maintained in its
 [own repository](https://github.com/ozanvos/pierre-highlights-rs).
 
 Syntax highlighting defaults to native Pierre for supported languages, with Giallo
-for the remaining catalog entries. The full language picker and aliases remain
-available. Python with a separate comment font also uses Giallo to preserve
-TextMate's docstring classification. Existing theme palettes are mapped to Pierre's
-token kinds; syntax classification can differ from TextMate.
+for the remaining catalog entries. With 0.2.0, 166 of the 232 non-terminal
+catalog entries (including plain text and dialect aliases) resolve to Pierre;
+66 still need Giallo, including Nushell, Crystal, Pkl, TypeSpec, and Hem.
+The full language picker and aliases remain available. Python with a separate
+comment font also uses Giallo to preserve TextMate's docstring classification.
+Existing theme palettes are mapped to Pierre's token kinds; syntax classification can differ from TextMate. The Studio editor
+and image renderer share this adapter, so the two backends are for language
+coverage and classification compatibility, not separate editor/render paths.
+Giallo also supplies the theme matcher used to generate the native palettes.
 
 Use `Renderer::new().highlight_backend(HighlightBackend::Giallo)` to retain the
 original backend explicitly. Clones share caches, while each handle retains its
