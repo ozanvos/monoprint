@@ -942,7 +942,7 @@ dependencies = [
 
 [[package]]
 name = "monoprint"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "anyhow",
  "base64",
@@ -966,7 +966,7 @@ dependencies = [
 
 [[package]]
 name = "monoprint-node"
-version = "0.2.3"
+version = "0.2.4"
 dependencies = [
  "monoprint",
  "napi",
@@ -1226,9 +1226,9 @@ dependencies = [
 
 [[package]]
 name = "pierre-highlights-rs"
-version = "0.1.0"
+version = "0.2.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "03d0b5807893bcaf58ddfd7516f787ed1b1da065857739e251e5f30f511e022a"
+checksum = "d07a8e319630e28b84b05409e115a87e953ba9fd451d4d5e57f80e14328f2265"
 
 [[package]]
 name = "pin-project-lite"
