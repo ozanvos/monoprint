@@ -1,7 +1,5 @@
-use gpui_kit::{
-    component::{Theme, ThemeMode},
-    *,
-};
+use gpui::*;
+use gpui_base::{ColorTokens, Theme, ThemeAppearance};
 use std::{borrow::Cow, sync::Arc};
 
 /// Interface tokens from the supplied design. Export colors belong to the renderer.
@@ -90,7 +88,7 @@ fn material_tint(color: u32, opacity: f32) -> Rgba {
 }
 
 pub fn palette(cx: &App) -> Palette {
-    if Theme::global(cx).is_dark() {
+    if Theme::global(cx).appearance == ThemeAppearance::Dark {
         Palette::DARK
     } else {
         Palette::LIGHT
@@ -121,63 +119,42 @@ pub fn apply(light: bool, window: Option<&mut Window>, cx: &mut App) {
     } else {
         WindowAppearance::Dark
     }));
-    Theme::change(
-        if light {
-            ThemeMode::Light
-        } else {
-            ThemeMode::Dark
-        },
-        window,
-        cx,
-    );
     let p = if light { Palette::LIGHT } else { Palette::DARK };
     let theme = Theme::global_mut(cx);
-    theme.font_family = "JetBrains Mono".into();
-    theme.font_size = px(12.);
-    theme.mono_font_family = "JetBrains Mono".into();
-    theme.mono_font_size = px(11.);
-    theme.radius = px(4.);
-    theme.focus_ring = true;
-    theme.colors.background = rgb(p.canvas).into();
-    theme.colors.foreground = rgb(p.ink).into();
-    theme.colors.border = rgb(p.border).into();
-    theme.colors.input = rgb(p.strong).into();
-    theme.colors.ring = rgb(p.accent).into();
-    theme.colors.muted_foreground = rgb(p.muted).into();
-    theme.colors.primary = rgb(p.accent).into();
-    theme.colors.primary_foreground = rgb(p.raised).into();
-    theme.colors.button = rgb(p.control).into();
-    theme.colors.button_foreground = rgb(p.ink2).into();
-    theme.colors.button_hover = rgb(p.control_hover).into();
-    theme.colors.button_active = rgb(p.control_on).into();
-    theme.colors.button_primary = rgb(p.ink).into();
-    theme.colors.button_primary_foreground = rgb(p.raised).into();
-    theme.colors.button_primary_hover = rgb(if light { 0 } else { 0xFFFFFF }).into();
-    theme.colors.button_primary_active = rgb(p.ink2).into();
-    theme.colors.accent = rgb(p.surface3).into();
-    theme.colors.accent_foreground = rgb(p.ink).into();
-    theme.colors.secondary = rgb(p.control).into();
-    theme.colors.secondary_foreground = rgb(p.ink2).into();
-    theme.colors.secondary_hover = rgb(p.control_hover).into();
-    theme.colors.secondary_active = rgb(p.control_on).into();
-    theme.colors.popover = rgb(p.raised).into();
-    theme.colors.popover_foreground = rgb(p.ink).into();
-    theme.colors.list = rgb(p.raised).into();
-    theme.colors.list_hover = rgb(p.surface).into();
-    theme.colors.list_active = rgb(p.surface3).into();
-    theme.colors.list_active_border = rgb(p.accent).into();
-    theme.colors.caret = rgb(p.ink).into();
-    theme.colors.switch = rgb(p.strong).into();
-    theme.colors.switch_thumb = rgb(0xFFFFFF).into();
-    theme.colors.selection = rgb(p.accent).opacity(0.28).into();
-    let highlight = Arc::make_mut(&mut theme.highlight_theme);
-    highlight.style.editor_background = Some(rgb(p.canvas).into());
-    highlight.style.editor_gutter_background = Some(rgb(p.canvas).into());
-    highlight.style.editor_active_line = Some(rgb(p.canvas).into());
-    highlight.style.editor_line_number = Some(rgb(p.faint).into());
-    highlight.style.editor_active_line_number = Some(rgb(p.ink2).into());
-    theme.tokens = (&theme.colors).into();
-    Theme::sync_base(cx);
+    theme.appearance = if light {
+        ThemeAppearance::Light
+    } else {
+        ThemeAppearance::Dark
+    };
+    theme.tokens.typography.mono = "JetBrains Mono".into();
+    theme.tokens.typography.sans = "JetBrains Mono".into();
+    theme.tokens.radius.md = px(4.);
+    theme.tokens.colors = ColorTokens {
+        background: rgb(p.canvas).into(),
+        foreground: rgb(p.ink).into(),
+        surface: rgb(p.raised).into(),
+        surface_foreground: rgb(p.ink).into(),
+        border: rgb(p.border).into(),
+        input: rgb(p.strong).into(),
+        ring: rgb(p.accent).into(),
+        muted: rgb(p.surface).into(),
+        muted_foreground: rgb(p.muted).into(),
+        primary: rgb(p.accent).into(),
+        primary_foreground: rgb(p.raised).into(),
+        accent: rgb(p.surface3).into(),
+        accent_foreground: rgb(p.ink).into(),
+        secondary: rgb(p.control).into(),
+        secondary_foreground: rgb(p.ink2).into(),
+        selection: rgb(p.accent).opacity(0.28).into(),
+        ..if light {
+            ColorTokens::light()
+        } else {
+            ColorTokens::dark()
+        }
+    };
+    if let Some(window) = window {
+        window.refresh();
+    }
 }
 pub fn thumbnails() -> Vec<(monoprint::Theme, Arc<Image>)> {
     let catalog: &[(&str, &[u8])] = include!("../assets/themes/catalog.rs");
@@ -224,4 +201,17 @@ pub fn light_thumbnails(
             (theme, image)
         })
         .collect()
+}
+
+pub fn editor_style(p: Palette) -> gpui_base::input::InputEditorStyle {
+    gpui_base::input::InputEditorStyle {
+        foreground: rgb(p.ink).into(),
+        muted_foreground: rgb(p.faint).into(),
+        background: rgb(p.canvas).into(),
+        editor_gutter_background: Some(rgb(p.canvas).into()),
+        editor_active_line: Some(rgb(p.canvas).into()),
+        caret: rgb(p.ink).into(),
+        selection: rgb(p.accent).opacity(0.28).into(),
+        ..Default::default()
+    }
 }

@@ -1,12 +1,9 @@
-use crate::{studio::*, updates::Status};
 #[cfg(target_os = "linux")]
-use gpui_kit::component::menu::DropdownMenu;
-use gpui_kit::*;
+use crate::ui::{DropdownMenu, TitleBar};
+use crate::{studio::*, updates::Status};
+use gpui::*;
 #[cfg(not(target_os = "macos"))]
-use gpui_kit::{
-    component::{button::*, *},
-    prelude::*,
-};
+use {crate::ui::Button, gpui::prelude::*};
 
 impl Studio {
     pub fn check_for_updates(
@@ -164,7 +161,7 @@ impl Studio {
                         .small()
                         .ghost()
                         .label("Monoprint")
-                        .icon(gpui_kit::assets::IconName::ChevronDown)
+                        .icon(crate::ui::icon(crate::assets::IconName::ChevronDown))
                         .accessibility_label("Monoprint menu")
                         .dropdown_menu(move |menu, _, cx| {
                             let installable = std::env::var_os("APPIMAGE").is_some() && !installed;

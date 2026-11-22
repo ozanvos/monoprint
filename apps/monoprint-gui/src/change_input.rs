@@ -1,6 +1,6 @@
 //! Studio actions for terminal captures and unified changes.
 use crate::studio::Studio;
-use gpui_kit::{Context, PathPromptOptions, PromptLevel, Window};
+use gpui::{Context, PathPromptOptions, PromptLevel, Window};
 impl Studio {
     pub fn sync_input_mode(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         let source = self.document.editor_source();
@@ -9,6 +9,7 @@ impl Studio {
             &self.document,
         );
         self.editor.update(cx, |state, cx| {
+            state.set_readonly(self.document.terminal(), cx);
             state.set_highlighter_factory(factory, cx);
             state.set_highlighter(&self.document.language, cx);
             state.set_value(source, window, cx);

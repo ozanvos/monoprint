@@ -1,5 +1,5 @@
 //! View-only canvas navigation. Never changes the document or renders an image.
-use gpui_kit::{Bounds, Pixels, Point, Size, point, px};
+use gpui::{Bounds, Pixels, Point, Size, point, px};
 
 #[derive(Clone, Copy, Default, PartialEq, Debug)]
 pub enum PreviewZoom {
@@ -100,7 +100,7 @@ impl PreviewViewport {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_kit::size;
+    use gpui::size;
 
     #[test]
     fn pinch_preserves_the_image_point_under_the_pointer() {

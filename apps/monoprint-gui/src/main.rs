@@ -21,18 +21,17 @@ mod selection;
 mod source_highlight;
 mod source_lines;
 mod studio;
+mod ui;
 mod updates;
 mod view;
 mod viewport;
 mod window_setup;
-use gpui_kit::{
-    component::{Root, input},
-    *,
-};
+use gpui::*;
+use gpui_base::input;
 use studio::*;
 
 #[cfg(target_os = "macos")]
-gpui_kit::actions!(monoprint_gui, [AboutMonoprint]);
+gpui::actions!(monoprint_gui, [AboutMonoprint]);
 
 fn main() {
     updates::startup();
@@ -72,12 +71,12 @@ fn main() {
     }
     // Register before launch: Finder may deliver its open event before the window exists.
     let (open_files, incoming_files) = async_channel::unbounded();
-    let application = gpui_kit::application().with_assets(assets::Assets);
+    let application = gpui_platform::application().with_assets(assets::Assets);
     application.on_open_urls(move |urls| {
         let _ = open_files.try_send(urls);
     });
     application.run(move |cx| {
-        gpui_kit::init(cx);
+        ui::init(cx);
         platform_keys::init(cx);
         appearance::init(cx);
         cx.on_action(|_: &Quit, cx| cx.quit());
@@ -91,11 +90,51 @@ fn main() {
         cx.on_action(|_: &OpenPrivacy, cx| cx.open_url("https://monoprint.7ea.st/privacy/"));
         cx.on_action(|_: &OpenSupport, cx| cx.open_url("https://monoprint.7ea.st/support/"));
         cx.bind_keys([
-            KeyBinding::new("secondary-q", Quit, None),
-            KeyBinding::new("secondary-o", OpenSource, Some("Monoprint")),
-            KeyBinding::new("secondary-s", ExportImage, Some("Monoprint")),
-            KeyBinding::new("secondary-shift-c", CopyImage, Some("Monoprint")),
-            KeyBinding::new("secondary-shift-l", ToggleUiAppearance, Some("Monoprint")),
+            KeyBinding::new(
+                if cx.platform_info().is_mac() {
+                    "cmd-q"
+                } else {
+                    "ctrl-q"
+                },
+                Quit,
+                None,
+            ),
+            KeyBinding::new(
+                if cx.platform_info().is_mac() {
+                    "cmd-o"
+                } else {
+                    "ctrl-o"
+                },
+                OpenSource,
+                Some("Monoprint"),
+            ),
+            KeyBinding::new(
+                if cx.platform_info().is_mac() {
+                    "cmd-s"
+                } else {
+                    "ctrl-s"
+                },
+                ExportImage,
+                Some("Monoprint"),
+            ),
+            KeyBinding::new(
+                if cx.platform_info().is_mac() {
+                    "cmd-shift-c"
+                } else {
+                    "ctrl-shift-c"
+                },
+                CopyImage,
+                Some("Monoprint"),
+            ),
+            KeyBinding::new(
+                if cx.platform_info().is_mac() {
+                    "cmd-shift-l"
+                } else {
+                    "ctrl-shift-l"
+                },
+                ToggleUiAppearance,
+                Some("Monoprint"),
+            ),
             KeyBinding::new("escape", input::Escape, Some("ThemeBrowser")),
         ]);
         let mut file_items = vec![
@@ -213,7 +252,7 @@ fn main() {
                     true
                 });
                 // Root otherwise paints an opaque theme background over the material.
-                cx.new(|cx| Root::new(studio, window, cx).bg(transparent_black()))
+                cx.new(|cx| ui::root(studio, window, cx))
             },
         )
         .expect("open Monoprint window");

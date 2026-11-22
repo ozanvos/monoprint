@@ -1,10 +1,7 @@
 //! Whole-line marks and gutter interaction over the existing editor's geometry.
 use crate::{appearance::palette, studio::Studio};
-use gpui_kit::{
-    component::input::{EditorState, RopeExt},
-    prelude::*,
-    *,
-};
+use gpui::{prelude::*, *};
+use gpui_base::input::{EditorState, RopeExt};
 
 #[derive(PartialEq)]
 pub struct SourceLine {

@@ -1,12 +1,15 @@
 # Monoprint Studio
 
-A desktop code-image editor built with [GPUI Kit](https://gpui-kit.com/) 0.8.0
-and the [GPUI Fast](https://github.com/longbridge/gpui-fast) 0.1.10 backend.
+A desktop code-image editor built with Tact, GPUI Base, and
+[GPUI Fast](https://github.com/longbridge/gpui-fast) 0.1.13.
+Monoprint draws its controls and surfaces using its own palette and typefaces.
 It uses the same renderer as the Monoprint CLI and library.
 
 ## Run
 
-From the repository root:
+The Studio manifest pins Tact and GPUI Base to one monorepo Git revision.
+The first build requires SSH access to `ozanvos/monorepo` on GitHub.
+Run from the Monoprint repository root.
 
 ```sh
 cargo run --locked --release --manifest-path apps/monoprint-gui/Cargo.toml
@@ -15,7 +18,7 @@ cargo run --locked --release --manifest-path apps/monoprint-gui/Cargo.toml -- ex
 ```
 
 Studio has its own Cargo workspace. It needs a graphical session and GPU;
-see [GPUI Kit's prerequisites](https://gpui-kit.com/docs/getting-started/).
+see [GPUI Fast’s platform requirements](https://github.com/longbridge/gpui-fast).
 macOS Apple Silicon is tested. Windows and Linux still need native validation.
 
 ## Use
@@ -26,7 +29,10 @@ macOS Apple Silicon is tested. Windows and Linux still need native validation.
   the editor. TypeScript and TSX are separate languages.
 - Click the theme thumbnail to browse themes. Search and filter by appearance.
   The theme's light/dark switch changes the image; the top-bar switch changes
-  the app interface.
+  the app interface. Opening the browser focuses search. Press Down to enter
+  the theme grid, then use the arrows to move and Return to apply a theme.
+  Shift-Tab from search returns to the appearance filter. Escape returns to
+  Browse Themes after any active text composition has ended.
 - New drafts start with **Monoprint**, the Masthead frame with Oxide syntax.
   Its light and dark appearances share one theme and lead the theme browser.
 - Twenty code-only Originals add open fields, edge-attached panels, and quiet
@@ -50,6 +56,7 @@ Finder integration and automation.
 | Action | macOS |
 | --- | --- |
 | Open source | Command-O |
+| Find in source | Command-F |
 | Export | Command-S |
 | Copy image | Command-Shift-C |
 | Switch interface appearance | Command-Shift-L |
@@ -125,3 +132,21 @@ The release profile is the same as the application. Measurements cover CPU scene
 construction and arena cleanup; they exclude GPU presentation, VSync, screenshot
 readback, preview-worker rendering and export time. Keep the machine otherwise
 idle and compare the same harness and build profile across dependency stacks.
+
+
+## Theme keyboard regression
+
+On macOS, the Studio test drives the real view in a headless window at both
+supported test sizes. It uses an in-memory draft.
+
+```sh
+MONOPRINT_GUI_THEME_KEYBOARD=1 cargo test --locked --manifest-path apps/monoprint-gui/Cargo.toml --test studio
+```
+
+For native verification, open Browse Themes and check Shift-Tab moves from
+search to the appearance filter and Tab returns to search. With an IME,
+start composing in search and resolve the composition before dismissing the
+browser with Escape. With the platform screen reader, check it announces
+the focused search field, filter and highlighted theme, and that dismissing
+the browser returns focus to Browse Themes. Try Find and Replace in the
+source editor and verify that Undo restores the prior source text.

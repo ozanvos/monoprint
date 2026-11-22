@@ -3,7 +3,7 @@
 //! GPUI's `Blurred` mode uses Selection and removes native material layers. Keep
 //! AppKit's background material intact so it supplies blur, tint and contrast.
 use anyhow::{Context, Result, bail};
-use gpui_kit::Window;
+use gpui::Window;
 use objc2::{MainThreadMarker, MainThreadOnly, rc::Retained};
 use objc2_app_kit::{
     NSAutoresizingMaskOptions, NSView, NSVisualEffectBlendingMode, NSVisualEffectMaterial,

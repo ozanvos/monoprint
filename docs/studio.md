@@ -93,10 +93,8 @@ separately:
 python3 apps/monoprint-gui/scripts/build-icon.py
 ```
 
-Toolkit patches are documented in
-[the popup patch notes](../vendor/gpui-component/MONOPRINT-PATCH.md)
-[the macOS patch notes](../vendor/gpui-fast-macos/MONOPRINT-PATCH.md)
-and [the motion adapter notes](../vendor/gpui-motion-kit/MONOPRINT-PATCH.md).
+Studio uses Tact springs and GPUI Base transitions for motion.
+The macOS backend patch is described in the [App Store build notes](../vendor/gpui-fast-macos/MONOPRINT-PATCH.md).
 
 ## Terminal output and diffs
 

@@ -1,5 +1,5 @@
 use crate::document::{Document, FontCache, SessionStore};
-use gpui_kit::{Pixels, RenderImage, Size, px, size};
+use gpui::{Pixels, RenderImage, Size, px, size};
 use monoprint::{Renderer, Scale};
 use std::{
     sync::{Arc, Condvar, Mutex},
@@ -162,7 +162,7 @@ impl Drop for PreviewWorker {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_kit::{Image, ImageFormat, SvgRenderer};
+    use gpui::{Image, ImageFormat, SvgRenderer};
     use monoprint::{Appearance, Snippet, Style, Theme};
 
     fn png_preview(

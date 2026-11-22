@@ -5,7 +5,7 @@ pub mod linux_install;
 mod sparkle;
 mod ui;
 
-use gpui_kit::*;
+use gpui::*;
 #[cfg(any(target_os = "windows", target_os = "linux"))]
 use {
     std::time::Duration,

@@ -1,12 +1,11 @@
 //! Monoprint's native/fallback syntax projected into GPUI's source editor.
-use gpui_kit::{
+use gpui::{
     Context, FontStyle, FontWeight, HighlightStyle, Rgba, SharedString, StrikethroughStyle, Task,
-    UnderlineStyle, Window,
-    component::input::{
-        EditorState, FoldRange, HighlightStyleResolver, InputEdit, InputHighlighter,
-        InputHighlighterFactory, Rope,
-    },
-    px,
+    UnderlineStyle, Window, px,
+};
+use gpui_base::input::{
+    EditorState, FoldRange, HighlightStyleResolver, InputEdit, InputHighlighter,
+    InputHighlighterFactory, Rope,
 };
 use std::{cell::RefCell, ops::Range, rc::Rc, sync::OnceLock, time::Duration};
 
@@ -206,7 +205,7 @@ fn visible_runs(runs: &[(Range<usize>, HighlightStyle)], range: &Range<usize>) -
 #[cfg(test)]
 mod tests {
     use super::*;
-    use gpui_kit::rgb;
+    use gpui::rgb;
 
     #[test]
     fn pending_edits_keep_colors_and_unicode_ranges_aligned() {
