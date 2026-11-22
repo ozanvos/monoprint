@@ -1,33 +1,53 @@
-use gpui_kit::{AssetSource, Result, SharedString};
+use gpui::{AssetSource, Result, SharedString};
 use std::borrow::Cow;
 
-// Keep the default component bundle and embed only the additional toolbar icons.
-gpui_kit::assets::icon_assets!(
-    ToolbarIcons,
-    [
-        ClipboardPaste,
-        Eraser,
-        SlidersHorizontal,
-        RotateCcw,
-        TextWrap
-    ]
-);
+macro_rules! icons {
+    ($($name:ident => $path:literal),* $(,)?) => {
+        #[derive(Clone, Copy, PartialEq, Eq)]
+        pub enum IconName { $($name),* }
+        impl IconName {
+            pub fn path(self) -> &'static str {
+                match self { $(Self::$name => concat!("icons/", $path, ".svg")),* }
+            }
+        }
+        impl AssetSource for Assets {
+            fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
+                Ok(match path {
+                    $(concat!("icons/", $path, ".svg") =>
+                        Some(Cow::Borrowed(include_bytes!(concat!("../assets/icons/", $path, ".svg")))),)*
+                    _ => None,
+                })
+            }
+            fn list(&self, prefix: &str) -> Result<Vec<SharedString>> {
+                Ok([$(concat!("icons/", $path, ".svg")),*].into_iter()
+                    .filter(|path| path.starts_with(prefix)).map(Into::into).collect())
+            }
+        }
+    };
+}
 
 pub struct Assets;
 
-impl AssetSource for Assets {
-    fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
-        if let Some(bytes) = ToolbarIcons.load(path)? {
-            return Ok(Some(bytes));
-        }
-        gpui_kit::assets::Assets.load(path)
-    }
-
-    fn list(&self, path: &str) -> Result<Vec<SharedString>> {
-        let mut paths = gpui_kit::assets::Assets.list(path)?;
-        paths.extend(ToolbarIcons.list(path)?);
-        paths.sort();
-        paths.dedup();
-        Ok(paths)
-    }
+icons! {
+    ArrowLeft => "arrow-left",
+    Check => "check",
+    ChevronDown => "chevron-down",
+    ChevronRight => "chevron-right",
+    ClipboardPaste => "clipboard-paste",
+    Copy => "copy",
+    Eraser => "eraser",
+    File => "file",
+    FolderOpen => "folder-open",
+    Image => "image",
+    LoaderCircle => "loader-circle",
+    Minus => "minus",
+    Moon => "moon",
+    Plus => "plus",
+    RotateCcw => "rotate-ccw",
+    Search => "search",
+    SlidersHorizontal => "sliders-horizontal",
+    SquareTerminal => "square-terminal",
+    Sun => "sun",
+    TextWrap => "text-wrap",
+    X => "x",
 }

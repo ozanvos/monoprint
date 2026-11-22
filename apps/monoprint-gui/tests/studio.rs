@@ -55,6 +55,11 @@ mod view;
 #[path = "../src/viewport.rs"]
 mod viewport;
 
+#[cfg(target_os = "macos")]
+mod support;
+#[path = "../src/ui.rs"]
+mod ui;
+
 fn main() {
     #[cfg(target_os = "macos")]
     macos::run();
@@ -65,7 +70,9 @@ fn main() {
 #[cfg(target_os = "macos")]
 mod macos {
     use super::*;
-    use gpui_kit::{component::Root, prelude::*, test::TestWindowExt, *};
+    use crate::support::TestWindowExt;
+    use gpui::{prelude::*, *};
+    use gpui_base::Root;
     use std::{
         sync::Arc,
         time::{Duration, Instant},
@@ -515,7 +522,7 @@ mod macos {
         for phase in [TouchPhase::Started, TouchPhase::Moved, TouchPhase::Ended] {
             cx.update_window(handle.into(), |_, window, cx| {
                 window.dispatch_event(
-                    ScrollWheelEvent {
+                    ScrollEvent {
                         position: anchor,
                         delta: ScrollDelta::Pixels(point(px(12.), px(-8.))),
                         touch_phase: phase,
@@ -606,7 +613,7 @@ mod macos {
                 cx,
             );
             window.dispatch_event(
-                ScrollWheelEvent {
+                ScrollEvent {
                     position: outside,
                     delta: ScrollDelta::Pixels(point(px(25.), px(25.))),
                     ..Default::default()
@@ -634,9 +641,33 @@ mod macos {
         handle: WindowHandle<Root>,
         studio: &Entity<studio::Studio>,
     ) {
-        // Actual pointer hit targets, not calls to the resize methods.
-        click(cx, handle, studio, "half-preview");
+        // A zoom preset must travel, then leave the resize handles at rest.
         settle_motion(cx, handle);
+        let preview_width = |cx: &mut HeadlessAppContext| {
+            cx.update_window(handle.into(), |_, window, _| {
+                window.find("preview-image").bounds().size.width
+            })
+            .unwrap()
+        };
+        let before = preview_width(cx);
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.click("half-preview", cx)
+        })
+        .unwrap();
+        cx.advance_clock(Duration::from_millis(40));
+        cx.run_until_parked();
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.simulate_next_frame(cx);
+        })
+        .unwrap();
+        let in_flight = preview_width(cx);
+        settle_motion(cx, handle);
+        let after = preview_width(cx);
+        assert!(
+            before.min(after) < in_flight && in_flight < before.max(after),
+            "zoom should travel between {before:?} and {after:?}, sampled {in_flight:?}"
+        );
+        // Use the actual pointer hit targets for the resize below.
         let (source, initial_width, initial_height, initial_revision) =
             cx.read_entity(studio, |s, _| {
                 (
@@ -987,6 +1018,244 @@ mod macos {
         settle(cx, handle, studio);
     }
 
+    fn assert_source_caret_is_local(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        cx.update_window(handle.into(), |_, window, cx| {
+            studio
+                .read(cx)
+                .editor
+                .read(cx)
+                .focus_handle(cx)
+                .focus(window, cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        let frames = |cx: &mut HeadlessAppContext| {
+            for _ in 0..10 {
+                cx.advance_clock(Duration::from_millis(100));
+                cx.run_until_parked();
+                cx.update_window(handle.into(), |_, window, cx| {
+                    window.simulate_next_frame(cx)
+                })
+                .unwrap();
+                cx.run_until_parked();
+            }
+        };
+        frames(cx);
+        let before = cx.read_entity(studio, |s, _| s.render_count);
+        frames(cx);
+        assert_eq!(
+            cx.read_entity(studio, |s, _| s.render_count),
+            before,
+            "idle caret blinks must stay inside the source editor"
+        );
+    }
+
+    fn assert_editor_find(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        let editor = cx.read_entity(studio, |studio, _| studio.editor.clone());
+        cx.update_window(handle.into(), |_, window, cx| {
+            editor.focus_handle(cx).focus(window, cx);
+            window.press("cmd-f", cx);
+            assert!(
+                editor.read(cx).search_session().open,
+                "Find reached Base's editor"
+            );
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            assert!(window.try_find("source-find").is_some());
+            window.input("Theme", cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            let session = editor.read(cx).search_session();
+            assert_eq!(session.query, "Theme");
+            assert!(session.matcher.len() > 1);
+            let first = session.matcher.current();
+            window.press("enter", cx);
+            assert_ne!(editor.read(cx).search_session().matcher.current(), first);
+            window.press("escape", cx);
+            assert!(editor.focus_handle(cx).is_focused(window));
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, _| {
+            assert!(window.try_find("source-find").is_none());
+        })
+        .unwrap();
+
+        let original = cx.read_entity(studio, |studio, _| studio.document.source.clone());
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.press("cmd-shift-f", cx)
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.click("source-replacement", cx);
+            window.input("Specimen", cx);
+            window.click("source-replace-all", cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |studio, _| {
+            assert!(studio.document.source.contains("Specimen"))
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            window.press("escape", cx);
+            window.press("cmd-z", cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |studio, _| {
+            assert_eq!(studio.document.source, original)
+        });
+    }
+
+    fn assert_picker_keyboard(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        let original = cx.read_entity(studio, |studio, _| studio.document.language.clone());
+        cx.update_window(handle.into(), |_, window, cx| {
+            studio.read(cx).language.focus_handle(cx).focus(window, cx);
+            window.press("down", cx);
+            assert!(window.try_find("picker-search").is_some());
+            window.input("typescript", cx);
+            window.press("escape", cx);
+            assert!(window.try_find("picker-search").is_none());
+            assert!(studio.read(cx).language.focus_handle(cx).is_focused(window));
+        })
+        .unwrap();
+        cx.read_entity(studio, |studio, _| {
+            assert_eq!(studio.document.language, original)
+        });
+    }
+
+    fn assert_theme_keyboard(
+        cx: &mut HeadlessAppContext,
+        handle: WindowHandle<Root>,
+        studio: &Entity<studio::Studio>,
+    ) {
+        reveal_theme_gallery(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            assert!(
+                studio
+                    .read(cx)
+                    .theme_search
+                    .read(cx)
+                    .focus_handle(cx)
+                    .is_focused(window)
+            );
+            window.press("shift-tab", cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            assert!(
+                studio
+                    .read(cx)
+                    .theme_filters
+                    .read(cx)
+                    .focus_handle(cx)
+                    .is_focused(window)
+            );
+            window.press("tab", cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            assert!(
+                studio
+                    .read(cx)
+                    .theme_search
+                    .read(cx)
+                    .focus_handle(cx)
+                    .is_focused(window)
+            );
+            window.input("Ayu", cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        let revision = cx.read_entity(studio, |s, _| s.revision);
+        cx.update_window(handle.into(), |_, window, cx| window.press("down", cx))
+            .unwrap();
+        settle(cx, handle, studio);
+        let first = cx.read_entity(studio, |s, cx| {
+            *s.theme_grid.read(cx).highlighted().unwrap()
+        });
+        cx.update_window(handle.into(), |_, window, cx| {
+            assert!(
+                studio
+                    .read(cx)
+                    .theme_grid
+                    .read(cx)
+                    .focus_handle(cx)
+                    .is_focused(window)
+            );
+            window.press("right", cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        let chosen = cx.read_entity(studio, |s, cx| {
+            let highlighted = *s.theme_grid.read(cx).highlighted().unwrap();
+            assert_ne!(highlighted, first);
+            assert_eq!(
+                s.revision, revision,
+                "navigation must leave the preview alone"
+            );
+            s.thumbnails[highlighted].0.id()
+        });
+        cx.update_window(handle.into(), |_, window, cx| window.press("enter", cx))
+            .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |s, _| assert_eq!(s.document.theme, chosen));
+        cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
+            .unwrap();
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            let s = studio.read(cx);
+            assert!(!s.browsing_themes);
+            assert!(s.theme_trigger.read(cx).focus_handle(cx).is_focused(window));
+            window.press("enter", cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.update_window(handle.into(), |_, window, cx| {
+            let search = studio.read(cx).theme_search.clone();
+            assert!(search.read(cx).focus_handle(cx).is_focused(window));
+            search.update(cx, |search, cx| {
+                use gpui::EntityInputHandler as _;
+                search.replace_and_mark_text_in_range(None, "に", None, window, cx);
+            });
+            assert!(tact_base::is_composing(&search, window, cx));
+            // Test the action with a live marked range. The test keystroke
+            // helper simulates the IME finishing first.
+            window.dispatch_action(Box::new(gpui_base::input::Escape), cx);
+        })
+        .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |s, _| {
+            assert!(
+                s.browsing_themes,
+                "Escape during composition stays in the browser"
+            )
+        });
+        cx.update_window(handle.into(), |_, window, cx| window.press("escape", cx))
+            .unwrap();
+        settle(cx, handle, studio);
+        cx.read_entity(studio, |s, _| assert!(!s.browsing_themes));
+    }
+
     fn assert_original_style_picker(
         cx: &mut HeadlessAppContext,
         handle: WindowHandle<Root>,
@@ -1285,8 +1554,8 @@ mod macos {
         handle: WindowHandle<Root>,
         studio: &Entity<studio::Studio>,
     ) {
-        // The popup uses GPUI's wall-clock animation. Observe an early native
-        // frame and compare the visible shadow ring with the panel's opacity.
+        // GPUI advances the popup animation on the headless executor's clock.
+        // Compare the visible shadow ring with the panel during the fade.
         let mode = cx
             .update_window(handle.into(), |_, _, cx| {
                 if appearance::palette(cx).light {
@@ -1309,7 +1578,7 @@ mod macos {
                 window.render_frame(cx);
             })
             .unwrap();
-            std::thread::sleep(Duration::from_millis(15));
+            cx.advance_clock(Duration::from_millis(15));
             let popup = cx
                 .update_window(handle.into(), |_, window, cx| {
                     window.render_frame(cx);
@@ -1390,7 +1659,7 @@ mod macos {
                 / edge_rows.len() as f32
         };
         let rising = contrast(&early);
-        std::thread::sleep(Duration::from_millis(170));
+        cx.advance_clock(Duration::from_millis(170));
         cx.update_window(handle.into(), |_, window, cx| window.render_frame(cx))
             .unwrap();
         let settled = cx.capture_screenshot(handle.into()).unwrap();
@@ -1654,17 +1923,17 @@ mod macos {
         }
         for (width, height) in [(1440., 900.), (1100., 700.)] {
             let mut cx = HeadlessAppContext::with_platform(
-                gpui_kit::platform::current_platform(true).text_system(),
+                gpui_platform::current_platform(true).text_system(),
                 Arc::new(crate::assets::Assets),
-                gpui_kit::platform::current_headless_renderer,
+                gpui_platform::current_headless_renderer,
             );
             cx.update(|cx| {
-                gpui_kit::init(cx);
+                ui::init(cx);
                 platform_keys::init(cx);
                 appearance::init(cx);
                 cx.bind_keys([KeyBinding::new(
                     "escape",
-                    gpui_kit::component::input::Escape,
+                    gpui_base::input::Escape,
                     Some("ThemeBrowser"),
                 )]);
             });
@@ -1682,7 +1951,7 @@ mod macos {
                         )
                     });
                     studio = Some(entity.clone());
-                    cx.new(|cx| Root::new(entity, window, cx).bg(transparent_black()))
+                    cx.new(|cx| ui::root(entity, window, cx))
                 })
                 .unwrap();
             let studio = studio.unwrap();
@@ -1692,6 +1961,16 @@ mod macos {
             cx.read_entity(&studio, |s, _| {
                 assert!(s.preview.is_some(), "{:?}", s.error)
             });
+            if std::env::var_os("MONOPRINT_GUI_THEME_KEYBOARD").is_some() {
+                assert_source_caret_is_local(&mut cx, handle, &studio);
+                assert_editor_find(&mut cx, handle, &studio);
+                assert_picker_keyboard(&mut cx, handle, &studio);
+                assert_theme_keyboard(&mut cx, handle, &studio);
+                println!(
+                    "Theme keyboard workflow, picker focus, editor Find and Replace, and caret isolation passed at {width} × {height}"
+                );
+                continue;
+            }
             if std::env::var_os("MONOPRINT_GUI_BENCHMARK").is_some() {
                 benchmark(&mut cx, handle, &studio, width, height);
                 continue;
@@ -1996,7 +2275,7 @@ mod macos {
                     if expected >= 320. {
                         assert!(
                             language.size.width >= px(120.),
-                            "{label}: leave enough text space for JavaScript and TypeScript"
+                            "{label}: leave enough text space for JavaScript and TypeScript, got {:?}", language.size.width
                         );
                     }
                     assert!(
@@ -2861,7 +3140,7 @@ mod macos {
                 assert!(s.error.is_none(), "{:?}", s.error);
             });
             cx.update_window(handle.into(), |_, window, cx| {
-                window.dispatch_action(Box::new(gpui_kit::component::input::Undo), cx);
+                window.dispatch_action(Box::new(gpui_base::input::Undo), cx);
             })
             .unwrap();
             settle(&mut cx, handle, &studio);

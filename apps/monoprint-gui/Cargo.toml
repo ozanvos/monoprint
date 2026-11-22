@@ -11,12 +11,15 @@ publish = false
 [workspace]
 
 [features]
-app-store = ["dep:gpui-macos", "gpui-macos/app-store", "dep:objc2-foundation"]
+app-store = ["dep:gpui-macos", "gpui-macos/app-store"]
 
 [dependencies]
-gpui-kit = { version = "=0.8.0", features = ["gpui-fast", "tree-sitter-rust", "tree-sitter-typescript", "tree-sitter-tsx", "tree-sitter-javascript", "tree-sitter-python"] }
+tact-base = { git = "ssh://git@github.com/ozanvos/monorepo.git", rev = "db7ad2be184335d38a5981b3bbf6cbda904e7ced" }
+gpui-tact = { git = "ssh://git@github.com/ozanvos/monorepo.git", rev = "db7ad2be184335d38a5981b3bbf6cbda904e7ced", features = ["gpui-fast"] }
+gpui = { package = "gpui-fast", version = "=0.1.13" }
+gpui-platform = { package = "gpui-fast-platform", version = "=0.1.13", features = ["font-kit", "wayland", "x11", "runtime_shaders"] }
+gpui-base = { git = "ssh://git@github.com/ozanvos/monorepo.git", rev = "db7ad2be184335d38a5981b3bbf6cbda904e7ced", features = ["gpui-fast"] }
 monoprint = { path = "../..", default-features = false }
-gpui-motion-kit = { path = "../../vendor/gpui-motion-kit" }
 anyhow = "1"
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"
@@ -28,20 +31,20 @@ url = "2"
 [target.'cfg(any(target_os = "windows", target_os = "linux"))'.dependencies]
 velopack = "=1.2.161"
 
+[target.'cfg(target_os = "windows")'.dependencies]
+raw-window-handle = "0.6"
+windows = { version = "0.58", features = ["Win32_Foundation", "Win32_Graphics_Gdi", "Win32_UI_WindowsAndMessaging"] }
+
 [target.'cfg(target_os = "macos")'.dependencies]
-gpui-macos = { package = "gpui-fast-macos", version = "=0.1.10", optional = true, default-features = false }
+gpui-macos = { package = "gpui-fast-macos", version = "=0.1.13", optional = true, default-features = false }
 objc2 = "0.6"
-objc2-foundation = { version = "0.3", optional = true, default-features = false, features = ["std", "NSArray", "NSData", "NSError", "NSString", "NSURL", "NSPathUtilities"] }
-objc2-app-kit = { version = "0.3", default-features = false, features = ["NSApplication", "NSGraphics", "NSResponder", "NSView", "NSVisualEffectView"] }
+objc2-foundation = { version = "0.3", default-features = false, features = ["std", "NSArray", "NSData", "NSError", "NSString", "NSURL", "NSPathUtilities"] }
+objc2-app-kit = { version = "0.3", default-features = false, features = ["NSApplication", "NSGraphics", "NSMenu", "NSMenuItem", "NSResponder", "NSView", "NSVisualEffectView"] }
 raw-window-handle = "0.6"
 
-# Keep GPUI's default icons self-contained in development app bundles too.
-# Otherwise RustEmbed reads from the build machine's Cargo cache at runtime.
-[target.'cfg(not(target_family = "wasm"))'.dependencies]
-rust-embed = { version = "8", features = ["debug-embed"] }
-
 [dev-dependencies]
-gpui-kit = { version = "=0.8.0", features = ["test-support"] }
+gpui-platform = { package = "gpui-fast-platform", version = "=0.1.13", features = ["test-support"] }
+gpui-base = { git = "ssh://git@github.com/ozanvos/monorepo.git", rev = "db7ad2be184335d38a5981b3bbf6cbda904e7ced", features = ["test-support"] }
 
 [[test]]
 name = "studio"
@@ -57,7 +60,5 @@ opt-level = 2
 lto = "thin"
 strip = true
 
-# Retain Select's native behavior while synchronizing its popup/shadow fade.
 [patch.crates-io]
-gpui-component = { path = "../../vendor/gpui-component" }
 gpui-fast-macos = { path = "../../vendor/gpui-fast-macos" }

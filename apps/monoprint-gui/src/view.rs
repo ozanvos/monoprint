@@ -5,24 +5,95 @@ use crate::interaction_motion::{
 use crate::{
     appearance::*, canvas_resize::ResizeEdge, document::Format, studio::*, viewport::PreviewZoom,
 };
-use gpui_kit::assets::IconName;
-use gpui_kit::{
-    component::{
-        button::*,
-        collapsible::Collapsible,
-        input::{Editor, Input},
-        menu::{DropdownMenu, PopupMenuItem},
-        popover::Popover,
-        scroll::Scrollbar,
-        select::{Select, SelectState},
-        switch::Switch,
-        tooltip::Tooltip,
+use crate::{
+    assets::IconName,
+    ui::{
+        picker::{Picker, PickerSource, PickerView},
         *,
     },
-    prelude::*,
-    *,
+};
+use gpui::{prelude::*, *};
+use gpui_base::{
+    Selectable,
+    input::{self, EditorState},
 };
 use monoprint::{Appearance, Background, Language, Theme as ImageTheme};
+use tact::{
+    binding::BindExt,
+    change::Choice as TactChoice,
+    editor::Command,
+    grid::{GridHandle, GridItemBinding},
+    press::PressHandle,
+    toggle_group::{ToggleChange, ToggleGroupHandle},
+};
+use tact_base::TextField;
+
+/// The editor reads its own state during layout and paint, including caret
+/// blinks. Give it its own view so those reads cannot invalidate Studio.
+pub(super) struct SourceEditor {
+    editor: Entity<EditorState>,
+    studio: WeakEntity<Studio>,
+    search: Entity<editor_search::EditorSearch>,
+}
+
+impl SourceEditor {
+    pub(super) fn new(
+        editor: Entity<EditorState>,
+        studio: WeakEntity<Studio>,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Self {
+        let search = cx.new(|cx| editor_search::EditorSearch::new(editor.clone(), window, cx));
+        Self {
+            editor,
+            studio,
+            search,
+        }
+    }
+}
+
+impl Render for SourceEditor {
+    fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        let readonly = self
+            .studio
+            .read_with(cx, |studio, _| studio.document.terminal())
+            .unwrap_or(false);
+        let source = div()
+            .relative()
+            .pt(px(13.))
+            .flex_1()
+            .min_h_0()
+            .overflow_hidden()
+            .child(
+                gpui_base::InputBase::new("source-editor")
+                    .role(Role::MultilineTextInput)
+                    .track_focus(&self.editor.focus_handle(cx))
+                    .accessibility_label("Source code")
+                    .when(readonly, |view| view.aria_description("Read only"))
+                    .flex()
+                    .flex_col()
+                    .flex_1()
+                    .min_h_0()
+                    .h_full()
+                    .border_0()
+                    .font_family("JetBrains Mono")
+                    .text_size(px(11.))
+                    .line_height(relative(1.75))
+                    .child(self.editor.clone()),
+            )
+            .child(crate::source_lines::overlay(
+                &self.editor,
+                self.studio.clone(),
+            ));
+        div()
+            .flex()
+            .flex_col()
+            .flex_1()
+            .min_h_0()
+            .child(self.search.clone())
+            .child(source)
+    }
+}
 
 struct DragThumbnail(Option<std::sync::Arc<RenderImage>>);
 impl Render for DragThumbnail {
@@ -74,6 +145,10 @@ fn header_bar(id: &'static str, window: &mut Window, cx: &mut App) -> Stateful<D
 
 impl Render for Studio {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        #[cfg(test)]
+        {
+            self.render_count += 1;
+        }
         let p = palette(cx);
         let window_width = f32::from(window.viewport_size().width);
         let (source_width, inspector_width) = pane_widths(window_width);
@@ -81,11 +156,7 @@ impl Render for Studio {
         let source_max = (window_width - inspector_width - 360.).clamp(240., 560.);
         div()
             .id("monoprint-studio")
-            .key_context(if self.browsing_themes {
-                "Monoprint ThemeBrowser"
-            } else {
-                "Monoprint"
-            })
+            .key_context("Monoprint")
             .track_focus(&self.focus)
             .relative()
             .size_full()
@@ -121,13 +192,6 @@ impl Render for Studio {
             .on_file_drop_exit(cx.listener(|this, _, _, cx| {
                 this.incoming_source = None;
                 cx.notify();
-            }))
-            .on_action(cx.listener(|this, _: &input::Escape, window, cx| {
-                if this.browsing_themes {
-                    this.close_theme_browser(window, cx);
-                } else {
-                    cx.propagate();
-                }
             }))
             .when(cfg!(target_os = "linux"), |view| {
                 view.child(self.linux_title_bar(cx))
@@ -297,7 +361,22 @@ impl Studio {
                     .size(px(34.))
                     .p_0()
                     .loading(self.preparing_drag)
-                    .child(Icon::new(IconName::File).size(px(18.)))
+                    .child(if self.preparing_drag {
+                        icon(IconName::LoaderCircle)
+                            .size(px(18.))
+                            .with_animation(
+                                "prepare-png",
+                                Animation::new(std::time::Duration::from_millis(800)).repeat(),
+                                |icon, progress| {
+                                    icon.with_transformation(Transformation::rotate(radians(
+                                        progress * std::f32::consts::TAU,
+                                    )))
+                                },
+                            )
+                            .into_any_element()
+                    } else {
+                        icon(IconName::File).size(px(18.)).into_any_element()
+                    })
                     .accessibility_label("Drag PNG into another app")
                     .tooltip(if self.preparing_drag {
                         "Preparing PNG…"
@@ -439,49 +518,22 @@ impl Studio {
                     )
                 },
             )
-            .child(
-                div()
-                    .relative()
-                    .pt(px(13.))
-                    .flex_1()
-                    .min_h_0()
-                    .overflow_hidden()
-                    .child(
-                        Editor::new(&self.editor)
-                            .readonly(self.document.terminal())
-                            .appearance(false)
-                            .bordered(false)
-                            .h_full()
-                            .text_size(px(11.))
-                            .line_height(relative(1.75))
-                            .aria_label("Source code"),
-                    )
-                    .child(crate::source_lines::overlay(
-                        &self.editor,
-                        cx.entity().downgrade(),
-                    )),
-            )
+            .child(self.source_editor.clone())
     }
     fn selection_toolbar(&self, cx: &Context<Self>) -> Option<impl IntoElement> {
         let p = palette(cx);
-        let editor = self.editor.read(cx);
-        let selection = editor.selected_range();
+        // Studio observes selection and geometry changes. Reading the editor
+        // entity during render also rebuilds Studio for every caret blink.
+        let selection = self.last_selection.clone();
         let clicked = selection.is_empty() && self.highlight_menu.is_some();
-        if selection.is_empty() && !clicked {
+        if (selection.is_empty() && !clicked) || !self.source_cursor_visible {
             return None;
         }
-        if !editor
-            .visible_row_range()?
-            .contains(&(editor.cursor_position().line as usize))
-        {
-            return None;
-        }
-        let viewport = editor.input_bounds();
-        let cursor = editor.cursor();
+        let viewport = self.last_source_bounds;
         let anchor = if clicked {
             self.highlight_menu.as_ref()?.anchor
         } else {
-            editor.range_to_bounds(&(cursor..cursor))?
+            self.last_selection_anchor?
         };
         if anchor.bottom() < viewport.top()
             || anchor.top() > viewport.bottom()
@@ -609,7 +661,7 @@ impl Studio {
             .with_priority(1),
         )
     }
-    fn preview_size(&self) -> Option<gpui_kit::Size<Pixels>> {
+    fn preview_size(&self) -> Option<gpui::Size<Pixels>> {
         self.preview
             .as_ref()
             .map(crate::preview::Preview::logical_size)
@@ -625,7 +677,7 @@ impl Studio {
     fn steer_viewport(
         &mut self,
         cx: &mut Context<Self>,
-        steer: impl FnOnce(&mut crate::viewport::PreviewViewport, gpui_kit::Size<Pixels>),
+        steer: impl FnOnce(&mut crate::viewport::PreviewViewport, gpui::Size<Pixels>),
     ) {
         if self.canvas_resize.is_some() {
             cx.stop_propagation();
@@ -641,7 +693,7 @@ impl Studio {
 
     fn preview_canvas(
         &mut self,
-        size: gpui_kit::Size<Pixels>,
+        size: gpui::Size<Pixels>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> impl IntoElement {
@@ -653,7 +705,7 @@ impl Studio {
             .relative()
             .overflow_hidden()
             .flex()
-            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| {
+            .on_scroll(cx.listener(|this, event: &ScrollEvent, _, cx| {
                 let delta = event.delta.pixel_delta(px(24.));
                 this.steer_viewport(cx, |viewport, image| viewport.pan_by(delta, image));
             }))
@@ -826,7 +878,7 @@ impl Studio {
                     .gap_3()
                     .text_color(rgb(p.muted))
                     .m_auto()
-                    .child(Icon::new(IconName::Image).size(px(28.)))
+                    .child(icon(IconName::Image).size(px(28.)))
                     .child(if self.revision != self.preview_revision {
                         "Preparing your canvas…"
                     } else {
@@ -953,7 +1005,7 @@ impl Studio {
                             .border_color(rgb(p.strong))
                             .bg(rgb(p.control))
                             .child(
-                                Icon::new(if p.light {
+                                icon(if p.light {
                                     IconName::Moon
                                 } else {
                                     IconName::Sun
@@ -1017,7 +1069,7 @@ impl Studio {
             this.open_sections[section as usize] = *open;
             cx.notify();
         });
-        gpui_kit::base::AccordionTrigger::new(section.id())
+        gpui_base::AccordionTrigger::new(section.id())
             .open(open)
             .aria_label(format!("{} settings", section.title()))
             .cursor_pointer()
@@ -1028,7 +1080,7 @@ impl Studio {
             .gap(px(6.))
             .text_color(rgb(p.muted))
             .child(
-                Icon::new(if open {
+                icon(if open {
                     IconName::ChevronDown
                 } else {
                     IconName::ChevronRight
@@ -1067,7 +1119,7 @@ impl Studio {
             .is_none_or(|appearance| self.document.appearance() == appearance)
     }
 
-    fn theme_settings(&self, cx: &Context<Self>) -> impl IntoElement {
+    fn theme_settings(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         let theme = self.document.theme();
         let image = self
@@ -1075,6 +1127,14 @@ impl Studio {
             .iter()
             .find(|(item, _)| *item == theme)
             .map(|(_, image)| self.thumbnail(&theme, image, self.document.light));
+        let browse = self
+            .theme_trigger
+            .button(
+                format!("Browse themes, selected: {}", theme.name()),
+                window,
+                cx,
+            )
+            .on_press(cx.listener(|this, _, window, cx| this.browse_themes(window, cx)));
         settings_section(p)
             // The inspector has no toolbar row; center the first header on the
             // 40px source and canvas toolbars beside it.
@@ -1087,8 +1147,13 @@ impl Studio {
                     .flex_col()
                     .gap(px(12.))
                     .child(
-                        Button::new("browse-themes")
-                            .ghost()
+                        div()
+                            .id("browse-themes")
+                            .test_support()
+                            .bind(&browse)
+                            .flex()
+                            .items_center()
+                            .hover(|style| style.bg(rgb(p.stage)))
                             .w_full()
                             .h(px(58.))
                             .p(px(8.))
@@ -1127,20 +1192,15 @@ impl Studio {
                                             .child(theme.name()),
                                     )
                                     .child(
-                                        Icon::new(IconName::ChevronRight)
+                                        icon(IconName::ChevronRight)
                                             .size(px(14.))
                                             .text_color(rgb(p.muted)),
                                     ),
                             )
-                            .accessibility_label(format!(
-                                "Browse themes, selected: {}",
-                                theme.name()
-                            ))
-                            .tooltip("Browse themes")
-                            .on_click(
-                                cx.listener(|this, _, window, cx| this.browse_themes(window, cx)),
-                            )
-                            .smooth_hover(p, HoverStyle::Ghost),
+                            .when(browse.is_focus_visible(), |view| {
+                                view.border_color(rgb(p.accent))
+                            })
+                            .tooltip(|window, cx| Tooltip::new("Browse themes").build(window, cx)),
                     )
                     .children(self.theme_appearance(cx)),
             )
@@ -1176,35 +1236,89 @@ impl Studio {
         })
     }
 
-    fn theme_browser(&self, cx: &Context<Self>) -> impl IntoElement {
+    fn theme_browser(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         let count = self.filtered_themes.len();
         let selected_bounds = std::rc::Rc::new(std::cell::Cell::new(None));
         let tracked = selected_bounds.clone();
+        let selected = self.selected_theme_index();
+        let grid = self
+            .theme_grid
+            .container("Themes", window, cx)
+            .selected(selected.as_ref())
+            .enter_on(self.filtered_themes.first())
+            .on_choose(cx.listener(|this, choice: &TactChoice<usize>, window, cx| {
+                let theme = this.thumbnails[*choice.key()].0;
+                this.select_theme(theme, window, cx);
+            }));
+        let items = grid.items();
         let gallery = uniform_list(
             "theme-gallery",
-            count.div_ceil(3),
-            cx.processor(move |this, rows: std::ops::Range<usize>, _, cx| {
+            count.div_ceil(THEME_COLUMNS),
+            cx.processor(move |this, rows: std::ops::Range<usize>, window, cx| {
                 rows.map(|row| {
-                    let mut tiles = div().flex().gap(px(7.)).w_full().h(px(73.)).pb(px(7.));
-                    for column in 0..3 {
-                        tiles = tiles.child(
+                    div()
+                        .id(("theme-row", row))
+                        .bind(this.theme_grid.row(row, window, cx))
+                        .flex()
+                        .gap(px(7.))
+                        .w_full()
+                        .h(px(73.))
+                        .pb(px(7.))
+                        .children((0..THEME_COLUMNS).map(|column| {
                             div().flex_1().min_w_0().children(
-                                this.filtered_themes
-                                    .get(row * 3 + column)
-                                    .map(|index| this.theme_tile(*index, &tracked, cx)),
-                            ),
-                        );
-                    }
-                    tiles
+                                this.filtered_themes.get(row * THEME_COLUMNS + column).map(
+                                    |index| {
+                                        this.theme_tile(items.item(index, window, cx), &tracked, cx)
+                                    },
+                                ),
+                            )
+                        }))
                 })
                 .collect::<Vec<_>>()
             }),
         )
         .size_full()
         .track_scroll(&self.theme_scroll);
+        let studio = cx.entity().downgrade();
+        let clear = self.theme_has_query.then(|| {
+            Button::new("clear-theme-query")
+                .ghost()
+                .xsmall()
+                .size(px(20.))
+                .p_0()
+                .icon(icon(IconName::X).size(px(12.)))
+                .accessibility_label("Clear theme search")
+                .tooltip("Clear theme search")
+                .on_click(cx.listener(|this, _, window, cx| this.clear_theme_search(window, cx)))
+        });
+        let filters = self
+            .theme_filters
+            .container("Theme appearance", window, cx)
+            .selected(&self.theme_filter)
+            .on_toggle(
+                cx.listener(|this, change: &ToggleChange<ThemeFilter>, _, cx| {
+                    this.theme_filter = *change.key();
+                    this.filter_themes(cx);
+                }),
+            );
         div()
             .id("theme-browser")
+            .key_context("ThemeBrowser")
+            .on_action(cx.listener(|this, _: &input::Escape, window, cx| {
+                let search_focused = this
+                    .theme_search
+                    .read(cx)
+                    .focus_handle(cx)
+                    .is_focused(window);
+                // The search owns Escape until it leaves the field. Its
+                // editor can finish an IME composition before this bubbles.
+                if !search_focused {
+                    this.close_theme_browser(window, cx);
+                } else {
+                    cx.propagate();
+                }
+            }))
             .flex_1()
             .min_h_0()
             .flex()
@@ -1228,7 +1342,7 @@ impl Studio {
                                     .ghost()
                                     .small()
                                     .px(px(3.))
-                                    .icon(Icon::new(IconName::ArrowLeft).size(px(14.)))
+                                    .icon(icon(IconName::ArrowLeft).size(px(14.)))
                                     .label("Back")
                                     .accessibility_label("Back to settings")
                                     .tooltip("Back to settings (Esc)")
@@ -1238,37 +1352,98 @@ impl Studio {
                                     .smooth_hover(p, HoverStyle::Ghost),
                             )
                             .child(
-                                segments(p).children(
-                                    [
-                                        ("themes-all", "All", ThemeFilter::All),
-                                        ("themes-light", "Light", ThemeFilter::Light),
-                                        ("themes-dark", "Dark", ThemeFilter::Dark),
-                                    ]
-                                    .into_iter()
-                                    .map(
-                                        |(id, label, filter)| {
-                                            toggle_segment(
-                                                p,
-                                                id,
-                                                label,
-                                                self.theme_filter == filter,
-                                            )
-                                            .on_click(
-                                                cx.listener(move |this, _, _, cx| {
-                                                    this.theme_filter = filter;
-                                                    this.filter_themes(cx);
-                                                }),
-                                            )
-                                        },
-                                    ),
-                                ),
+                                div()
+                                    .id("theme-filters")
+                                    .test_support()
+                                    .bind(&filters)
+                                    .flex()
+                                    .items_center()
+                                    .p(px(2.))
+                                    .gap(px(1.))
+                                    .rounded(px(5.))
+                                    .border_1()
+                                    .border_color(rgb(p.border))
+                                    .bg(rgb(p.control))
+                                    .children(ThemeFilter::OPTIONS.map(|(id, label, filter)| {
+                                        let button = filters.item(&filter, window, cx);
+                                        div()
+                                            .id(id)
+                                            .test_support()
+                                            .bind(&button)
+                                            .flex()
+                                            .items_center()
+                                            .justify_center()
+                                            .h(px(20.))
+                                            .min_w(px(26.))
+                                            .px(px(7.))
+                                            .rounded(px(3.))
+                                            .text_size(px(11.))
+                                            .text_color(rgb(p.ink2))
+                                            .hover(|style| style.bg(rgb(p.control_hover)))
+                                            .when(button.is_on(), |view| view.bg(rgb(p.control_on)))
+                                            .border_1()
+                                            .border_color(if button.is_focus_visible() {
+                                                rgb(p.accent).into()
+                                            } else {
+                                                transparent_black()
+                                            })
+                                            .child(label)
+                                    })),
                             ),
                     )
                     .child(
-                        text_input(p, &self.theme_search)
-                            .cleanable(true)
-                            .prefix(Icon::new(IconName::Search).size(px(13.)))
-                            .aria_label("Find a theme"),
+                        TextField::new("theme-search", &self.theme_search)
+                            .label("Find a theme")
+                            .bg(rgb(p.control))
+                            .border_color(rgb(p.strong))
+                            .rounded(px(5.))
+                            .text_size(px(11.))
+                            .styles(move |styles| {
+                                styles.focused(|style| style.border_color(rgb(p.accent)))
+                            })
+                            .input_row(move |row| {
+                                row.relative()
+                                    .h(px(26.))
+                                    .pl(px(26.))
+                                    .pr(px(7.))
+                                    .child(
+                                        div().absolute().left(px(7.)).top(px(6.)).child(
+                                            icon(IconName::Search)
+                                                .size(px(13.))
+                                                .text_color(rgb(p.muted)),
+                                        ),
+                                    )
+                                    .when_some(clear, |row, clear| {
+                                        row.pr(px(27.)).child(
+                                            div().absolute().right(px(3.)).top(px(3.)).child(clear),
+                                        )
+                                    })
+                            })
+                            .on_key(move |command, window, cx| {
+                                let Some(studio) = studio.upgrade() else {
+                                    return false;
+                                };
+                                match command {
+                                    Command::Escape => {
+                                        studio.update(cx, |studio, cx| {
+                                            studio.close_theme_browser(window, cx)
+                                        });
+                                        true
+                                    }
+                                    Command::Down
+                                        if !studio.read(cx).filtered_themes.is_empty() =>
+                                    {
+                                        studio
+                                            .read(cx)
+                                            .theme_grid
+                                            .read(cx)
+                                            .focus_handle(cx)
+                                            .focus(window, cx);
+                                        true
+                                    }
+                                    _ => false,
+                                }
+                            }),
                     ),
             )
             .child(
@@ -1279,16 +1454,23 @@ impl Studio {
                         .size_full()
                         .overflow_hidden()
                         .when(count > 0, |view| {
-                            view.child(gallery)
-                                .child(selection_ring(
-                                    "theme-selection-ring",
-                                    selected_bounds,
-                                    self.selected_theme(),
-                                    self.theme_motion.generation(),
-                                    self.theme_scroll.clone(),
-                                    rgb(p.accent).into(),
-                                ))
-                                .child(Scrollbar::vertical(&self.theme_scroll))
+                            view.child(
+                                div()
+                                    .id("theme-results")
+                                    .test_support()
+                                    .bind(&grid)
+                                    .size_full()
+                                    .child(gallery),
+                            )
+                            .child(selection_ring(
+                                "theme-selection-ring",
+                                selected_bounds,
+                                self.selected_theme(),
+                                self.theme_motion.generation(),
+                                self.theme_scroll.clone(),
+                                rgb(p.accent).into(),
+                            ))
+                            .child(Scrollbar::vertical(&self.theme_scroll))
                         })
                         .when(count == 0, |view| {
                             view.child(
@@ -1311,9 +1493,7 @@ impl Studio {
                                                 .small()
                                                 .label("Clear search")
                                                 .on_click(cx.listener(|this, _, window, cx| {
-                                                    this.theme_search.update(cx, |input, cx| {
-                                                        input.replace_all("", window, cx)
-                                                    });
+                                                    this.clear_theme_search(window, cx);
                                                 }))
                                                 .smooth_hover(p, HoverStyle::Ghost),
                                         ),
@@ -1336,29 +1516,48 @@ impl Studio {
 
     /// The theme whose tile shows as selected under the current filter.
     pub fn selected_theme(&self) -> Option<&'static str> {
-        let theme = self.document.theme.as_str();
+        self.selected_theme_index()
+            .map(|index| self.thumbnails[index].0.id())
+    }
+
+    fn selected_theme_index(&self) -> Option<usize> {
+        if !self.filter_shows_appearance() {
+            return None;
+        }
         self.filtered_themes
             .iter()
-            .map(|&index| self.thumbnails[index].0)
-            .find(|candidate| candidate.id() == theme)
-            .filter(|_| self.filter_shows_appearance())
-            .map(|theme| theme.id())
+            .copied()
+            .find(|&index| self.thumbnails[index].0.id() == self.document.theme)
     }
 
     fn theme_tile(
         &self,
-        index: usize,
+        cell: GridItemBinding<usize>,
         selected_bounds: &std::rc::Rc<std::cell::Cell<Option<Bounds<Pixels>>>>,
         cx: &Context<Self>,
     ) -> impl IntoElement {
         let p = palette(cx);
+        let index = *cell.key();
         let (theme, image) = &self.thumbnails[index];
         let image = self.thumbnail(theme, image, self.theme_filter == ThemeFilter::Light);
         let theme = *theme;
-        let selected = self.document.theme == theme.id() && self.filter_shows_appearance();
-        let tile = Button::new(("theme-swatch", index))
-            .ghost()
-            .p_0()
+        let selected = cell.is_selected();
+        let focused = cell.is_focus_visible();
+        let tooltip =
+            if selected && self.theme_filter == ThemeFilter::All && has_light_and_dark(theme) {
+                format!(
+                    "{} · choose again for {}",
+                    theme.name(),
+                    if self.document.light { "dark" } else { "light" }
+                )
+            } else {
+                theme.name().to_owned()
+            };
+        let tile = div()
+            .id(("theme-swatch", index))
+            .test_support()
+            .bind(&cell)
+            .hover(|style| style.bg(rgb(p.stage)))
             .w_full()
             .min_w_0()
             .h_full()
@@ -1366,9 +1565,8 @@ impl Studio {
             .overflow_hidden()
             .border_1()
             // The shared selection ring draws the accent border above the grid.
-            .border_color(rgb(p.strong))
+            .border_color(rgb(if focused { p.accent } else { p.strong }))
             .bg(rgb(p.canvas))
-            .selected(selected)
             .child(
                 div()
                     .flex()
@@ -1397,7 +1595,7 @@ impl Studio {
                             .border_t_1()
                             .border_color(rgb(p.border))
                             .text_size(px(10.))
-                            .text_color(rgb(if selected { p.ink } else { p.muted }))
+                            .text_color(rgb(if selected || focused { p.ink } else { p.muted }))
                             .child(div().flex_1().min_w_0().truncate().child(theme.name()))
                             .child(PopIcon::new(
                                 (ElementId::from(theme.id()), "selected"),
@@ -1407,20 +1605,7 @@ impl Studio {
                             )),
                     ),
             )
-            .accessibility_label(format!("{} theme", theme.name()))
-            .tooltip(
-                if selected && self.theme_filter == ThemeFilter::All && has_light_and_dark(theme) {
-                    format!(
-                        "{} · click again for {}",
-                        theme.name(),
-                        if self.document.light { "dark" } else { "light" }
-                    )
-                } else {
-                    theme.name().to_owned()
-                },
-            )
-            .on_click(cx.listener(move |this, _, window, cx| this.select_theme(theme, window, cx)))
-            .smooth_hover(p, HoverStyle::Ghost);
+            .tooltip(move |window, cx| Tooltip::new(tooltip.clone()).build(window, cx));
         self.theme_motion.tile(
             index,
             theme.id(),
@@ -1437,14 +1622,13 @@ impl Studio {
             .child(self.font_control(false, cx))
             .child(self.font_control(true, cx))
             .child(self.font_size_control(cx))
-            .child(row(p, "Coding ligatures", Switch::new("coding-ligatures").small()
+            .child(row(p, "Coding ligatures", switch("coding-ligatures", self.document.ligatures, p)
                 .accessibility_label("Coding ligatures")
-                .tooltip("Combine supported code symbols, such as => and !=. Depends on the selected typeface.")
-                .checked(self.document.ligatures)
-                .on_change(cx.listener(|this, value, _, cx| {
+                .tooltip(|window, cx| Tooltip::new("Combine supported code symbols, such as => and !=. Depends on the selected typeface.").build(window, cx))
+                .on_change(switch_listener(cx.listener(|this, value: &bool, _, cx| {
                     this.document.ligatures = *value;
                     this.changed(cx);
-                })))))
+                }))))))
     }
 
     fn font_size_control(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -1470,12 +1654,11 @@ impl Studio {
                     .items_center()
                     .gap(px(5.))
                     .child(
-                        text_input(p, &self.font_size)
-                            .id("font-size")
+                        text_input(p, "font-size", &self.font_size)
                             .flex_1()
                             .min_w_0()
-                            .aria_label("Font size")
-                            .suffix(px_suffix(p)),
+                            .label("Font size")
+                            .input_row(move |row| row.h(px(26.)).px(px(7.)).child(px_suffix(p))),
                     )
                     .children(
                         [
@@ -1596,40 +1779,51 @@ impl Studio {
     ) -> impl IntoElement {
         let p = palette(cx);
         let input = state.clone();
-        text_input(p, state).aria_label(aria_label).suffix(
-            div()
-                .flex()
-                .items_center()
-                .gap(px(3.))
-                .child(px_suffix(p))
-                .child(
-                    Button::new(id)
-                        .ghost()
-                        .xsmall()
-                        .size(px(18.))
-                        .p_0()
-                        .child(Icon::new(IconName::ChevronDown).size(px(14.)))
-                        .accessibility_label(menu_label)
-                        .tooltip("Choose a preset or type an exact value")
-                        .smooth_hover(p, HoverStyle::Ghost)
-                        .dropdown_menu_with_anchor(Anchor::TopRight, move |mut menu, _, cx| {
-                            let selected = input.read(cx).value().parse::<u32>().ok();
-                            for &preset in presets {
-                                let input = input.clone();
-                                menu = menu.item(
-                                    PopupMenuItem::new(format!("{preset} px"))
-                                        .checked(selected == Some(preset))
-                                        .on_click(move |_, window, cx| {
-                                            input.update(cx, |state, cx| {
-                                                state.replace_all(preset.to_string(), window, cx)
-                                            });
-                                        }),
-                                );
-                            }
-                            menu
-                        }),
-                ),
-        )
+        text_input(p, format!("{id}-input"), state)
+            .label(aria_label)
+            .input_row(move |row| {
+                row.h(px(26.)).px(px(7.)).child(
+                    div()
+                        .flex()
+                        .items_center()
+                        .gap(px(3.))
+                        .child(px_suffix(p))
+                        .child(
+                            Button::new(id)
+                                .ghost()
+                                .xsmall()
+                                .size(px(18.))
+                                .p_0()
+                                .child(icon(IconName::ChevronDown).size(px(14.)))
+                                .accessibility_label(menu_label)
+                                .tooltip("Choose a preset or type an exact value")
+                                .smooth_hover(p, HoverStyle::Ghost)
+                                .dropdown_menu_with_anchor(
+                                    Anchor::TopRight,
+                                    move |mut menu, _, cx| {
+                                        let selected = input.read(cx).value().parse::<u32>().ok();
+                                        for &preset in presets {
+                                            let input = input.clone();
+                                            menu = menu.item(
+                                                PopupMenuItem::new(format!("{preset} px"))
+                                                    .checked(selected == Some(preset))
+                                                    .on_activate(move |window, cx| {
+                                                        input.update(cx, |state, cx| {
+                                                            state.replace_all(
+                                                                preset.to_string(),
+                                                                window,
+                                                                cx,
+                                                            )
+                                                        });
+                                                    }),
+                                            );
+                                        }
+                                        menu
+                                    },
+                                ),
+                        ),
+                )
+            })
     }
 
     fn cli_command(&self, cx: &Context<Self>) -> impl IntoElement {
@@ -1645,7 +1839,7 @@ impl Studio {
                     .p_0()
                     .border_color(rgb(p.strong))
                     .bg(rgb(p.control))
-                    .child(Icon::new(IconName::SquareTerminal).size(px(16.)))
+                    .child(icon(IconName::SquareTerminal).size(px(16.)))
                     .accessibility_label("Copy as terminal command")
                     .tooltip("Copy as terminal command")
                     .smooth_hover(p, HoverStyle::Control),
@@ -1713,7 +1907,7 @@ impl Studio {
                     .xsmall()
                     .size(px(24.))
                     .p_0()
-                    .child(Icon::new(IconName::SlidersHorizontal).size(px(16.)))
+                    .child(icon(IconName::SlidersHorizontal).size(px(16.)))
                     .accessibility_label("Advanced export settings")
                     .tooltip("Advanced export settings")
                     .smooth_hover(p, HoverStyle::Ghost),
@@ -1829,7 +2023,7 @@ impl Studio {
             )
     }
 
-    fn inspector_settings(&self, cx: &Context<Self>) -> impl IntoElement {
+    fn inspector_settings(&self, window: &Window, cx: &Context<Self>) -> impl IntoElement {
         let p = palette(cx);
         div()
             .id("style-inspector")
@@ -1839,7 +2033,7 @@ impl Studio {
             .overflow_y_scroll()
             .flex()
             .flex_col()
-            .child(self.theme_settings(cx))
+            .child(self.theme_settings(window, cx))
             .child(self.typography_settings(cx))
             .child(
                 settings_section(p)
@@ -1940,23 +2134,23 @@ impl Studio {
                                         )
                                     })
                                     .child(
-                                        Switch::new("line-numbers")
-                                            .small()
+                                        switch("line-numbers", self.document.numbers_visible(), p)
                                             .accessibility_label("Line numbers")
-                                            .checked(self.document.numbers_visible())
                                             .disabled(
                                                 self.document.language == Language::PLAIN.id(),
                                             )
-                                            .on_change(cx.listener(|this, value, _, cx| {
-                                                this.document.line_numbers = Some(*value);
-                                                this.changed(cx);
-                                            })),
+                                            .on_change(switch_listener(cx.listener(
+                                                |this, value: &bool, _, cx| {
+                                                    this.document.line_numbers = Some(*value);
+                                                    this.changed(cx);
+                                                },
+                                            ))),
                                     ),
                             ))
                             .child(field(
                                 p,
                                 "Window title",
-                                text_input(p, &self.title).aria_label("Window title"),
+                                text_input(p, "window-title", &self.title).label("Window title"),
                             )),
                     ),
             )
@@ -1974,9 +2168,9 @@ impl Studio {
             .border_color(rgb(p.strong))
             .bg(p.inspector_background())
             .child(if self.browsing_themes {
-                self.theme_browser(cx).into_any_element()
+                self.theme_browser(window, cx).into_any_element()
             } else {
-                self.inspector_settings(cx).into_any_element()
+                self.inspector_settings(window, cx).into_any_element()
             })
             .child(
                 Collapsible::new()
@@ -2102,7 +2296,7 @@ impl Choice {
                 "Use the default typeface",
             ),
             ChoicePreview::Custom => (
-                div().child(Icon::new(IconName::File).size(px(20.))),
+                div().child(icon(IconName::File).size(px(20.))),
                 "Load a TTF or OTF file",
             ),
         };
@@ -2186,7 +2380,7 @@ fn icon_button(p: Palette, id: impl Into<ElementId>, icon: IconName) -> Button {
         .p_0()
         .border_color(rgb(p.strong))
         .bg(rgb(p.control))
-        .child(Icon::new(icon).size(px(16.)))
+        .child(crate::ui::icon(icon).size(px(16.)))
 }
 
 /// A ghost button that restores an inherited default.
@@ -2197,7 +2391,7 @@ fn reset_button(id: &'static str, label: &'static str, tooltip: &'static str) ->
         .size(px(26.))
         .flex_shrink_0()
         .p_0()
-        .child(Icon::new(IconName::RotateCcw).size(px(16.)))
+        .child(icon(IconName::RotateCcw).size(px(16.)))
         .accessibility_label(label)
         .tooltip(tooltip)
 }
@@ -2230,42 +2424,30 @@ fn highlight_button_style(cx: &App) -> ButtonCustomVariant {
 
 // Select styles apply to its trigger, while its outer element fills its parent.
 // Give that parent an explicit control height so toolbar centering and hit areas agree.
-fn dropdown<D>(
-    p: Palette,
+fn dropdown<D: PickerSource>(
+    _: Palette,
     id: &'static str,
-    state: &Entity<SelectState<D>>,
+    state: &Entity<Picker<D>>,
     label: &'static str,
     search: &'static str,
-) -> Div
-where
-    D: select::SelectDelegate + 'static,
-    <D::Item as select::SelectItem>::Value: PartialEq + Clone,
-{
-    div().h(px(26.)).min_w_0().child(
-        Select::new(state)
-            .id(id)
-            .xsmall()
-            .focus_ring(false)
-            .h(px(26.))
-            .w_full()
-            .px(px(7.))
-            .bg(rgb(p.control))
-            .text_color(rgb(p.ink))
-            .text_size(px(11.))
-            .menu_width(px(240.))
-            .menu_max_h(px(280.))
-            .accessibility_label(label)
-            .search_placeholder(search),
-    )
+) -> Div {
+    div()
+        .h(px(26.))
+        .min_w_0()
+        .child(PickerView::new(id, state, label, search))
 }
 
-fn text_input(p: Palette, state: &Entity<input::InputState>) -> Input {
-    // Input::h is for multi-line editors; single-line controls use Styled::h.
-    Styled::h(Input::new(state).small(), px(26.))
+fn text_input(
+    p: Palette,
+    id: impl Into<ElementId>,
+    state: &Entity<input::InputState>,
+) -> TextField {
+    TextField::new(id, state)
         .flex_shrink_0()
-        .px(px(7.))
+        .input_row(|row| row.h(px(26.)).px(px(7.)))
         .text_size(px(11.))
         .bg(rgb(p.control))
+        .styles(move |styles| styles.focused(|style| style.border_color(rgb(p.accent))))
 }
 
 fn field(p: Palette, label: &'static str, element: impl IntoElement) -> Div {

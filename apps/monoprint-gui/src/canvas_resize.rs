@@ -1,6 +1,6 @@
 //! Width-handle geometry in image pixels, independent of preview completion.
 use crate::viewport::PreviewViewport;
-use gpui_kit::{Pixels, Point, Size, point, px};
+use gpui::{Pixels, Point, Size, point, px};
 use std::ops::RangeInclusive;
 
 #[derive(Clone, Copy, PartialEq)]
@@ -80,7 +80,7 @@ impl CanvasResize {
 mod tests {
     use super::*;
     use crate::viewport::PreviewZoom;
-    use gpui_kit::{Bounds, size};
+    use gpui::{Bounds, size};
 
     #[test]
     fn handles_use_frozen_zoom_and_anchor_the_opposite_edge() {

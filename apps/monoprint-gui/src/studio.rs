@@ -1,3 +1,4 @@
+use crate::ui::picker::{ChoiceCatalog, Picker, PickerSelection};
 use crate::{
     canvas_resize::{CanvasResize, ResizeEdge},
     document::{self, Document, Format},
@@ -5,20 +6,36 @@ use crate::{
     preview::{Preview, PreviewWorker},
     viewport::PreviewViewport,
 };
-use gpui_kit::{
-    component::{
-        input::{
-            EditorState, InputEvent, InputState, RopeExt, TextDecoration, TextDecorationCollection,
-        },
-        resizable::ResizableState,
-        select::{SearchableVec, SelectDelegate, SelectEvent, SelectItem, SelectState},
+use gpui::*;
+use gpui_base::{
+    ResizableState,
+    input::{
+        EditorState, InputEvent, InputState, RopeExt, TextDecoration, TextDecorationCollection,
     },
-    *,
 };
 use monoprint::{BundledFont, Language, Renderer, Theme};
+use tact::{
+    collection::{Item, Items},
+    grid::Grid,
+    prelude::GridCells,
+    press::Press,
+    toggle_group::ToggleGroup,
+};
+
+pub const THEME_COLUMNS: usize = 3;
+
+fn theme_cells(indices: &[usize], thumbnails: &[(Theme, Arc<Image>)]) -> GridCells<usize> {
+    let tiles = indices
+        .iter()
+        .map(|&index| Item::new(index, thumbnails[index].0.name()));
+    let padding = indices.len().next_multiple_of(THEME_COLUMNS) - indices.len();
+    let blanks = (0..padding).map(|offset| Item::new(thumbnails.len() + offset, "").disabled(true));
+    GridCells::try_new(THEME_COLUMNS, tiles.chain(blanks))
+        .expect("theme indices are unique and the final row is padded")
+}
 use std::{path::PathBuf, sync::Arc, time::Duration};
 
-gpui_kit::actions!(
+gpui::actions!(
     monoprint_gui,
     [
         OpenSource,
@@ -50,18 +67,8 @@ pub enum ChoicePreview {
     Inherited,
     Custom,
 }
-impl SelectItem for Choice {
-    type Value = String;
-    fn title(&self) -> SharedString {
-        self.name.clone()
-    }
-    fn value(&self) -> &String {
-        &self.id
-    }
-    fn render(&self, _: &mut Window, cx: &mut App) -> impl IntoElement {
-        self.menu_item(cx)
-    }
-    fn matches(&self, query: &str) -> bool {
+impl Choice {
+    pub fn matches(&self, query: &str) -> bool {
         let q = query.trim().to_lowercase();
         if self.name.to_lowercase().contains(&q) || self.id.contains(&q) {
             return true;
@@ -76,8 +83,8 @@ impl SelectItem for Choice {
             })
     }
 }
-pub type Choices = SelectState<SearchableVec<Choice>>;
-pub type LanguageChoices = SelectState<crate::language_picker::LanguageList>;
+pub type Choices = Picker<ChoiceCatalog>;
+pub type LanguageChoices = Picker<crate::language_picker::LanguageList>;
 
 #[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
 pub enum CopyState {
@@ -87,7 +94,7 @@ pub enum CopyState {
     Copied,
 }
 
-#[derive(Clone, Copy, Default, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, Default, PartialEq, Eq, Hash, Debug)]
 pub enum ThemeFilter {
     #[default]
     All,
@@ -95,6 +102,12 @@ pub enum ThemeFilter {
     Dark,
 }
 impl ThemeFilter {
+    pub const OPTIONS: [(&str, &str, Self); 3] = [
+        ("themes-all", "All", Self::All),
+        ("themes-light", "Light", Self::Light),
+        ("themes-dark", "Dark", Self::Dark),
+    ];
+
     pub fn appearance(self) -> Option<monoprint::Appearance> {
         match self {
             Self::All => None,
@@ -151,7 +164,10 @@ pub struct Studio {
     #[cfg(target_os = "linux")]
     pub(super) installed_for_user: bool,
     pub document: Document,
+    #[cfg(test)]
+    pub render_count: usize,
     pub editor: Entity<EditorState>,
+    pub(super) source_editor: Entity<crate::view::SourceEditor>,
     pub title: Entity<InputState>,
     pub source_marks: TextDecorationCollection,
     pub highlight_menu: Option<HighlightMenu>,
@@ -166,7 +182,11 @@ pub struct Studio {
     pub code_typeface: Entity<Choices>,
     pub comment_typeface: Entity<Choices>,
     pub theme_search: Entity<InputState>,
+    pub theme_has_query: bool,
     pub theme_scroll: UniformListScrollHandle,
+    pub theme_grid: Entity<Grid<usize>>,
+    pub theme_trigger: Entity<Press>,
+    pub theme_filters: Entity<ToggleGroup<ThemeFilter>>,
     pub filtered_themes: Vec<usize>,
     pub focus: FocusHandle,
     pub preview: Option<Preview>,
@@ -201,11 +221,11 @@ pub struct Studio {
     worker: PreviewWorker,
     _subscriptions: Vec<Subscription>,
     _quit: Subscription,
-    last_selection: std::ops::Range<usize>,
+    pub(super) last_selection: std::ops::Range<usize>,
     last_scroll: Point<Pixels>,
-    last_selection_anchor: Option<Bounds<Pixels>>,
-    last_source_bounds: Bounds<Pixels>,
-    last_visible_rows: Option<std::ops::Range<usize>>,
+    pub(super) last_selection_anchor: Option<Bounds<Pixels>>,
+    pub(super) last_source_bounds: Bounds<Pixels>,
+    pub(super) source_cursor_visible: bool,
 }
 
 /// Whether a theme offers both variants, so its appearance can be switched.
@@ -228,7 +248,14 @@ impl Studio {
             let mut editor = EditorState::new(window, cx)
                 .language(&document.language)
                 .default_value(document.editor_source())
+                .searchable(true)
+                .replaceable(true)
                 .soft_wrap(true);
+            editor.set_readonly(document.terminal(), cx);
+            editor.set_editor_style(crate::appearance::editor_style(crate::appearance::palette(
+                cx,
+            )));
+            crate::ui::install_editor_menu(&mut editor);
             editor.set_highlighter_factory(
                 crate::source_highlight::document_factory(
                     crate::appearance::palette(cx).light,
@@ -238,6 +265,9 @@ impl Studio {
             );
             editor
         });
+        let studio = cx.weak_entity();
+        let source_editor =
+            cx.new(|cx| crate::view::SourceEditor::new(editor.clone(), studio, window, cx));
         let title = input(&document.title, "Optional filename", window, cx);
         let source_marks = editor.update(cx, |state, cx| {
             state.create_decorations_collection(Vec::new(), cx)
@@ -246,9 +276,7 @@ impl Studio {
         let padding = input(&document.padding, "32", window, cx);
         let font_size = input(&document.font_size, "15", window, cx);
         let languages = crate::language_picker::LanguageList::new();
-        let selected = languages.position(&document.language);
-        let language =
-            cx.new(|cx| SelectState::new(languages, selected, window, cx).searchable(true));
+        let language = cx.new(|cx| Picker::new(languages, document.language.clone(), window, cx));
         let code_typeface = choices(
             typeface_items(&document, false),
             document.typeface_selection(false),
@@ -265,8 +293,21 @@ impl Studio {
         let thumbnails = crate::appearance::thumbnails();
         let light_thumbnails = crate::appearance::light_thumbnails(&thumbnails);
         let theme_scroll = UniformListScrollHandle::new();
+        let filtered_themes: Vec<_> = (0..thumbnails.len()).collect();
+        let theme_grid = cx.new(|cx| {
+            Grid::new(theme_cells(&filtered_themes, &thumbnails), window, cx)
+                .scroll_handle(&theme_scroll)
+        });
+        let theme_trigger = cx.new(|cx| Press::new(window, cx));
+        let theme_filters = cx.new(|cx| {
+            let items = Items::try_new(
+                ThemeFilter::OPTIONS.map(|(_, label, filter)| Item::new(filter, label)),
+            )
+            .expect("each appearance filter is unique");
+            ToggleGroup::new(items, window, cx)
+        });
         if let Some(index) = thumbnails.iter().position(|(item, _)| *item == theme) {
-            theme_scroll.scroll_to_item(index / 3, ScrollStrategy::Center);
+            theme_scroll.scroll_to_item(index / THEME_COLUMNS, ScrollStrategy::Center);
         }
         let session = Arc::new(document::SessionStore::new(session));
         let renderer = Renderer::new();
@@ -361,7 +402,9 @@ impl Studio {
             let selection = editor.selected_range();
             let scroll = editor.scroll_offset();
             let bounds = editor.input_bounds();
-            let visible_rows = editor.visible_row_range();
+            let cursor_visible = editor
+                .visible_row_range()
+                .is_some_and(|rows| rows.contains(&(editor.cursor_position().line as usize)));
             let cursor = editor.cursor();
             let anchor = if selection.is_empty() {
                 None
@@ -381,13 +424,13 @@ impl Studio {
                 || scroll != this.last_scroll
                 || anchor != this.last_selection_anchor
                 || bounds != this.last_source_bounds
-                || visible_rows != this.last_visible_rows
+                || cursor_visible != this.source_cursor_visible
             {
                 this.last_selection = selection;
                 this.last_scroll = scroll;
                 this.last_selection_anchor = anchor;
                 this.last_source_bounds = bounds;
-                this.last_visible_rows = visible_rows;
+                this.source_cursor_visible = cursor_visible;
                 // Selection/scroll changes only update the toolbar, never render an image.
                 cx.notify();
             }
@@ -413,9 +456,7 @@ impl Studio {
         }
         subscriptions.push(
             cx.subscribe_in(&language, window, |this, _, event, window, cx| {
-                let SelectEvent::Confirm(Some(id)) = event else {
-                    return;
-                };
+                let PickerSelection(id) = event;
                 if this.document.terminal() && id != "ansi" {
                     this.edit_terminal(window, cx);
                     return;
@@ -429,9 +470,7 @@ impl Studio {
                 field,
                 window,
                 move |this, _, event, window, cx| {
-                    let SelectEvent::Confirm(Some(id)) = event else {
-                        return;
-                    };
+                    let PickerSelection(id) = event;
                     if id == "custom" {
                         // Keep the current choice visible until a file is accepted.
                         this.sync_typeface(comments, window, cx);
@@ -477,7 +516,10 @@ impl Studio {
             installed_for_user: crate::updates::linux_install::Installation::for_user()
                 .is_ok_and(|installation| installation.installed()),
             document,
+            #[cfg(test)]
+            render_count: 0,
             editor,
+            source_editor,
             title,
             source_marks,
             highlight_menu: None,
@@ -492,8 +534,12 @@ impl Studio {
             code_typeface,
             comment_typeface,
             theme_search,
+            theme_has_query: false,
             theme_scroll,
-            filtered_themes: (0..thumbnails.len()).collect(),
+            theme_grid,
+            theme_trigger,
+            theme_filters,
+            filtered_themes,
             focus: cx.focus_handle(),
             preview: None,
             revision: 0,
@@ -531,7 +577,7 @@ impl Studio {
             last_scroll: point(px(0.), px(0.)),
             last_selection_anchor: None,
             last_source_bounds: Bounds::default(),
-            last_visible_rows: None,
+            source_cursor_visible: false,
         };
         this.sync_source_marks(cx);
         this.changed(cx);
@@ -796,12 +842,24 @@ impl Studio {
 
     pub fn close_theme_browser(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.browsing_themes = false;
-        self.focus.focus(window, cx);
+        self.theme_trigger
+            .read(cx)
+            .focus_handle(cx)
+            .focus(window, cx);
         cx.notify();
     }
 
+    pub fn clear_theme_search(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        self.theme_search.update(cx, |input, cx| {
+            input.clean(window, cx);
+            input.focus(window, cx);
+        });
+    }
+
     pub fn filter_themes(&mut self, cx: &mut Context<Self>) {
-        let query = self.theme_search.read(cx).value().trim().to_lowercase();
+        let value = self.theme_search.read(cx).value();
+        self.theme_has_query = !value.is_empty();
+        let query = value.trim().to_lowercase();
         let previous = std::mem::take(&mut self.filtered_themes);
         self.filtered_themes = self
             .thumbnails
@@ -829,6 +887,13 @@ impl Studio {
             })
             .map(|(index, _)| index)
             .collect();
+        if previous == self.filtered_themes {
+            cx.notify();
+            return;
+        }
+        let cells = theme_cells(&self.filtered_themes, &self.thumbnails);
+        self.theme_grid
+            .update(cx, |grid, cx| grid.replace_cells(cells, cx));
         self.theme_motion.reflow(&previous, &self.filtered_themes);
         self.theme_scroll
             .scroll_to_item_strict(0, ScrollStrategy::Top);
@@ -844,6 +909,9 @@ impl Studio {
         let light = !crate::appearance::palette(cx).light;
         crate::appearance::apply(light, Some(window), cx);
         self.editor.update(cx, |editor, cx| {
+            editor.set_editor_style(crate::appearance::editor_style(crate::appearance::palette(
+                cx,
+            )));
             editor.set_highlighter_factory(
                 crate::source_highlight::document_factory(light, &self.document),
                 cx,
@@ -930,12 +998,13 @@ impl Studio {
         self.highlight_menu = None;
         self.document.title = self.source_name.clone();
         self.language.update(cx, |state, cx| {
-            state.set_selected_value(&language.id().to_owned(), window, cx)
+            state.set_selected_value(language.id(), window, cx)
         });
         self.title.update(cx, |state, cx| {
             state.set_value(self.source_name.clone(), window, cx)
         });
         self.editor.update(cx, |state, cx| {
+            state.set_readonly(self.document.terminal(), cx);
             state.set_highlighter(language.id(), cx);
             state.set_highlighter_factory(
                 crate::source_highlight::document_factory(
@@ -955,16 +1024,10 @@ impl Studio {
             &self.code_typeface
         };
         field.update(cx, |state, cx| {
-            state.set_items(
-                SearchableVec::new(typeface_items(&self.document, comments)),
-                window,
-                cx,
-            );
-            state.set_selected_value(
-                &self.document.typeface_selection(comments).to_owned(),
-                window,
-                cx,
-            );
+            state
+                .source_mut()
+                .replace(typeface_items(&self.document, comments));
+            state.set_selected_value(self.document.typeface_selection(comments), window, cx);
         });
     }
 
@@ -1243,9 +1306,11 @@ fn input(
     cx: &mut Context<Studio>,
 ) -> Entity<InputState> {
     cx.new(|cx| {
-        InputState::new(window, cx)
+        let mut input = InputState::new(window, cx)
             .default_value(value.to_owned())
-            .placeholder(placeholder.to_owned())
+            .placeholder(placeholder.to_owned());
+        crate::ui::install_editor_menu(&mut input);
+        input
     })
 }
 fn choices(
@@ -1254,11 +1319,7 @@ fn choices(
     window: &mut Window,
     cx: &mut Context<Studio>,
 ) -> Entity<Choices> {
-    let index = items
-        .iter()
-        .position(|i| i.id == selected)
-        .map(|row| gpui_kit::component::IndexPath::default().row(row));
-    cx.new(|cx| SelectState::new(SearchableVec::new(items), index, window, cx).searchable(true))
+    cx.new(|cx| Picker::new(ChoiceCatalog::new(items), selected.to_owned(), window, cx))
 }
 
 fn typeface_items(document: &Document, comments: bool) -> Vec<Choice> {

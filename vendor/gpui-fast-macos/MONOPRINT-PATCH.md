@@ -1,9 +1,9 @@
 # Monoprint App Store feature
 
-Source: crates.io `gpui-fast-macos` 0.1.10. The existing App Store exclusions
+Source: crates.io `gpui-fast-macos` 0.1.13. The existing App Store exclusions
 were ported from Monoprint's `gpui-pre-macos` 0.3.8 patch.
 Original crate checksum:
-`0c9656cc924a624ebbc44bb9f8149f5206fe6e94b262349f662efe692e03d900`.
+`d809f618f836aff7fc654c00c3f6e64d41abd83713140998dd83e8ad6906b1e9`.
 Original Apache 2.0 license and source are retained. Changes are limited to
 `Cargo.toml`, `Cargo.toml.orig` and `src/window.rs`.
 

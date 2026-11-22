@@ -1,6 +1,6 @@
 #[cfg(any(target_os = "linux", test))]
-use gpui_kit::point;
-use gpui_kit::{App, Bounds, Pixels, Size, px, size};
+use gpui::point;
+use gpui::{App, Bounds, Pixels, Size, px, size};
 
 pub fn initial_bounds(cx: &App) -> (Bounds<Pixels>, Size<Pixels>) {
     #[cfg(target_os = "linux")]

@@ -1,13 +1,13 @@
-use gpui_kit::App;
+use gpui::App;
 
-/// Supplement Kit's Command/Option bindings with AppKit's Control shortcuts.
+/// Supplement Base's Command/Option bindings with AppKit's Control shortcuts.
 pub fn init(cx: &mut App) {
     #[cfg(target_os = "macos")]
     {
-        use gpui_kit::{
-            KeyBinding,
-            base::actions::{SelectDown, SelectLeft, SelectRight, SelectUp},
-            component::input::{Backspace, Delete, MoveDown, MoveLeft, MoveRight, MoveUp},
+        use gpui::KeyBinding;
+        use gpui_base::{
+            actions::{SelectDown, SelectLeft, SelectRight, SelectUp},
+            input::{Backspace, Delete, MoveDown, MoveLeft, MoveRight, MoveUp},
         };
 
         cx.bind_keys([

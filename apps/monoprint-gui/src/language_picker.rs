@@ -1,12 +1,6 @@
 //! Studio language curation; the renderer's full catalog stays available.
 use crate::studio::Choice;
-use gpui_kit::{
-    component::{
-        IndexPath,
-        select::{SelectDelegate, SelectItem},
-    },
-    *,
-};
+use crate::ui::picker::PickerSource;
 
 // Primary set plus the additional languages selected for Studio.
 const PRIMARY: &[&str] = &[
@@ -169,58 +163,31 @@ impl LanguageList {
     }
 }
 
-impl SelectDelegate for LanguageList {
-    type Item = Choice;
-
-    fn sections_count(&self, _: &App) -> usize {
-        1
+impl PickerSource for LanguageList {
+    fn options(&self) -> &[Choice] {
+        &self.matched
     }
-
-    fn items_count(&self, section: usize) -> usize {
-        if section == 0 { self.matched.len() } else { 0 }
+    fn selected(&self, id: &str) -> Option<&Choice> {
+        self.all
+            .iter()
+            .chain(&self.unlisted)
+            .find(|item| item.id == id)
     }
-
-    fn item(&self, ix: IndexPath) -> Option<&Choice> {
-        match ix.section {
-            0 => self.matched.get(ix.row),
-            1 => self.unlisted.get(ix.row),
-            _ => None,
-        }
-    }
-
-    fn position<V>(&self, value: &V) -> Option<IndexPath>
-    where
-        Self::Item: SelectItem<Value = V>,
-        V: PartialEq,
-    {
-        [&self.matched, &self.unlisted]
-            .into_iter()
-            .enumerate()
-            .find_map(|(section, items)| {
-                items
-                    .iter()
-                    .position(|item| item.value() == value)
-                    .map(|row| IndexPath::default().section(section).row(row))
-            })
-    }
-
-    fn perform_search(&mut self, query: &str, _: &mut Window, _: &mut App) -> Task<()> {
+    fn search(&mut self, query: &str) {
         self.search(query);
-        Task::ready(())
     }
 }
 
 #[cfg(test)]
 mod tests {
     use super::{LanguageList, PRIMARY};
-    use gpui_kit::component::{IndexPath, select::SelectDelegate};
+    use crate::ui::picker::PickerSource;
 
     #[test]
     fn only_the_selected_languages_are_available_in_the_picker() {
         let mut list = LanguageList::new();
-        assert_eq!(list.items_count(0), 109);
-        assert_eq!(list.items_count(0), PRIMARY.len());
-        assert_eq!(list.items_count(1), 0);
+        assert_eq!(list.options().len(), 109);
+        assert_eq!(list.options().len(), PRIMARY.len());
         for (query, expected) in [
             ("typescript", "typescript"),
             (".ts", "typescript"),
@@ -240,19 +207,16 @@ mod tests {
             ("vala", "vala"),
         ] {
             list.search(query);
-            assert_eq!(list.item(IndexPath::default()).unwrap().id, expected);
+            assert_eq!(list.options().first().unwrap().id, expected);
         }
         for language in monoprint::Language::all().filter(|l| !PRIMARY.contains(&l.id())) {
             list.search(language.id());
             assert!(list.matched.iter().all(|item| item.id != language.id()));
-            assert_eq!(list.items_count(1), 0);
         }
         list.search("");
         // A previously saved excluded language keeps its label and rendering,
         // but its section is never included in the dropdown.
-        let ix = list.position(&"angular-ts".to_owned()).unwrap();
-        assert_eq!(ix.section, 1);
-        assert_eq!(list.item(ix).unwrap().id, "angular-ts");
-        assert_eq!(list.items_count(1), 0);
+        assert_eq!(list.selected("angular-ts").unwrap().id, "angular-ts");
+        assert!(list.options().iter().all(|item| item.id != "angular-ts"));
     }
 }

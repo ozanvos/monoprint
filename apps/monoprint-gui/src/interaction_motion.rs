@@ -1,19 +1,13 @@
 //! Short interaction transitions without changing control semantics or layout.
 use crate::appearance::Palette;
-use gpui_kit::assets::IconName;
-use gpui_kit::{
-    IntoElement,
-    base::motion::{self, Transition},
-    component::{
-        Icon, IconNamed, Selectable,
-        button::{Button, ButtonCustomVariant, ButtonVariants},
-    },
-    prelude::*,
-    *,
+use crate::{
+    assets::IconName,
+    ui::{Button, ButtonCustomVariant},
 };
-use gpui_motion_kit::{
-    MotionState, SvgMotionState,
-    core::{Easing, Motion, Spring, SvgMotion, SvgTarget, Target, Transition as Curve},
+use gpui::{prelude::*, *};
+use gpui_base::{
+    Selectable,
+    motion::{self, Transition},
 };
 use std::{
     cell::Cell,
@@ -21,6 +15,7 @@ use std::{
     rc::Rc,
     time::{Duration, Instant},
 };
+use tact::motion::{self as tact_motion, Easing, Spring, Transition as TactTransition};
 
 pub const HOVER_DURATION: Duration = Duration::from_millis(100);
 pub const SELECTION_DURATION: Duration = Duration::from_millis(160);
@@ -30,8 +25,13 @@ const STAGGER: Duration = Duration::from_millis(14);
 const REFLOW_WINDOW: Duration = Duration::from_millis(400);
 
 // Near-critical springs: decisive, with no visible bounce on large surfaces.
-fn glide() -> Curve {
-    Curve::Spring(Spring::new(420., 40., 1.).expect("valid glide spring"))
+fn glide() -> TactTransition {
+    spring(420., 40.)
+}
+
+fn spring(stiffness: f32, damping: f32) -> TactTransition {
+    // Match the original unit-mass spring and frequency-scaled rest tolerance.
+    TactTransition::spring(Spring::new(stiffness, damping).rest(0.001, 0.001 * stiffness.sqrt()))
 }
 
 #[derive(Clone, Copy)]
@@ -71,6 +71,15 @@ pub struct MotionButton {
 }
 
 impl MotionButton {
+    pub(super) fn menu_name(&self) -> SharedString {
+        self.button.menu_name()
+    }
+
+    pub(super) fn decorative(mut self) -> Self {
+        self.button = self.button.decorative();
+        self
+    }
+
     /// Sets the button icon and springs it in whenever it changes, such as
     /// Copy → Check, without moving the label or resizing the button.
     pub fn pop_icon(mut self, icon: IconName) -> Self {
@@ -100,8 +109,6 @@ impl InteractiveElement for MotionButton {
         self.button.interactivity()
     }
 }
-
-impl gpui_kit::component::menu::DropdownMenu for MotionButton {}
 
 impl RenderOnce for MotionButton {
     fn render(mut self, window: &mut Window, cx: &mut App) -> impl IntoElement {
@@ -158,7 +165,9 @@ impl RenderOnce for MotionButton {
         });
         if let Some(icon) = self.pop_icon {
             let transformation = pop((self.id.clone(), "pop-icon"), Some(icon), window, cx);
-            self.button = self.button.icon(Icon::new(icon).transform(transformation));
+            self.button = self
+                .button
+                .icon(crate::ui::icon(icon).with_transformation(transformation));
         }
         let child = self
             .button
@@ -205,10 +214,10 @@ impl RenderOnce for PopIcon {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
         let transformation = pop(self.id, self.icon, window, cx);
         match self.icon {
-            Some(icon) => Icon::new(icon)
+            Some(icon) => crate::ui::icon(icon)
                 .size(self.size)
                 .text_color(self.color)
-                .transform(transformation)
+                .with_transformation(transformation)
                 .into_any_element(),
             None => div().absolute().into_any_element(),
         }
@@ -216,39 +225,40 @@ impl RenderOnce for PopIcon {
 }
 
 struct PopState {
-    shown: Option<SharedString>,
-    motion: SvgMotionState,
-    popping: bool,
+    shown: Option<IconName>,
+    generation: u64,
 }
 
-// The first icon seen is at rest, so already-copied or already-selected states
-// don't pop on mount. Each later change restarts from a small, tilted mark.
+// The first icon is at rest. A changed icon starts a fresh spring.
 fn pop(
     id: impl Into<ElementId>,
     icon: Option<IconName>,
     window: &mut Window,
     cx: &mut App,
 ) -> Transformation {
-    let shown = icon.map(IconNamed::path);
-    let state = window.use_keyed_state(id.into(), cx, |_, _| PopState {
-        shown: shown.clone(),
-        motion: SvgMotionState::default(),
-        popping: false,
+    let id = id.into();
+    let state = window.use_keyed_state(id.clone(), cx, |_, _| PopState {
+        shown: icon,
+        generation: 0,
     });
-    state.update(cx, |state, cx| {
-        if state.shown != shown {
-            state.shown = shown;
-            state.motion = SvgMotionState::default();
-            state.popping = true;
+    let generation = state.update(cx, |state, _| {
+        if state.shown != icon {
+            state.shown = icon;
+            state.generation += 1;
         }
-        let mut motion = SvgMotion::new(SvgTarget::default()).transition(Curve::Spring(
-            Spring::new(560., 30., 1.).expect("valid pop spring"),
-        ));
-        if state.popping {
-            motion = motion.initial(SvgTarget::default().scale(0.5).rotate_degrees(-14.));
-        }
-        state.motion.frame(motion, window, cx).transformation()
-    })
+        state.generation
+    });
+    let rest = [1., 0.];
+    let initial = if generation == 0 { rest } else { [0.5, -14.] };
+    let [scale, angle] = tact_motion::animate_from(
+        (id, format!("pop-{generation}")),
+        initial,
+        rest,
+        spring(560., 30.),
+        window,
+        cx,
+    );
+    Transformation::scale(size(scale, scale)).with_rotation(radians(angle.to_radians()))
 }
 
 /// Fades an overlay in from a few pixels toward its anchor. Remounting replays
@@ -295,15 +305,24 @@ impl Entrance {
 
 impl RenderOnce for Entrance {
     fn render(self, window: &mut Window, cx: &mut App) -> impl IntoElement {
-        let state = window.use_keyed_state(self.id, cx, |_, _| MotionState::default());
-        let mut motion = Motion::new(Target::default().y(0.).opacity(1.))
-            .transition(Curve::Tween(ENTRANCE_DURATION, Easing::EaseOut))
-            .delay(self.delay);
-        if self.animate {
-            motion = motion.initial(Target::default().y(self.from_y).opacity(0.));
-        }
-        let frame = state.update(cx, |state, cx| state.frame(motion, window, cx));
-        frame.apply(div().when(self.fill, Styled::size_full).child(self.child))
+        let rest = [0., 1.];
+        let transition = TactTransition::tween(
+            ENTRANCE_DURATION,
+            // Linear x control points give the original cubic ease-out.
+            Easing::CubicBezier(1. / 3., 1., 2. / 3., 1.),
+        )
+        .delay(self.delay);
+        let [y, opacity] = if self.animate {
+            tact_motion::animate_from(self.id, [self.from_y, 0.], rest, transition, window, cx)
+        } else {
+            rest
+        };
+        div()
+            .when(self.fill, Styled::size_full)
+            .relative()
+            .top(px(y))
+            .opacity(opacity)
+            .child(self.child)
     }
 }
 
@@ -311,7 +330,6 @@ impl RenderOnce for Entrance {
 /// panning and resizing follow the pointer exactly.
 #[derive(Default)]
 pub struct ZoomMotion {
-    state: MotionState,
     springing: bool,
 }
 
@@ -328,35 +346,31 @@ impl ZoomMotion {
         &mut self,
         target: Bounds<Pixels>,
         window: &mut Window,
-        cx: &App,
+        cx: &mut App,
     ) -> Bounds<Pixels> {
-        let motion = Motion::new(rect_target(target)).transition(if self.springing {
-            glide()
+        const ID: &str = "preview-zoom";
+        let target = rect_target(target);
+        if self.springing {
+            let frame = tact_motion::animation(ID, target, glide(), window, cx);
+            self.springing = frame.is_moving();
+            rect_bounds(frame.value())
         } else {
-            Curve::Instant
-        });
-        let frame = self.state.frame(motion, window, cx);
-        self.springing &= frame.is_animating();
-        rect_bounds(frame.target(), target)
+            rect_bounds(tact_motion::jump(ID, target, window, cx))
+        }
     }
 }
 
-fn rect_target(bounds: Bounds<Pixels>) -> Target {
-    Target::default()
-        .x(bounds.origin.x.into())
-        .y(bounds.origin.y.into())
-        .width(bounds.size.width.into())
-        .height(bounds.size.height.into())
+fn rect_target(bounds: Bounds<Pixels>) -> [f32; 4] {
+    [
+        bounds.origin.x.into(),
+        bounds.origin.y.into(),
+        bounds.size.width.into(),
+        bounds.size.height.into(),
+    ]
 }
 
-fn rect_bounds(target: Target, fallback: Bounds<Pixels>) -> Bounds<Pixels> {
-    Bounds::new(
-        point(px(target.x_px()), px(target.y_px())),
-        size(
-            target.width_px().map_or(fallback.size.width, px),
-            target.height_px().map_or(fallback.size.height, px),
-        ),
-    )
+fn rect_bounds([x, y, width, height]: [f32; 4]) -> Bounds<Pixels> {
+    Bounds::new(point(px(x), px(y)), size(px(width), px(height)))
 }
 
 /// Which theme tiles enter after a search or filter change. Tiles that keep
@@ -422,7 +436,6 @@ struct RingState {
     theme: Option<&'static str>,
     generation: u64,
     gliding: bool,
-    motion: MotionState,
 }
 
 /// One selection ring shared by every theme tile: choosing a theme glides it
@@ -446,30 +459,38 @@ pub fn selection_ring(
             };
             let offset = scroll.0.borrow().base_handle.offset();
             let content = Bounds::new(measured.origin - offset, measured.size);
-            let state = window.use_keyed_state(id, cx, |_, _| RingState {
-                theme: selected,
-                generation,
-                gliding: false,
-                motion: MotionState::default(),
-            });
-            let ring = state.update(cx, |state, cx| {
+            let state =
+                window.use_keyed_state((id.clone(), "selection-state"), cx, |_, _| RingState {
+                    theme: selected,
+                    generation,
+                    gliding: false,
+                });
+            let gliding = state.update(cx, |state, _| {
                 if state.generation != generation {
                     state.generation = generation;
                     state.gliding = false;
-                }
-                if state.theme != selected {
-                    state.theme = selected;
+                } else if state.theme != selected {
                     state.gliding = true;
                 }
-                let motion = Motion::new(rect_target(content)).transition(if state.gliding {
-                    glide()
-                } else {
-                    Curve::Instant
-                });
-                let frame = state.motion.frame(motion, window, cx);
-                state.gliding &= frame.is_animating();
-                rect_bounds(frame.target(), content)
+                state.theme = selected;
+                state.gliding
             });
+            let transition = if gliding {
+                glide()
+            } else {
+                TactTransition::instant()
+            };
+            let frame = tact_motion::animation(
+                (id, format!("ring-{generation}")),
+                rect_target(content),
+                transition,
+                window,
+                cx,
+            );
+            if gliding && !frame.is_moving() {
+                state.update(cx, |state, _| state.gliding = false);
+            }
+            let ring = rect_bounds(frame.value());
             window.paint_quad(quad(
                 Bounds::new(ring.origin + offset, ring.size),
                 px(5.),
@@ -673,7 +694,7 @@ impl Element for TrackSelection {
 }
 
 // Observe the native hitbox without adding a second hover handler to a button:
-// GPUI Kit's managed tooltip already owns that handler.
+// The tooltip already owns that handler.
 struct HoverTarget {
     child: AnyElement,
     hovered: Entity<bool>,

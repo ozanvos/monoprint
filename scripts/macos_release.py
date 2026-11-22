@@ -20,9 +20,9 @@ def source_digest(root):
     inputs += ['apps/monoprint-gui/assets/app-store.entitlements',
                'apps/monoprint-gui/assets/app-store-helper.entitlements']
     directories = ['src', 'assets', 'licenses', 'vendor/takumi-raster/src', 'vendor/takumi-svg/src',
-                   'vendor/gpui-component', 'vendor/gpui-fast-macos', 'vendor/gpui-motion-kit',
+                   'vendor/gpui-fast-macos',
                    'apps/monoprint-gui/src', 'apps/monoprint-gui/scripts',
-                   'apps/monoprint-gui/assets/Monoprint.icon', 'apps/monoprint-gui/assets/shortcuts',
+                   'apps/monoprint-gui/assets/Monoprint.icon', 'apps/monoprint-gui/assets/icons', 'apps/monoprint-gui/assets/shortcuts',
                    'apps/monoprint-gui/assets/themes', 'apps/monoprint-gui/assets/dmg', 'scripts']
     for directory in directories:
         inputs += [p.relative_to(root).as_posix() for p in (root / directory).rglob('*')
